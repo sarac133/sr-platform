@@ -10,7 +10,7 @@
   function App() {
     var s = useState(SR.getTheme()); var theme = s[0], setTheme = s[1];
     var snd = useState(SR.soundOn()), soundOn = snd[0], setSoundOn = snd[1];
-    var sc = useState('home'); var screen = sc[0], setScreen = sc[1];
+    var sc = useState(function () { return /[?&]screen=sales/.test(location.search) || location.hash === '#sales' ? 'sales' : 'home'; }); var screen = sc[0], setScreen = sc[1];
     var cl = useState('clear'); var activeClient = cl[0], setActiveClient = cl[1];
     var tb = useState('overview'); var clientTab = tb[0], setClientTab = tb[1];
     var ex = useState({}); var exp = ex[0], setExp = ex[1];
@@ -60,6 +60,8 @@
     /* saving and live updates */
     var stS = useState(SR.store.status); var saveState = stS[0], setSaveState = stS[1];
     var gaS = useState(INIT.gacc || null); var gacc = gaS[0], setGacc = gaS[1];
+    var glS = useState(INIT.gaccList || (INIT.gacc ? [INIT.gacc] : [])); var glist = glS[0], setGlist = glS[1];
+    var syncing = React.useRef(false), syncAgain = React.useRef(false);
     var gmS = useState(''); var gmsg = gmS[0], setGmsg = gmS[1];
     useEffect(function () { SR.store.onStatus(setSaveState); SR.store.subscribe(); }, []);
     useEffect(function () { SR.store.saveColl('tasks', tasks); SR.store.saveKV('order', tasks.map(function (t) { return t.id; })); }, [tasks]);
@@ -82,11 +84,32 @@
         else if (SR[key] && typeof val === 'object') { Object.keys(SR[key]).forEach(function (x) { delete SR[key][x]; }); Object.assign(SR[key], val); setClk(function (c) { return c + 1; }); }
       },
       gacc: function (row) { setGacc(row); },
+      gaccReload: function () { SR.store.myGaccs().then(function (l) { setGlist(l); setGacc(SR.store.primaryOf(l)); if (!l.length) setGmsg(''); }, function () {}); },
       gaccs: function (row) { SR.GACCS[row.user_id] = row; setClk(function (c) { return c + 1; }); },
       profiles: function (row) { if (!row) return; var l = Object.keys(SR.PROFILES).map(function (k) { return SR.PROFILES[k]; }).filter(function (p) { return p.user_id !== row.user_id; }).concat([row]); SR.applyProfiles(l); if (row.user_id === SR.store.myId()) SR.ME = row; setClk(function (c) { return c + 1; }); }
     };
     SR.store.onRemote(SR.remote);
-    var syncNow = function () { if (!gacc) return Promise.resolve(); setGmsg('Syncing…'); return SR.store.gSync(me).then(function (r) { setGmsg('Synced ' + SR.nowParts().time + (r && (r.pulledNew + r.pulledChanged + r.pushedNew + r.pushedChanged + r.removed) ? ' · ' + (r.pulledNew + r.pulledChanged) + ' in, ' + (r.pushedNew + r.pushedChanged) + ' out' : '')); }, function (e) { setGmsg('Sync failed: ' + e.message); }); };
+    /* One sync at a time. If something changes while it runs, run once more afterwards. A big calendar finishes over a few quick rounds. */
+    var syncNow = function () {
+      if (!gacc) return Promise.resolve();
+      if (syncing.current) { syncAgain.current = true; return Promise.resolve(); }
+      syncing.current = true; setGmsg('Syncing…');
+      var tot = { i: 0, o: 0 };
+      var round = function (n) {
+        return SR.store.gSync(me).then(function (r) {
+          r = r || {}; tot.i += (r.pulledNew || 0) + (r.pulledChanged || 0); tot.o += (r.pushedNew || 0) + (r.pushedChanged || 0);
+          if (r.busy && n < 4) return new Promise(function (res) { setTimeout(res, 2500); }).then(function () { return round(n + 1); });
+          if (r.partial && n < 12) { setGmsg('Syncing… ' + (tot.i + tot.o) + ' items so far'); return round(n + 1); }
+          return r;
+        });
+      };
+      return round(0).then(function (r) {
+        syncing.current = false; r = r || {};
+        if (r.errors && r.errors.length) setGmsg('Sync problem: ' + r.errors[0]);
+        else setGmsg((r.partial ? 'Part synced ' : r.busy ? 'Synced ' : 'Synced ') + SR.nowParts().time + (tot.i + tot.o ? ' · ' + tot.i + ' in, ' + tot.o + ' out' : '') + (r.partial ? ' · more on the next round' : ''));
+        if (syncAgain.current) { syncAgain.current = false; setTimeout(syncNow, 800); }
+      }, function (e) { syncing.current = false; setGmsg('Sync failed: ' + e.message); });
+    };
     useEffect(function () { if (!gacc) return; syncNow(); var iv = setInterval(function () { if (!document.hidden) syncNow(); }, 60000); return function () { clearInterval(iv); }; }, [!!gacc, me]);
     useEffect(function () { if (!gacc) return; var t = setTimeout(syncNow, 1000); return function () { clearTimeout(t); }; }, [tasks, events]);
     var renameOwner = function (a, b) {
@@ -405,7 +428,7 @@
       it.push({ g: 'Actions', label: 'Onboard a new client', fn: startOnboard });
       it.push({ g: 'Actions', label: theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode', fn: function () { setTheme(theme === 'light' ? 'dark' : 'light'); } });
       it.push({ g: 'Actions', label: soundOn ? 'Turn the tick sound off' : 'Turn the tick sound on', fn: function () { var n = !soundOn; SR.setSound(n); setSoundOn(n); } });
-      it.push({ g: 'Actions', label: 'Open the Sales dashboard', fn: function () { window.location.href = SR.SALES_URL; } });
+      it.push({ g: 'Actions', label: 'Open the Sales dashboard', fn: function () { setScreen('sales'); setOpenId(null); } });
       clients.forEach(function (c) {
         it.push({ g: 'Clients', label: c.name, sub: c.region, color: c.color, fn: function () { openClient(c.id); } });
         edits.push({ g: 'Actions', label: 'Edit ' + c.name, sub: 'Client details', color: c.color, fn: function () { setEditId(c.id); } });
@@ -433,7 +456,7 @@
     var navItem = function (on) { return 'min-height:38px;display:flex;align-items:center;gap:10px;padding:0 12px;border:0;border-radius:8px;font-family:inherit;font-size:14px;text-align:left;cursor:pointer;' + (on ? 'background:rgba(255,255,255,0.12);color:#FFF;font-weight:600' : 'background:transparent;color:#C9D2E0'); };
     var sidebar = html`<nav aria-label="Main" style=${'flex:1 1 232px;max-width:280px;background:var(--nav);color:#E8ECF2;padding:20px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px'}>
       <div style="display:flex;align-items:center;gap:10px;padding:0 8px"><div style="width:36px;height:36px;border-radius:7px;background:#000;color:#FFF;font-family:'Playfair Display',Georgia,serif;font-size:16px;display:flex;align-items:center;justify-content:center">SR</div><div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:700">Sarac Ramsay</div></div>
-      <${SR.AppSwitch} />
+      <${SR.AppSwitch} mode=${screen === 'sales' ? 'sales' : 'clients'} onSales=${function () { setScreen('sales'); setOpenId(null); }} onClients=${function () { if (screen === 'sales') setScreen('home'); }} />
       <div style="display:flex;flex-direction:column;gap:2px">
         ${[['home', 'Home'], ['clients', 'Clients'], ['calendar', 'Calendar'], ['results', 'Results']].map(function (n) { return html`<button key=${n[0]} type="button" onClick=${function () { setScreen(n[0]); setOpenId(null); }} style=${navItem(screen === n[0])}>${n[1]}</button>`; })}
       </div>
@@ -445,7 +468,7 @@
       </div>
     </nav>`;
 
-    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', onboard: 'New client' }[screen];
+    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', onboard: 'New client', sales: 'Sales', calendar: 'Calendar' }[screen];
     var topbar = html`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px">
       <div style="font-size:13px;color:var(--muted)">${crumb}</div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -460,9 +483,10 @@
 
     var body;
     if (screen === 'home') body = html`<${SR.Home} ...${taskProps} who=${who} setWho=${setWho} />`;
-    else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} gmsg=${gmsg} syncNow=${syncNow} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
+    else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || 1)}></iframe>`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;
     else body = html`<${SR.ClientPage} proj=${projSel[activeClient]} setProj=${function (t) { setProjSel(function (o) { var n = Object.assign({}, o); n[activeClient] = t; return n; }); }} addProject=${addProject} setGoal=${setGoal} client=${SR.clientById(clients, activeClient)} tasks=${tasks} tab=${clientTab} setTab=${setClientTab} exp=${exp} toggleExp=${function (id, v) { setExp(function (e) { var n = Object.assign({}, e); n[id] = v; return n; }); }} rm=${rm} setRm=${setRm} ac=${ac} setAc=${setAc} onToggle=${toggle} onOpen=${openFn} goResults=${goResults} goLive=${goLive} sel=${selected} onSelect=${onSelect} openId=${openId} settling=${settling} just=${just} phaseSel=${phaseSel} setPhase=${setPhase} justLive=${justLive} />`;
 
@@ -477,7 +501,7 @@
 
     return html`<div style="font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch">
       ${sidebar}
-      <main class="sr-main" style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px " + (openTask && screen !== "calendar" ? 424 : 34) + "px 120px 34px"}>
+      <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "")} style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px " + (openTask && screen !== "calendar" ? 424 : 34) + "px 120px 34px"}>
         ${topbar}
         ${body}
         ${openTask ? html`<${SR.TaskDrawer} showHow=${showHow} task=${openTask} clients=${clients} where=${where} subDraft=${subDraft} onSubDraft=${setSubDraft}
@@ -488,7 +512,7 @@
       ${cf ? html`<${SR.Confirm} cf=${cf} onClose=${function () { setCf(null); }} />` : null}
       ${editId ? html`<${SR.EditClient} key=${editId} client=${SR.clientById(clients, editId)} onClose=${function () { setEditId(null); }} onSave=${saveClient} />` : null}
       ${autoOpen ? html`<${SR.AutoModal} rules=${rules} setRules=${setRules} onClose=${function () { setAutoOpen(false); }} tasks=${tasks} events=${events} clients=${clients} />` : null}
-      ${settingsOpen ? html`<${SR.SettingsModal} me=${me} theme=${theme} setTheme=${setTheme} soundOn=${soundOn} setSound=${function (v) { SR.setSound(v); setSoundOn(v); }} setTz=${function (z) { SR.setTz(z); setClk(function (c) { return c + 1; }); }} gacc=${gacc} gmsg=${gmsg} syncNow=${syncNow} gDisconnect=${function () { SR.store.gDisconnect().then(function () { setGacc(null); setGmsg(''); toast('Google Calendar disconnected'); }, function (e) { toast(e.message); }); }} onProfile=${function () { setSettingsOpen(false); setProfOpen(true); }} onClose=${function () { setSettingsOpen(false); }} />` : null}
+      ${settingsOpen ? html`<${SR.SettingsModal} me=${me} theme=${theme} setTheme=${setTheme} soundOn=${soundOn} setSound=${function (v) { SR.setSound(v); setSoundOn(v); }} setTz=${function (z) { SR.setTz(z); setClk(function (c) { return c + 1; }); }} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onProfile=${function () { setSettingsOpen(false); setProfOpen(true); }} onClose=${function () { setSettingsOpen(false); }} />` : null}
       ${profOpen ? html`<${SR.ProfileModal} profile=${SR.ME} onClose=${function () { setProfOpen(false); }} onSave=${function (p) { var old = SR.ME && SR.ME.username; return SR.store.saveProfile(p).then(function (row) { SR.ME = row; if (old && old !== row.username) renameOwner(old, row.username); SR.applyProfiles(Object.keys(SR.PROFILES).map(function (k) { return SR.PROFILES[k]; }).filter(function (x) { return x.user_id !== row.user_id; }).concat([row])); setMeS(row.username); setProfOpen(false); toast('Profile saved'); }); }} />` : null}
       ${palOpen ? html`<${SR.Palette} items=${palItems()} onClose=${function () { setPalOpen(false); }} />` : null}
       ${toastMsg ? html`<div role="status" class="sr-toast">${SR.Icon('check', 15)} ${toastMsg}${toastUndo ? html`<button type="button" class="sr-undo" onClick=${function () { var f = toastUndo.fn; setToastMsg(''); setToastUndo(null); SR._lastUndo = null; f(); }}>Undo</button>` : null}</div>` : null}
@@ -509,7 +533,7 @@
         ['periods', 'orgP', 'orgT', 'metaReal', 'acct'].forEach(function (n) { if (k[n] && SR[n]) { Object.keys(SR[n]).forEach(function (x) { delete SR[n][x]; }); Object.assign(SR[n], k[n]); } });
         var tasks = d.tasks; if (tasks && k.order) { var ix = {}; k.order.forEach(function (id, i) { ix[id] = i; }); tasks = tasks.slice().sort(function (a, b) { return (ix[a.id] == null ? 1e9 : ix[a.id]) - (ix[b.id] == null ? 1e9 : ix[b.id]); }); }
         var ev = d.events; if (!ev && SR.store.mode === 'local') { var old = SR.jget('sr_events', null); if (old) ev = old; }
-        SR.INIT = { clients: k.clients || null, tasks: tasks, seq: k.seq || 0, maxId: d.maxId || 0, rules: k.rules || null, notifs: d.notifs, events: ev, gacc: d.gacc };
+        SR.INIT = { clients: k.clients || null, tasks: tasks, seq: k.seq || 0, maxId: d.maxId || 0, rules: k.rules || null, notifs: d.notifs, events: ev, gacc: d.gacc, gaccList: d.gaccList || (d.gacc ? [d.gacc] : []) };
         if (location.search.indexOf('gcal=') >= 0) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
         setPhase('ready');
       }, function (e) { setErr(String(e && e.message || e)); setPhase('error'); });

@@ -8,13 +8,12 @@ window.SR = window.SR || {};
     light: { bg: '#F3F5F8', card: '#FFFFFF', card2: '#F6F8FB', border: '#DCE2EA', line: '#EBEFF4', text: '#13213A', muted: '#5B6678', accent: '#2F5C99', accentBg: '#E7EEF8', green: '#087443', greenBg: '#E5F4EC', red: '#B42318', redBg: '#FCEBEA', gold: '#8A5A00', goldBg: '#FBF1DC', input: '#FFFFFF', primary: '#2F5C99', nav: '#0F1C33', cbline: '#8896A8', pillBg: '#E6ECF4', pillInk: '#142C49', goldFill: '#C9A84C', onGold: '#142C49', greenBtn: '#1F8A56' },
     dark: { bg: '#0B1626', card: '#11233A', card2: '#0F1E33', border: '#2F4A6C', line: '#223855', text: '#EEF2F7', muted: '#9FB0C5', accent: '#DBBF69', accentBg: '#1A2F4B', green: '#4CC38A', greenBg: '#13302A', red: '#F87171', redBg: '#3A1B20', gold: '#DBBF69', goldBg: '#3A3014', input: '#0B1626', primary: '#C9A84C', nav: '#08111F', cbline: '#5C7392', pillBg: '#1D3452', pillInk: '#E3CB86', goldFill: '#C9A84C', onGold: '#142C49', greenBtn: '#2E9E68' }
   };
-  /* Switch between this app and the Sales dashboard. Set SR.SALES_URL if the Sales dashboard lives somewhere else. */
-  SR.SALES_URL = SR.SALES_URL || './sales/index.html';
-  SR.AppSwitch = function () {
-    var s = React.useState(false), go = s[0], setGo = s[1];
-    var click = function (e) { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return; e.preventDefault(); setGo(true); document.body.classList.add('sr-leave'); setTimeout(function () { window.location.href = SR.SALES_URL; }, 260); };
-    return html`<a class=${'sr-appsw' + (go ? ' go' : '')} href=${SR.SALES_URL} onClick=${click} aria-label="Switch to the Sales dashboard">
-      <span class="th"></span><span class="op">Sales</span><span class="op on">Clients</span></a>`;
+  /* Switch between Clients and Sales. Both live in the same app, behind the same login. */
+  SR.AppSwitch = function (p) {
+    var onSales = p.mode === 'sales';
+    return html`<div class=${'sr-appsw' + (onSales ? ' sales' : '')} role="group" aria-label="Switch between Sales and Clients"><span class="th"></span>
+      <button type="button" class=${'op' + (onSales ? ' on' : '')} aria-pressed=${onSales ? 'true' : 'false'} onClick=${p.onSales}>Sales</button>
+      <button type="button" class=${'op' + (!onSales ? ' on' : '')} aria-pressed=${!onSales ? 'true' : 'false'} onClick=${p.onClients}>Clients</button></div>`;
   };
   /* tick sound: a short two note chime made with Web Audio, no file needed. Remembered in sr_sound. */
   SR.soundOn = function () { try { return localStorage.getItem('sr_sound') !== 'off'; } catch (e) { return true; } };
@@ -94,6 +93,9 @@ window.SR = window.SR || {};
 
   /* ---- icons ---- */
   var ICONS = {
+    trash: '<path d="M4 7h16M10 11v6m4-6v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3"/>',
+    bell: '<path d="M6 17V11a6 6 0 0112 0v6l2 2H4l2-2zM10 21h4"/>',
+    link: '<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
     wallet: '<path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7zm0 0V6a2 2 0 012-2h11"/><circle cx="17" cy="14" r="1.2"/>',
     key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9m-3 3l3 3"/>',
@@ -420,8 +422,10 @@ window.SR = window.SR || {};
         ${row('Set automatically', 'Uses the time zone of this device: ' + SR.detectTz().replace(/_/g, ' '), html`<label class="st-sw"><input type="checkbox" checked=${auto} onChange=${function (e) { p.setTz(e.target.checked ? '' : SR.tz); }} /><i></i></label>`)}
         ${auto ? null : row('Time zone', 'Used for dates, the calendar and Google sync', html`<select class="cal-in" style="margin:0;max-width:240px" value=${SR.tz} onChange=${function (e) { p.setTz(e.target.value); }}>${zones.map(function (z) { return html`<option key=${z} value=${z}>${z.replace(/_/g, ' ')}</option>`; })}</select>`)}
         <h3>Integrations</h3>
-        ${row('Google Calendar', cloud ? (g ? 'Connected as ' + (g.google_email || 'your Google account') + (p.gmsg ? ' · ' + p.gmsg : '') : 'Show your Google events here and keep both calendars in sync') : 'Needs Supabase. See the README.',
-          cloud ? (g ? html`<span style="display:flex;gap:8px"><button type="button" class="edbtn" onClick=${p.syncNow}>Sync now</button><button type="button" class="edbtn" onClick=${p.gDisconnect}>Disconnect</button></span>` : html`<button type="button" class="mdl-b pri" onClick=${function () { SR.store.gConnect(); }}>Connect</button>`) : html`<span class="cal-note">Not available</span>`)}
+        ${row('Google Calendar', cloud ? (g ? (p.gmsg || 'Connected') : 'Show your Google events here and keep both calendars in sync') : 'Needs Supabase. See the README.',
+          cloud ? (g ? html`<span style="display:flex;gap:8px"><button type="button" class="edbtn" onClick=${p.syncNow}>Sync now</button><button type="button" class="edbtn" onClick=${function () { SR.store.gConnect(); }}>Add another account</button></span>` : html`<button type="button" class="mdl-b pri" onClick=${function () { SR.store.gConnect(); }}>Connect</button>`) : html`<span class="cal-note">Not available</span>`)}
+        ${cloud ? (p.glist || []).map(function (a) { return html`<div key=${a.google_email} class="st-row"><div class="st-t"><b style="overflow:hidden;text-overflow:ellipsis">${a.google_email || 'Google account'}${a.is_primary ? ' · primary' : ''}</b><span style=${a.last_error ? 'color:#E5484D' : ''}>${a.last_error ? 'Problem: ' + a.last_error : a.last_sync ? 'Last synced ' + new Date(a.last_sync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not synced yet'}</span></div><div class="st-c" style="display:flex;gap:8px">${a.is_primary ? null : html`<button type="button" class="edbtn" onClick=${function () { p.gPrimary(a.google_email); }}>Make primary</button>`}<button type="button" class="edbtn" onClick=${function () { if (window.confirm('Disconnect ' + (a.google_email || 'this account') + '? Events stay in Google.')) p.gDisconnect(a.google_email); }}>Disconnect</button></div></div>`; }) : null}
+        ${cloud && (p.glist || []).length > 1 ? html`<div class="cal-note" style="padding:0 2px 8px">New tasks and events are written to the primary account. Events from the other accounts show here and edits sync back to them.</div>` : null}
         ${cloud ? html`<h3>Account</h3>${row('Sign out', 'You will need your email and password again', html`<button type="button" class="edbtn" style="color:#E5484D" onClick=${function () { SR.store.signOut(); }}>Sign out</button>`)}` : null}
       </div></div></div>`;
   };

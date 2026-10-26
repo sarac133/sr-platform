@@ -287,11 +287,12 @@ window.SR = window.SR || {};
     S.magic = function (email) { return sb.auth.signInWithOtp({ email: email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: false } }).then(function (r) { if (r.error) throw r.error; }); };
     S.signOut = function () { return (sb ? sb.auth.signOut() : Promise.resolve()).then(function () { location.reload(); }); };
     S.token = function () { return sb.auth.getSession().then(function (r) { return r.data.session ? r.data.session.access_token : ''; }); };
+    S.primaryOf = function (l) { l = l || []; return l.filter(function (x) { return x.is_primary; })[0] || l[0] || null; };
     S.load = function () {
       if (!cloud) { var st = lsRead(); Object.keys(saved).forEach(function (n) { (st[n] || []).forEach(function (o) { saved[n][idOf(n, o)] = JSON.stringify(o); }); }); Object.keys(st.kv || {}).forEach(function (k) { savedKV[k] = JSON.stringify(st.kv[k]); }); return Promise.resolve({ tasks: st.tasks, events: st.events, notifs: st.notifs, kv: st.kv || {}, maxId: 0, gacc: null }); }
       var q = function (t) { return sb.from(t).select('*').limit(20000).then(function (r) { if (r.error) throw r.error; return r.data || []; }); };
-      return Promise.all([q('tasks'), q('events'), q('notifs'), q('kv'), sb.from('google_accounts').select('*').eq('user_id', session.user.id).then(function (r) { return (r.data || [])[0] || null; })]).then(function (a) {
-        var out = { tasks: null, events: null, notifs: null, kv: {}, maxId: 0, gacc: a[4] };
+      return Promise.all([q('tasks'), q('events'), q('notifs'), q('kv'), sb.from('google_accounts').select('*').eq('user_id', session.user.id).then(function (r) { return r.data || []; })]).then(function (a) {
+        var out = { tasks: null, events: null, notifs: null, kv: {}, maxId: 0, gacc: S.primaryOf(a[4]), gaccList: a[4] };
         ['tasks', 'events', 'notifs'].forEach(function (n, i) { var rows = a[i]; if (!rows.length) return; out[n] = []; rows.forEach(function (r) { if (n === 'tasks' && typeof r.data.id === 'number') out.maxId = Math.max(out.maxId, r.data.id); if (r.deleted) return; out[n].push(r.data); saved[n][String(r.id)] = JSON.stringify(r.data); }); });
         a[3].forEach(function (r) { out.kv[r.key] = r.value; savedKV[r.key] = JSON.stringify(r.value); });
         return out;
@@ -335,13 +336,15 @@ window.SR = window.SR || {};
         });
       });
       ch.on('postgres_changes', { event: '*', schema: 'public', table: 'kv' }, function (p) { var r = p.new; if (!r || !r.key) return; var js = JSON.stringify(r.value); if (savedKV[r.key] === js) return; savedKV[r.key] = js; remote.kv && remote.kv(r.key, r.value); });
-      ch.on('postgres_changes', { event: '*', schema: 'public', table: 'google_accounts' }, function (p) { var gr = p.new || null; if (gr && gr.user_id !== S.myId()) { remote.gaccs && remote.gaccs(gr); return; } remote.gacc && remote.gacc(gr); });
+      ch.on('postgres_changes', { event: '*', schema: 'public', table: 'google_accounts' }, function (p) { var gr = p.new || null; var mine = (gr && gr.user_id === S.myId()) || (p.old && p.old.user_id === S.myId()); if (gr && !mine) { remote.gaccs && remote.gaccs(gr); return; } clearTimeout(timers.gacc); timers.gacc = setTimeout(function () { remote.gaccReload && remote.gaccReload(); }, 400); });
       ch.on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, function (p) { remote.profiles && remote.profiles(p.new || null); });
       ch.subscribe();
     };
     /* Google Calendar, through the Netlify functions */
-    S.gaccs = function () { if (!cloud) return Promise.resolve([]); return sb.from('google_accounts').select('user_id,google_email,last_sync').then(function (r) { return r.data || []; }); };
-    S.gDisconnect = function () { return S.token().then(function (t) { return fetch('/.netlify/functions/gcal-disconnect', { method: 'POST', headers: { Authorization: 'Bearer ' + t } }); }).then(function (r) { if (!r.ok) throw new Error('Could not disconnect'); remote.gacc && remote.gacc(null); }); };
+    S.gaccs = function () { if (!cloud) return Promise.resolve([]); return sb.from('google_accounts').select('user_id,google_email,last_sync,is_primary').order('is_primary', { ascending: false }).then(function (r) { return r.data || []; }); };
+    S.myGaccs = function () { if (!cloud) return Promise.resolve([]); return sb.from('google_accounts').select('*').eq('user_id', session.user.id).order('connected_at').then(function (r) { return r.data || []; }); };
+    S.gDisconnect = function (account) { return S.token().then(function (t) { return fetch('/.netlify/functions/gcal-disconnect', { method: 'POST', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify(account == null ? {} : { account: account }) }); }).then(function (r) { if (!r.ok) throw new Error('Could not disconnect'); remote.gaccReload && remote.gaccReload(); }); };
+    S.gPrimary = function (account) { return S.token().then(function (t) { return fetch('/.netlify/functions/gcal-disconnect', { method: 'POST', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ account: account, primary: true }) }); }).then(function (r) { if (!r.ok) throw new Error('Could not change the primary account'); remote.gaccReload && remote.gaccReload(); }); };
     S.gConnect = function () { return S.token().then(function (t) { location.href = '/.netlify/functions/gcal-connect?token=' + encodeURIComponent(t); }); };
     S.gSync = function (name) { return S.token().then(function (t) { return fetch('/.netlify/functions/gcal-sync', { method: 'POST', headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, tz: SR.tz }) }); }).then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; }); }); };
     return S;
@@ -383,6 +386,7 @@ window.SR = window.SR || {};
     L.push('END:VCALENDAR'); return L.join('\r\n');
   };
   /* ---------- time tracking: duration (est), completed time (spent), chunks (slots) ---------- */
+  SR.GCOLORS = { 1: '#7986cb', 2: '#33b679', 3: '#8e24aa', 4: '#e67c73', 5: '#f6bf26', 6: '#f4511e', 7: '#039be5', 8: '#616161', 9: '#3f51b5', 10: '#0b8043', 11: '#d50000' };
   SR.EST_DEFAULT = 30;
   SR.estOf = function (t) { return t.est || SR.EST_DEFAULT; };
   SR.remaining = function (t) { return t.done ? 0 : Math.max(0, SR.estOf(t) - (t.spent || 0)); };

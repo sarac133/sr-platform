@@ -317,17 +317,14 @@ select.nat-in{cursor:pointer}
 .pfrow .nat-in{max-width:none}
 
 /* switch to the Sales dashboard */
-.sr-appsw{position:relative;display:grid;grid-template-columns:1fr 1fr;margin:0 4px;padding:3px;border-radius:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);text-decoration:none;font-size:13px;font-weight:700;color:#9FB0C5;user-select:none}
-.sr-appsw .op{position:relative;z-index:1;text-align:center;padding:8px 0;transition:color .25s}
+.sr-appsw{position:relative;display:grid;grid-template-columns:1fr 1fr;margin:0 4px;padding:3px;border-radius:12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);font-size:13px;font-weight:700;color:#9FB0C5;user-select:none}
+.sr-appsw .op{position:relative;z-index:1;text-align:center;padding:8px 0;min-height:36px;border:0;background:transparent;font:inherit;color:#9FB0C5;cursor:pointer;transition:color .25s}
 .sr-appsw .op.on{color:#142C49}
-.sr-appsw .th{position:absolute;top:3px;bottom:3px;left:50%;width:calc(50% - 3px);border-radius:9px;background:#C9A84C;transition:transform .28s cubic-bezier(.3,.8,.3,1)}
-.sr-appsw{pointer-events:none}
-.sr-appsw .op{pointer-events:auto;cursor:pointer}
-.sr-appsw:has(.op:not(.on):hover) .th,.sr-appsw.go .th{transform:translateX(calc(-100% - 0px))}
-.sr-appsw:has(.op:not(.on):hover) .op:not(.on),.sr-appsw.go .op:not(.on){color:#142C49}
-.sr-appsw:has(.op:not(.on):hover) .op.on,.sr-appsw.go .op.on{color:#9FB0C5}
-.sr-appsw:focus-visible{outline:3px solid #C9A84C;outline-offset:2px}
-body{animation:srfade .3s ease both}
+.sr-appsw .th{position:absolute;top:3px;bottom:3px;left:calc(50%);width:calc(50% - 3px);border-radius:9px;background:#C9A84C;transition:transform .28s cubic-bezier(.3,.8,.3,1)}
+.sr-appsw.sales .th{transform:translateX(calc(-100% - 0px))}
+.sr-appsw .op:focus-visible{outline:3px solid #C9A84C;outline-offset:2px;border-radius:9px}
+.sales-frame{display:block;width:100%;height:calc(100vh - 96px);min-height:560px;border:1px solid var(--line);border-radius:14px;background:#0F141B}
+.sr-main.on-sales{padding-bottom:24px!important}
 body.sr-leave{opacity:0;transition:opacity .25s ease}
 @keyframes srfade{from{opacity:0}to{opacity:1}}
 
@@ -626,3 +623,26 @@ body.sr-leave{opacity:0;transition:opacity .25s ease}
 .st-sw i{position:absolute;inset:0;border-radius:99px;background:var(--line2,#C3CCD8);transition:background .15s}.st-sw i:after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .15s}
 .st-sw input:checked+i{background:var(--accent)}.st-sw input:checked+i:after{transform:translateX(18px)}
 .st-sw input:focus-visible+i{outline:2px solid var(--accent);outline-offset:2px}
+
+/* event popover (click an event, like Google Calendar) */
+.evp-bg{position:fixed;inset:0;z-index:80}
+.evp{position:fixed;z-index:81;width:380px;max-width:calc(100vw - 16px);background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:12px 18px 16px}
+.evp-tools{display:flex;justify-content:flex-end;gap:2px;margin:0 -8px 4px 0}
+.evp-tools button{width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.evp-tools button:hover{background:var(--line);color:var(--text)}
+.evp-h{display:flex;gap:14px;align-items:flex-start;margin-bottom:10px}
+.evp-h>i{width:14px;height:14px;border-radius:4px;flex:none;margin-top:6px}
+.evp-h h3{margin:0;font-size:20px;font-weight:600;line-height:1.25;word-break:break-word}
+.evp-d{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.4}
+.evp-l{display:flex;gap:14px;align-items:flex-start;padding:7px 0;font-size:14px;color:var(--text);line-height:1.4;word-break:break-word}
+.evp-l svg{color:var(--muted);margin-top:2px}
+.evp-l a,.evp-gl{color:var(--accent);text-decoration:none;font-weight:600}
+.evp-desc{white-space:pre-wrap;max-height:120px;overflow:auto}
+.evp-gl{display:inline-block;margin-top:8px;font-size:13px}
+.evf{max-height:92vh;overflow:auto}
+.evf textarea.cal-in{font-family:inherit}
+.evf-ck{display:flex;gap:8px;align-items:center;font-size:14px;margin:0 0 8px;cursor:pointer}
+.evf-sw{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 6px}
+.evf-c{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+.evf-c.on{border-color:var(--text);box-shadow:0 0 0 2px var(--card) inset}
+.cp-it[draggable=true]{cursor:grab}.cp-it[draggable=true]:active{cursor:grabbing}

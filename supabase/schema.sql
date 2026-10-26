@@ -96,3 +96,30 @@ alter table profiles add column if not exists claimed text;   -- 'Matt' or 'Josh
 drop policy if exists own_account on google_accounts;
 drop policy if exists team_read_accounts on google_accounts;
 create policy team_read_accounts on google_accounts for select to authenticated using (is_allowed());
+
+-- ===== Several Google accounts per person, sync lock, error messages (added later, safe to run again) =====
+update google_tokens   set google_email = '' where google_email is null;
+update google_accounts set google_email = '' where google_email is null;
+alter table google_tokens   alter column google_email set default '';
+alter table google_tokens   alter column google_email set not null;
+alter table google_accounts alter column google_email set default '';
+alter table google_accounts alter column google_email set not null;
+do $$ begin
+  if (select count(*) from pg_index i where i.indrelid = 'google_tokens'::regclass and i.indisprimary and i.indnatts = 1) = 1 then
+    alter table google_tokens drop constraint google_tokens_pkey;
+    alter table google_tokens add primary key (user_id, google_email);
+  end if;
+  if (select count(*) from pg_index i where i.indrelid = 'google_accounts'::regclass and i.indisprimary and i.indnatts = 1) = 1 then
+    alter table google_accounts drop constraint google_accounts_pkey;
+    alter table google_accounts add primary key (user_id, google_email);
+  end if;
+end $$;
+alter table google_accounts add column if not exists is_primary boolean not null default false;
+alter table google_accounts add column if not exists sync_lock timestamptz;
+alter table google_accounts add column if not exists last_error text;
+update google_accounts a set is_primary = true
+  from (select distinct on (user_id) user_id, google_email from google_accounts order by user_id, connected_at) f
+  where a.user_id = f.user_id and a.google_email = f.google_email
+    and not exists (select 1 from google_accounts b where b.user_id = a.user_id and b.is_primary);
+alter table gcal_links    add column if not exists account text not null default '';
+alter table gcal_channels add column if not exists account text not null default '';
