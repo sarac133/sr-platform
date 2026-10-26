@@ -173,7 +173,7 @@ window.SR = window.SR || {};
     var meta = [];
     if (p.showClient) meta.push(html`<span key="c" class="chip"><span style=${'width:8px;height:8px;border-radius:3px;background:' + p.clientColor}></span>${p.clientName}</span>`);
     if (t.repeat && !t.milestone) meta.push(html`<span key="r" class="chip" style=${'color:' + (t.date && t.date < SR.TODAY && !t.done ? 'var(--red)' : 'var(--accent)')}>${SR.Icon('repeat', 12)} ${t.repeat}${t.date ? ' · ' + SR.dueText(t) : ''}</span>`);
-    if (t.est || t.spent) meta.push(html`<span key="e" class="chip">${t.spent ? SR.dur(t.spent) + ' / ' : ''}${SR.dur(SR.estOf(t))}${t.slots && t.slots.length > 1 ? ' · ' + t.slots.length + ' chunks' : ''}</span>`);
+    if ((t.est || t.spent) && !t.done) meta.push(html`<span key="e" class="chip">${t.spent ? SR.dur(t.spent) + ' / ' : ''}${SR.dur(SR.estOf(t))}${t.slots && t.slots.length > 1 ? ' · ' + t.slots.length + ' chunks' : ''}</span>`);
     var bk = SR.blockers ? SR.blockers(t) : [];
     if (bk.length && !t.done) meta.push(html`<span key="b" class="chip" style="color:var(--red);font-weight:600" title=${'Waiting for: ' + bk[0].name}>Blocked · ${bk.length}</span>`);
     if (t.comments && t.comments.length) meta.push(html`<span key="cm" class="chip">${t.comments.length} comment${t.comments.length > 1 ? 's' : ''}</span>`);

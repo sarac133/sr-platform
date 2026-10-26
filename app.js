@@ -25,8 +25,6 @@
     var sd = useState(''); var subDraft = sd[0], setSubDraft = sd[1];
     var nt = useState(''); var newTask = nt[0], setNewTask = nt[1];
     var INIT = SR.INIT || {};
-    var stt = useState('overview'); var salesTab = stt[0], setSalesTab = stt[1];
-    useEffect(function () { var h = function (e) { var d = e.data; if (e.origin !== location.origin || !d) return; if (d.sr === 'goClients') { setScreen('home'); } else if (d.sr === 'account') { SR.act2.account && SR.act2.account(d.x, d.y); } else if (d.sr === 'ready') { SR.act2.sendMe && SR.act2.sendMe(); } }; window.addEventListener('message', h); return function () { window.removeEventListener('message', h); }; }, []);
     var cls = useState(INIT.clients || SR.SEED_CLIENTS.slice()); var clients = cls[0], setClients = cls[1];
     var tks = useState(INIT.tasks || SR.SEED_TASKS.slice()); var tasks = tks[0], setTasks = tks[1];
     var sq = useState(Math.max(INIT.seq || 0, SR.SEED_SEQ, (INIT.maxId || 0) + 1)); var seq = sq[0], setSeq = sq[1];
@@ -173,7 +171,7 @@
       setTimeout(function () {
         setSettling(function (o) { var n = Object.assign({}, o); delete n[id]; return n; });
         setJust(function (o) { var n = Object.assign({}, o); delete n[id]; return n; });
-      }, 950);
+      }, 280);
       tasks.forEach(function (t) { if (!t.done && (t.blockedBy || []).indexOf(id) >= 0 && openBlockers(t).filter(function (x) { return x.id !== id; }).length === 0) notify(t.owner || '', 'Unblocked: ' + t.name + ' (after "' + cur.name + '")', t.id); });
       runRules(cur);
       if (cur.repeat && !cur.milestone) {
@@ -217,14 +215,12 @@
       if (!t.done && (p0.spent >= SR.estOf(t)) && m > 0) setTimeout(function () { toggleRef.current(id); }, 60);
     };
     SR.act2.schedule = scheduleTasks; SR.act2.logTime = logTime; SR.act2.startTimer = startTimer; SR.act2.stopTimer = stopTimer;
-    SR.act2.sendMe = function () { var f = document.querySelector('.sales-frame'); if (!f || !f.contentWindow) return; var pf = (SR.PROFILES && SR.PROFILES[me]) || {}; f.contentWindow.postMessage({ sr: 'me', name: me, avatar: pf.avatar || '', color: pf.color || '' }, location.origin); };
-    SR.act2.account = function (x, y) { var it = [{ head: me }, { label: 'Settings', fn: function () { setSettingsOpen(true); } }, { label: 'Edit profile', fn: function () { setProfOpen(true); } }]; if (SR.store.mode === 'cloud') it.push({ sep: true }, { label: 'Sign out', danger: true, fn: function () { SR.store.signOut(); } }); SR.openMenuAt(x - 200, y + 6, it); };
-    useEffect(function () { if (screen === 'sales') SR.act2.sendMe(); }, [screen, me]);
     var setPhase = function (cid, ph) { setPhaseSel(function (o) { var n = Object.assign({}, o); n[cid] = ph; return n; }); };
     var onSelect = function (id) { setSelected(function (sv) { var n = Object.assign({}, sv); if (n[id]) delete n[id]; else n[id] = true; return n; }); };
     var clearSel = function () { setSelected({}); };
     var bulk = function (obj) { var ids = Object.keys(selected).filter(function (k) { return selected[k]; }).map(Number); setTasks(function (ts) { return ts.map(function (t) { return ids.indexOf(t.id) > -1 ? Object.assign({}, t, obj) : t; }); }); };
     var bulkComplete = function () { Object.keys(selected).filter(function (k) { return selected[k]; }).map(Number).forEach(function (id) { toggle(id); }); clearSel(); };
+    var addCustom = function (list) { var id = seq; var out = list.map(function (t) { return Object.assign({ id: id++, owner: me, date: SR.TODAY, done: false, subs: [], note: '' }, t); }); setTasks(function (ts) { return ts.concat(out); }); setSeq(id); toast(out.length + (out.length > 1 ? ' tasks added' : ' task added')); };
     var addTask = function () { if (!newTask.trim()) return; var t = { id: seq, clientId: screen === 'client' ? activeClient : 'agency', name: newTask.trim(), owner: SR.TEAM.indexOf(who) >= 0 ? who : me, date: SR.TODAY, subs: [], note: '' }; setTasks(tasks.concat([t])); setSeq(seq + 1); setNewTask(''); setOpenId(t.id); };
     var toggleSub = function (id, i) { patch(id, function (t) { var subs = t.subs.map(function (s, j) { return j === i ? Object.assign({}, s, { done: !s.done }) : s; }); return { subs: subs, done: subs.length && subs.every(function (s) { return s.done; }) ? true : t.done }; }); };
     var addSub = function (id) { if (!subDraft.trim()) return; patch(id, function (t) { return { subs: (t.subs || []).concat([{ name: subDraft.trim(), done: false }]) }; }); setSubDraft(''); };
@@ -461,9 +457,8 @@
     var navItem = function (on) { return 'min-height:38px;display:flex;align-items:center;gap:10px;padding:0 12px;border:0;border-radius:8px;font-family:inherit;font-size:14px;text-align:left;cursor:pointer;' + (on ? 'background:rgba(255,255,255,0.12);color:#FFF;font-weight:600' : 'background:transparent;color:#C9D2E0'); };
     var sidebar = html`<nav aria-label="Main" style=${'flex:1 1 232px;max-width:280px;background:var(--nav);color:#E8ECF2;padding:20px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px'}>
       <div style="display:flex;align-items:center;gap:10px;padding:0 8px"><div style="width:36px;height:36px;border-radius:7px;background:#000;color:#FFF;font-family:'Playfair Display',Georgia,serif;font-size:16px;display:flex;align-items:center;justify-content:center">SR</div><div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:700">Sarac Ramsay</div></div>
-      <${SR.AppSwitch} mode=${screen === 'sales' ? 'sales' : 'clients'} onSales=${function () { setScreen('sales'); setOpenId(null); }} onClients=${function () { if (screen === 'sales') setScreen('home'); }} />
       <div style="display:flex;flex-direction:column;gap:2px">
-        ${[['home', 'Home'], ['clients', 'Clients'], ['calendar', 'Calendar'], ['results', 'Results']].map(function (n) { return html`<button key=${n[0]} type="button" onClick=${function () { setScreen(n[0]); setOpenId(null); }} style=${navItem(screen === n[0])}>${n[1]}</button>`; })}
+        ${[['home', 'Home'], ['clients', 'Clients'], ['calendar', 'Calendar'], ['results', 'Results'], ['sales', 'Sales']].map(function (n) { return html`<button key=${n[0]} type="button" onClick=${function () { setScreen(n[0]); setOpenId(null); }} style=${navItem(screen === n[0])}>${n[1]}</button>`; })}
       </div>
       <div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:11px;letter-spacing:0.12em;color:#8E9AB0;font-weight:700;padding:0 12px 6px">CLIENTS</div>
         ${clients.map(function (c) { var on = screen === 'client' && activeClient === c.id; var askd = delId === c.id; return html`<div key=${c.id} class="sr-navrow" onContextMenu=${function (e) { SR.clientMenu(e, c); }}><button type="button" onClick=${function () { openClient(c.id); }} style=${navItem(on) + ';flex:1;min-width:0'}><span style=${'width:9px;height:9px;border-radius:3px;flex:none;background:' + c.color}></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</span></button>
@@ -493,7 +488,7 @@
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
     else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || 1)}></iframe>`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;
-    else body = html`<${SR.ClientPage} proj=${projSel[activeClient]} setProj=${function (t) { setProjSel(function (o) { var n = Object.assign({}, o); n[activeClient] = t; return n; }); }} addProject=${addProject} setGoal=${setGoal} client=${SR.clientById(clients, activeClient)} tasks=${tasks} tab=${clientTab} setTab=${setClientTab} exp=${exp} toggleExp=${function (id, v) { setExp(function (e) { var n = Object.assign({}, e); n[id] = v; return n; }); }} rm=${rm} setRm=${setRm} ac=${ac} setAc=${setAc} onToggle=${toggle} onOpen=${openFn} goResults=${goResults} goLive=${goLive} sel=${selected} onSelect=${onSelect} openId=${openId} settling=${settling} just=${just} phaseSel=${phaseSel} setPhase=${setPhase} justLive=${justLive} />`;
+    else body = html`<${SR.ClientPage} proj=${projSel[activeClient]} setProj=${function (t) { setProjSel(function (o) { var n = Object.assign({}, o); n[activeClient] = t; return n; }); }} addProject=${addProject} setGoal=${setGoal} client=${SR.clientById(clients, activeClient)} tasks=${tasks} tab=${clientTab} setTab=${setClientTab} exp=${exp} toggleExp=${function (id, v) { setExp(function (e) { var n = Object.assign({}, e); n[id] = v; return n; }); }} rm=${rm} setRm=${setRm} ac=${ac} setAc=${setAc} onToggle=${toggle} onOpen=${openFn} goResults=${goResults} goLive=${goLive} sel=${selected} onSelect=${onSelect} openId=${openId} settling=${settling} just=${just} phaseSel=${phaseSel} setPhase=${setPhase} justLive=${justLive} addCustom=${addCustom} />`;
 
     var openTask = null; for (var i = 0; i < tasks.length; i++) if (tasks[i].id === openId) openTask = tasks[i];
     var selCount = Object.keys(selected).filter(function (k) { return selected[k]; }).length;
@@ -505,9 +500,9 @@
     }
 
     return html`<div style="font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch">
- ${screen === 'sales' ? null : sidebar}
-      <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "")} style=${(screen === 'sales' ? 'padding:0!important;' : '') + "flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px " + (openTask && screen !== "calendar" ? 424 : 34) + "px 120px 34px"}>
-        ${screen === 'sales' ? null : topbar}
+      ${sidebar}
+      <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "")} style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px " + (openTask && screen !== "calendar" ? 424 : 34) + "px 120px 34px"}>
+        ${topbar}
         ${body}
         ${openTask ? html`<${SR.TaskDrawer} showHow=${showHow} task=${openTask} clients=${clients} where=${where} subDraft=${subDraft} onSubDraft=${setSubDraft}
           onClose=${function () { setOpenId(null); }} onPatch=${patch} onDelete=${function (id) { removeTask(id); }} onOpenClient=${screen === 'client' ? null : function (cid) { setOpenId(null); openClient(cid); }} onToggle=${toggle} onToggleSub=${toggleSub} onAddSub=${addSub} onComment=${addComment} me=${me} allTasks=${tasks} onLog=${logTime} onTimer=${function (id, on) { if (on) startTimer(id); else stopTimer(id); }} onSchedule=${scheduleTasks} />` : null}

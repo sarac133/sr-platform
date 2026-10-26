@@ -274,6 +274,38 @@ window.SR = window.SR || {};
     </section>`;
   };
 
+  /* ---------- Add your own tasks: one at a time or a pasted list, in any stage and in Ongoing ---------- */
+  SR.AddCustom = function (p) {
+    var o = useState(false), open = o[0], setOpen = o[1];
+    var m = useState('one'), mode = m[0], setMode = m[1];
+    var n = useState(''), name = n[0], setName = n[1];
+    var b = useState(''), bulk = b[0], setBulk = b[1];
+    var w = useState((p.first ? p.opts[0] : p.opts[p.opts.length - 1])[0]), where = w[0], setWhere = w[1];
+    var key = p.opts.map(function (x) { return x[0]; }).join('|');
+    if (p.opts.every(function (x) { return x[0] !== where; })) { where = p.opts[p.opts.length - 1][0]; }
+    var names = mode === 'one' ? (name.trim() ? [name.trim()] : []) : bulk.split(/\r?\n/).map(function (l) { return l.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/, '').trim(); }).filter(Boolean);
+    var go = function () {
+      if (!names.length) return;
+      p.onAdd(names.map(function (nm) { return p.make(nm, where); }));
+      setName(''); setBulk(''); if (mode === 'one') { var el = document.getElementById('ac-name'); if (el) el.focus(); } else setOpen(false);
+    };
+    if (!open) return html`<button type="button" class="ac-open" onClick=${function () { setOpen(true); }}>+ Add your own task</button>`;
+    return html`<div class="ac-box">
+      <div class="ac-top"><div class="sr-seg-row" role="group" aria-label="How to add">
+        <button type="button" class=${'ac-m' + (mode === 'one' ? ' on' : '')} onClick=${function () { setMode('one'); }}>One task</button>
+        <button type="button" class=${'ac-m' + (mode === 'bulk' ? ' on' : '')} onClick=${function () { setMode('bulk'); }}>Paste a list</button></div>
+        <button type="button" class="ac-x" aria-label="Close" onClick=${function () { setOpen(false); }}>×</button></div>
+      <div class="ac-row">
+        ${mode === 'one'
+          ? html`<input id="ac-name" class="ac-in" type="text" placeholder="Write the task and press Enter" value=${name} onInput=${function (e) { setName(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter') go(); }} />`
+          : html`<textarea id="ac-bulk" class="ac-in" rows="6" placeholder="One task per line. Numbers and dashes at the start are ignored." value=${bulk} onInput=${function (e) { setBulk(e.target.value); }}></textarea>`}
+        ${p.opts.length > 1 ? html`<label class="ac-sel"><span>${p.label}</span><select value=${where} onChange=${function (e) { setWhere(e.target.value); }}>${p.opts.map(function (x) { return html`<option key=${x[0]} value=${x[0]}>${x[1]}</option>`; })}</select></label>` : null}
+      </div>
+      <div class="ac-foot"><span>${names.length ? names.length + ' task' + (names.length > 1 ? 's' : '') + ' ready' : ''}</span>
+        <button type="button" class="ac-go" disabled=${!names.length} onClick=${go}>Add ${names.length > 1 ? names.length + ' tasks' : 'task'}</button></div>
+    </div>`;
+  };
+
   /* ---------- CLIENT PAGE ---------- */
   SR.ClientPage = function (p) {
     var c = p.client;
@@ -376,6 +408,8 @@ window.SR = window.SR || {};
               ${secHead(isM ? 'flag' : 'repeat', isM ? 'Milestones' : x.label, isM ? '#8A6D1F' : ['#0E7490', '#3B6FD4', '#7C3AED', '#C77700', '#BE185D'][SR.CADENCES.indexOf(x.label) % 5], dn, x.tasks.length)}
               ${x.tasks.map(function (t) { k++; return rowFor(t, ONG.color, on + '.' + k); })}</div>`;
           })}
+          <${SR.AddCustom} first=${true} label="Repeats" opts=${['Weekly', 'Daily', 'Every 3 days', 'Fortnightly', 'Monthly', 'Every 90 days'].map(function (cd) { return [cd, cd]; }).concat([['Milestone', 'One-off milestone']])} onAdd=${p.addCustom}
+            make=${function (nm, rep) { return rep === 'Milestone' ? { clientId: c.id, proj: pt, name: nm, milestone: true, maint: true, date: '', custom: true, how: [] } : { clientId: c.id, proj: pt, name: nm, repeat: rep, maint: true, custom: true, how: [] }; }} />
           </div>
         </div>`;
       } else {
@@ -384,11 +418,13 @@ window.SR = window.SR || {};
         panel = html`<div class="list swap" key=${g.ph.id}>
           <div class="listhead"><h3>${gi + 1}. ${g.ph.name}</h3><span>${g.dn}/${g.tot} done</span></div>
           <div class="listcard">
-          ${flat ? html`<div class="sgrp" style=${'--sc:' + g.ph.color}>${g.steps.map(function (st) { return st.tasks.map(function (t) { k2++; return rowFor(t, g.ph.color, (gi + 1) + '.' + k2); }); })}</div>`
+          ${flat ? html`<div class="sgrp" style=${'--sc:' + g.ph.color}>${(function () { var stl = p.settling || {}, all = []; g.steps.forEach(function (st) { st.tasks.forEach(function (t) { all.push(t); }); }); var fin = function (t) { return t.done && !stl[t.id] ? 1 : 0; }; var idx = function (t) { return all.indexOf(t); }; return all.slice().sort(function (a, b) { return fin(a) - fin(b) || idx(a) - idx(b); }); })().map(function (t) { k2++; return rowFor(t, g.ph.color, (gi + 1) + '.' + k2); })}</div>`
             : g.steps.map(function (st, si) {
               var d = st.tasks.filter(function (t) { return t.done; }).length;
               return html`<div key=${si} class="sgrp" style=${'--sc:' + st.color}>${secHead(st.icon, st.name, st.color, d, st.tasks.length)}${st.tasks.map(function (t) { k2++; return rowFor(t, g.ph.color, (gi + 1) + '.' + k2); })}</div>`;
             })}
+          <${SR.AddCustom} label="Section" opts=${(flat ? g.steps.slice(-1) : g.steps).map(function (st) { return [st.id, st.name]; })} onAdd=${p.addCustom}
+            make=${function (nm, step) { return { clientId: c.id, proj: pt, name: nm, ph: g.ph.id, step: step, custom: true, deadline: '', how: [] }; }} />
           </div>
         </div>`;
       }

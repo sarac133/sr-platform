@@ -323,7 +323,7 @@ select.nat-in{cursor:pointer}
 .sr-appsw .th{position:absolute;top:3px;bottom:3px;left:calc(50%);width:calc(50% - 3px);border-radius:9px;background:#C9A84C;transition:transform .28s cubic-bezier(.3,.8,.3,1)}
 .sr-appsw.sales .th{transform:translateX(calc(-100% - 0px))}
 .sr-appsw .op:focus-visible{outline:3px solid #C9A84C;outline-offset:2px;border-radius:9px}
-.sales-frame{position:fixed;inset:0;z-index:20;display:block;width:100%;height:100vh;border:0;background:#0F141B}
+.sales-frame{display:block;width:100%;height:calc(100vh - 100px);min-height:560px;border:0;border-radius:14px;background:var(--bg)}
 .sr-main.on-sales{padding-bottom:24px!important}
 body.sr-leave{opacity:0;transition:opacity .25s ease}
 @keyframes srfade{from{opacity:0}to{opacity:1}}
@@ -646,3 +646,20 @@ body.sr-leave{opacity:0;transition:opacity .25s ease}
 .evf-c{width:26px;height:26px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
 .evf-c.on{border-color:var(--text);box-shadow:0 0 0 2px var(--card) inset}
 .cp-it[draggable=true]{cursor:grab}.cp-it[draggable=true]:active{cursor:grabbing}
+
+.ac-open{margin:12px 0 4px;min-height:40px;padding:0 14px;border-radius:10px;border:1px dashed var(--border);background:transparent;color:var(--accent);font:600 14px inherit;cursor:pointer}
+.ac-open:hover{border-color:var(--gold);color:var(--gold)}
+.ac-box{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--card2)}
+.ac-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sr-seg-row{display:inline-flex;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.ac-m{border:0;background:var(--card);color:var(--muted);padding:6px 13px;font:600 13px inherit;cursor:pointer}
+.ac-m.on{background:var(--accentBg);color:var(--accent)}
+.ac-x{border:0;background:transparent;color:var(--muted);font-size:20px;width:30px;height:30px;border-radius:8px;cursor:pointer}
+.ac-x:hover{background:var(--line)}
+.ac-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
+.ac-in{flex:1 1 280px;min-width:0;border:1px solid var(--border);background:var(--input,var(--card));color:var(--text);border-radius:10px;padding:10px 12px;font:14px inherit;resize:vertical}
+.ac-sel{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ac-sel select{min-height:40px;border:1px solid var(--border);background:var(--input,var(--card));color:var(--text);border-radius:10px;padding:0 10px;font:14px inherit;text-transform:none;letter-spacing:0}
+.ac-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;font-size:13px;color:var(--muted)}
+.ac-go{min-height:38px;padding:0 16px;border-radius:10px;border:0;background:var(--primary,var(--accent));color:var(--onGold,#fff);font:700 14px inherit;cursor:pointer}
+.ac-go:disabled{opacity:.4;cursor:default}
