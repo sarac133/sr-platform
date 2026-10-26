@@ -26,7 +26,7 @@
     var nt = useState(''); var newTask = nt[0], setNewTask = nt[1];
     var INIT = SR.INIT || {};
     var stt = useState('overview'); var salesTab = stt[0], setSalesTab = stt[1];
-    useEffect(function () { var h = function (e) { var d = e.data; if (e.origin === location.origin && d && d.sr === 'tabIs') setSalesTab(d.tab); }; window.addEventListener('message', h); return function () { window.removeEventListener('message', h); }; }, []);
+    useEffect(function () { var h = function (e) { var d = e.data; if (e.origin !== location.origin || !d) return; if (d.sr === 'goClients') { setScreen('home'); } else if (d.sr === 'account') { SR.act2.account && SR.act2.account(d.x, d.y); } else if (d.sr === 'ready') { SR.act2.sendMe && SR.act2.sendMe(); } }; window.addEventListener('message', h); return function () { window.removeEventListener('message', h); }; }, []);
     var cls = useState(INIT.clients || SR.SEED_CLIENTS.slice()); var clients = cls[0], setClients = cls[1];
     var tks = useState(INIT.tasks || SR.SEED_TASKS.slice()); var tasks = tks[0], setTasks = tks[1];
     var sq = useState(Math.max(INIT.seq || 0, SR.SEED_SEQ, (INIT.maxId || 0) + 1)); var seq = sq[0], setSeq = sq[1];
@@ -217,6 +217,9 @@
       if (!t.done && (p0.spent >= SR.estOf(t)) && m > 0) setTimeout(function () { toggleRef.current(id); }, 60);
     };
     SR.act2.schedule = scheduleTasks; SR.act2.logTime = logTime; SR.act2.startTimer = startTimer; SR.act2.stopTimer = stopTimer;
+    SR.act2.sendMe = function () { var f = document.querySelector('.sales-frame'); if (!f || !f.contentWindow) return; var pf = (SR.PROFILES && SR.PROFILES[me]) || {}; f.contentWindow.postMessage({ sr: 'me', name: me, avatar: pf.avatar || '', color: pf.color || '' }, location.origin); };
+    SR.act2.account = function (x, y) { var it = [{ head: me }, { label: 'Settings', fn: function () { setSettingsOpen(true); } }, { label: 'Edit profile', fn: function () { setProfOpen(true); } }]; if (SR.store.mode === 'cloud') it.push({ sep: true }, { label: 'Sign out', danger: true, fn: function () { SR.store.signOut(); } }); SR.openMenuAt(x - 200, y + 6, it); };
+    useEffect(function () { if (screen === 'sales') SR.act2.sendMe(); }, [screen, me]);
     var setPhase = function (cid, ph) { setPhaseSel(function (o) { var n = Object.assign({}, o); n[cid] = ph; return n; }); };
     var onSelect = function (id) { setSelected(function (sv) { var n = Object.assign({}, sv); if (n[id]) delete n[id]; else n[id] = true; return n; }); };
     var clearSel = function () { setSelected({}); };
@@ -459,10 +462,6 @@
     var sidebar = html`<nav aria-label="Main" style=${'flex:1 1 232px;max-width:280px;background:var(--nav);color:#E8ECF2;padding:20px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px'}>
       <div style="display:flex;align-items:center;gap:10px;padding:0 8px"><div style="width:36px;height:36px;border-radius:7px;background:#000;color:#FFF;font-family:'Playfair Display',Georgia,serif;font-size:16px;display:flex;align-items:center;justify-content:center">SR</div><div style="font-family:'Playfair Display',Georgia,serif;font-size:18px;font-weight:700">Sarac Ramsay</div></div>
       <${SR.AppSwitch} mode=${screen === 'sales' ? 'sales' : 'clients'} onSales=${function () { setScreen('sales'); setOpenId(null); }} onClients=${function () { if (screen === 'sales') setScreen('home'); }} />
-      ${screen === 'sales' ? html`<div style="display:contents">      <div style="display:flex;flex-direction:column;gap:2px">
-        ${[['overview', 'Overview'], ['emails', 'Email Tracking'], ['calling', 'Cold Calling'], ['pipeline', 'Pipeline'], ['crm', 'CRM'], ['goals', 'Goals & KPIs'], ['revenue', 'Revenue']].map(function (n) { return html`<button key=${n[0]} type="button" onClick=${function () { setSalesTab(n[0]); var f = document.querySelector('.sales-frame'); if (f && f.contentWindow) f.contentWindow.postMessage({ sr: 'tab', tab: n[0] }, location.origin); }} style=${navItem(salesTab === n[0])}>${n[1]}</button>`; })}
-      </div>
-</div>` : html`<div style="display:contents">
       <div style="display:flex;flex-direction:column;gap:2px">
         ${[['home', 'Home'], ['clients', 'Clients'], ['calendar', 'Calendar'], ['results', 'Results']].map(function (n) { return html`<button key=${n[0]} type="button" onClick=${function () { setScreen(n[0]); setOpenId(null); }} style=${navItem(screen === n[0])}>${n[1]}</button>`; })}
       </div>
@@ -472,7 +471,6 @@
           <button type="button" class=${'sr-navdel' + (askd ? ' ask' : '')} aria-label=${'Delete ' + c.name} title="Delete client" onClick=${function () { if (askd) deleteClient(c.id); else { setDelId(c.id); setTimeout(function () { setDelId(function (x) { return x === c.id ? null : x; }); }, 3000); } }}>${askd ? 'Delete?' : SR.Icon('close', 13)}</button></div>`; })}
         <button type="button" onClick=${startOnboard} style="min-height:36px;margin-top:8px;padding:0 12px;border-radius:8px;border:1px dashed #3A4A66;background:transparent;color:#A9C1E8;font-family:inherit;font-size:14px;text-align:left;cursor:pointer">+ Onboard client</button>
       </div>
-</div>`}
     </nav>`;
 
     var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', onboard: 'New client', sales: 'Sales', calendar: 'Calendar' }[screen];
@@ -507,9 +505,9 @@
     }
 
     return html`<div style="font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch">
-      ${sidebar}
-      <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "")} style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px " + (openTask && screen !== "calendar" ? 424 : 34) + "px 120px 34px"}>
-        ${topbar}
+ ${screen === 'sales' ? null : sidebar}
+      <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "")} style=${(screen === 'sales' ? 'padding:0!important;' : '') + "flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px " + (openTask && screen !== "calendar" ? 424 : 34) + "px 120px 34px"}>
+        ${screen === 'sales' ? null : topbar}
         ${body}
         ${openTask ? html`<${SR.TaskDrawer} showHow=${showHow} task=${openTask} clients=${clients} where=${where} subDraft=${subDraft} onSubDraft=${setSubDraft}
           onClose=${function () { setOpenId(null); }} onPatch=${patch} onDelete=${function (id) { removeTask(id); }} onOpenClient=${screen === 'client' ? null : function (cid) { setOpenId(null); openClient(cid); }} onToggle=${toggle} onToggleSub=${toggleSub} onAddSub=${addSub} onComment=${addComment} me=${me} allTasks=${tasks} onLog=${logTime} onTimer=${function (id, on) { if (on) startTimer(id); else stopTimer(id); }} onSchedule=${scheduleTasks} />` : null}

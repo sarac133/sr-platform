@@ -323,7 +323,7 @@ select.nat-in{cursor:pointer}
 .sr-appsw .th{position:absolute;top:3px;bottom:3px;left:calc(50%);width:calc(50% - 3px);border-radius:9px;background:#C9A84C;transition:transform .28s cubic-bezier(.3,.8,.3,1)}
 .sr-appsw.sales .th{transform:translateX(calc(-100% - 0px))}
 .sr-appsw .op:focus-visible{outline:3px solid #C9A84C;outline-offset:2px;border-radius:9px}
-.sales-frame{display:block;width:100%;height:calc(100vh - 96px);min-height:560px;border:1px solid var(--line);border-radius:14px;background:#0F141B}
+.sales-frame{position:fixed;inset:0;z-index:20;display:block;width:100%;height:100vh;border:0;background:#0F141B}
 .sr-main.on-sales{padding-bottom:24px!important}
 body.sr-leave{opacity:0;transition:opacity .25s ease}
 @keyframes srfade{from{opacity:0}to{opacity:1}}

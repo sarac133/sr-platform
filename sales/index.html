@@ -8,12 +8,44 @@
 (function () { if (window.top === window && !/[?&]standalone=1/.test(location.search)) { location.replace('../?screen=sales'); return; } if (window.top !== window) document.documentElement.className += ' embed'; })();
 </script>
 <style>
-.embed .sr-brand,.embed .sr-appsw,.embed .sr-tabs{display:none!important}
+.embed .sr-appsw{display:none!important}
+.embed .sr-brand img{display:none!important}
+.embed body{padding-left:76px}
+.embed .sr-hdr{padding-right:80px!important}
+#srRail{display:none}
+.embed #srRail{display:flex;position:fixed;left:0;top:0;bottom:0;width:76px;background:#0E141B;border-right:1px solid #1F2933;flex-direction:column;align-items:center;gap:6px;padding:14px 0;z-index:9998;font-family:Inter,system-ui,sans-serif}
+#srRail .lg{width:40px;height:40px;border-radius:9px;background:#000;color:#fff;font:700 16px 'Playfair Display',Georgia,serif;display:flex;align-items:center;justify-content:center;margin-bottom:14px;border:1px solid #2D3743}
+#srRail .it{width:60px;padding:9px 0 7px;border-radius:11px;border:0;background:transparent;color:#9EA9B6;font:600 11px Inter,system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+#srRail .it svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#srRail .it:hover{background:#1B232D;color:#E9EEF4}
+#srRail .it.on{background:#1B232D;color:#E9EEF4;box-shadow:inset 0 0 0 1px #2D3743}
+#srRail .it.on svg{color:#BDA262}
+#srRail .ft{margin-top:auto;font-size:10px;color:#69737F;text-align:center;line-height:1.3}
+#srAv{display:none}
+.embed #srAv{display:flex;position:fixed;top:14px;right:20px;z-index:9999;width:38px;height:38px;border-radius:50%;border:2px solid #2D3743;padding:0;overflow:hidden;cursor:pointer;align-items:center;justify-content:center;font:700 16px Inter,system-ui,sans-serif;color:#fff;background:#5A93C9}
+#srAv img{width:100%;height:100%;object-fit:cover}
 .embed body{animation:none}
 </style>
 <script src="./support.js"></script>
 </head>
 <body>
+<nav id="srRail" aria-label="Apps"><div class="lg">SR</div>
+<button type="button" class="it on" aria-current="page"><svg viewBox="0 0 24 24"><path d="M12 3v18M16.5 7.5C15.5 6.4 14 6 12 6c-2.5 0-4 1.1-4 3s1.6 2.5 4 3 4 1.2 4 3-1.5 3-4 3c-2 0-3.6-.6-4.6-1.8"/></svg>Sales</button>
+<button type="button" class="it" id="srToClients"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 10h16M10 4v16"/></svg>Clients</button>
+<div class="ft">One<br>login</div></nav>
+<button type="button" id="srAv" aria-label="Your account and settings"></button>
+<script>
+(function(){
+ if(window.top===window)return;
+ var go=document.getElementById('srToClients'); if(go)go.onclick=function(){window.parent.postMessage({sr:'goClients'},location.origin)};
+ var av=document.getElementById('srAv');
+ av.onclick=function(){var r=av.getBoundingClientRect();window.parent.postMessage({sr:'account',x:r.right,y:r.bottom},location.origin)};
+ window.addEventListener('message',function(e){var d=e.data;if(!d||d.sr!=='me')return;
+  if(d.avatar){av.innerHTML='';var im=document.createElement('img');im.src=d.avatar;im.alt=d.name;av.appendChild(im)}else{av.textContent=(d.name||'?')[0];av.style.background=d.color||'#5A93C9'}
+  av.title=d.name||''});
+ window.parent.postMessage({sr:'ready'},location.origin);
+})();
+</script>
 <x-dc>
 
 <helmet>
@@ -185,7 +217,7 @@
 </sc-if>
 
 <!-- HEADER -->
-<div style="background: linear-gradient(180deg, #161D26 0%, #1A222B 100%); border-bottom: 1px solid #27313D; padding: 18px 36px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100;">
+<div class="sr-hdr" style="background: linear-gradient(180deg, #161D26 0%, #1A222B 100%); border-bottom: 1px solid #27313D; padding: 18px 36px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100;">
   <div class="sr-brand" style="display: flex; align-items: center; gap: 16px;">
     <img src="./sr-logo.png" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
     <div>
