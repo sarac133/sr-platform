@@ -22,7 +22,12 @@ async function userFromToken(token) {
   const r = await fetch(url + '/auth/v1/user', { headers: { apikey: key, Authorization: 'Bearer ' + token } });
   if (!r.ok) return null; const u = await r.json();
   const ok = await fetch(url + '/rest/v1/allowed_users?select=email&email=ilike.' + encodeURIComponent(u.email), { headers: { apikey: key, Authorization: 'Bearer ' + key } });
-  const rows = ok.ok ? await ok.json() : []; return rows.length ? u : null;
+  const rows = ok.ok ? await ok.json() : [];
+  if (rows.length) return u;
+  const dom = String(u.email || '').split('@')[1] || '';
+  const d = await fetch(url + '/rest/v1/allowed_domains?select=domain&domain=ilike.' + encodeURIComponent(dom), { headers: { apikey: key, Authorization: 'Bearer ' + key } });
+  const drows = d.ok ? await d.json() : [];
+  return dom && drows.length ? u : null;
 }
 const sign = (v) => crypto.createHmac('sha256', env().key).update(v).digest('hex');
 const makeState = (userId) => { const v = userId + '.' + Date.now(); return v + '.' + sign(v); };
