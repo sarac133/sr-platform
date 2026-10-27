@@ -24,7 +24,7 @@ function remFrom(g) {
 
 /* Google event -> { title, date, start, end, allDay, plus the details the popover shows } in the given timezone */
 function fromGoogle(g, tz) {
-  const details = { desc: g.description || '', loc: g.location || '', rec: !!g.recurringEventId, link: g.htmlLink || '', meet: g.hangoutLink || '', by: (g.creator && g.creator.email) || '', rem: remFrom(g), gcolor: g.colorId || '', color: g.colorId && GCOLORS[g.colorId] ? GCOLORS[g.colorId] : '' };
+  const details = { att: (g.attendees || []).length, org: !g.attendees || !g.organizer || !!g.organizer.self, desc: g.description || '', loc: g.location || '', rec: !!g.recurringEventId, link: g.htmlLink || '', meet: g.hangoutLink || '', by: (g.creator && g.creator.email) || '', rem: remFrom(g), gcolor: g.colorId || '', color: g.colorId && GCOLORS[g.colorId] ? GCOLORS[g.colorId] : '' };
   const title = g.summary || '(no title)';
   if (g.start && g.start.date) return Object.assign({ title, date: g.start.date, start: '', end: '', allDay: true }, details);
   const s = localParts(g.start.dateTime, tz), e = g.end && g.end.dateTime ? localParts(g.end.dateTime, tz) : s;
@@ -100,7 +100,7 @@ async function runSync(ctx) {
         const kind = priv.srTask ? 'task' : 'event', key = String(priv.srTask || priv.srEvent), k = kind + ':' + key;
         const alive = kind === 'task' ? !!taskItems[key] : eventScope(eventById[key]);
         if (alive && !byLocal[k] && !elsewhere.has(k) && !adopted.has(k)) { adopted.add(k); const lk = link(kind, key, ev.id, ev.updated, stamp()); byLocal[k] = lk; byGcal[ev.id] = lk; saveLinks.push(lk); handled.add(k); }
-        else if (isPrimary) orphanDel.push(ev.id);
+        else if (isPrimary && !(ev.attendees && ev.attendees.length) && (!ev.organizer || ev.organizer.self !== false)) orphanDel.push(ev.id);
         continue;
       }
       const f = fromGoogle(ev, tz), id = 'g' + ev.id;
@@ -156,6 +156,8 @@ async function runSync(ctx) {
   const upsertLink = (kind, localId, made, existing) => saveLinks.push(existing ? Object.assign({}, existing, { g_updated: made.updated, synced_at: stamp(), account }) : link(kind, localId, made.id, made.updated, stamp()));
   const plan = (kind, key, updatedAt, body, data) => {
     const k = kind + ':' + key; if (handled.has(k) || elsewhere.has(k)) return;
+    /* meetings that came from Google with guests, or that someone else organised, are never written back */
+    if (kind === 'event' && String(key).charAt(0) === 'g' && data && (data.att > 0 || data.org === false)) return;
     const l = byLocal[k];
     if (!l || dropped.has(k)) {
       if (!isPrimary) return; if (kind === 'event' && data && data.cal && data.cal !== account && data.cal !== primaryEmail) return;
@@ -190,9 +192,15 @@ async function runSync(ctx) {
   /* 3. clean up: links whose dashboard item is gone, finished, unscheduled or not this person's. Only after a full pass. */
   if (!stats.partial && timeLeft() > 2000) {
     const stale = links.filter((l) => { const key = l.kind + ':' + l.local_id; if (dropped.has(key)) return false; return !(l.kind === 'task' ? !!taskItems[l.local_id] : eventScope(eventById[l.local_id])); });
-    let si = 0;
-    const cw = async () => { while (si < stale.length) { if (timeLeft() < 800) { stats.partial = true; return; } const l = stale[si++]; try { await g.delete(l.gcal_id); } catch (e) { /* already gone */ } dropLinks.push(l); stats.removed++; } };
-    await Promise.all([cw(), cw(), cw(), cw()]);
+    const liveG = {}; gitems.forEach((e) => { liveG[e.id] = e; });
+    /* a Google event is only deleted when this app made it and nobody else is on it. Deleting a meeting you were invited to would decline it. */
+    const ours = (l) => { if (l.kind === 'event' && String(l.local_id).charAt(0) === 'g') return false; const e = liveG[l.gcal_id]; if (!e) return false; const p = (e.extendedProperties && e.extendedProperties.private) || {}; return !!(p.srTask || p.srEvent) && !(e.attendees && e.attendees.length) && (!e.organizer || e.organizer.self !== false); };
+    if (stale.length > Math.max(5, Math.round(links.length * 0.25))) { stats.guard = stale.length; }
+    else {
+      let si = 0;
+      const cw = async () => { while (si < stale.length) { if (timeLeft() < 800) { stats.partial = true; return; } const l = stale[si++]; if (ours(l)) { try { await g.delete(l.gcal_id); } catch (e) { /* already gone */ } stats.removed++; } dropLinks.push(l); } };
+      await Promise.all([cw(), cw(), cw(), cw()]);
+    }
   }
   if (dropLinks.length) await sb.del('gcal_links', dropLinks.map((l) => ({ kind: l.kind, local_id: l.local_id })), userId);
   if (stats.failed && stats.failed >= jobs.length && jobs.length) throw new Error(stats.firstError);

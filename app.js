@@ -59,8 +59,8 @@
     var auS = useState(false); var autoOpen = auS[0], setAutoOpen = auS[1];
     /* saving and live updates */
     var stS = useState(SR.store.status); var saveState = stS[0], setSaveState = stS[1];
-    var gaS = useState(INIT.gacc || null); var gacc = gaS[0], setGacc = gaS[1];
-    var glS = useState(INIT.gaccList || (INIT.gacc ? [INIT.gacc] : [])); var glist = glS[0], setGlist = glS[1];
+    var gaS = useState(null); var gacc = gaS[0], setGacc = gaS[1];
+    var glS = useState([]); var glist = glS[0], setGlist = glS[1];
     var syncing = React.useRef(false), syncAgain = React.useRef(false);
     var gmS = useState(''); var gmsg = gmS[0], setGmsg = gmS[1];
     useEffect(function () { SR.store.onStatus(setSaveState); SR.store.subscribe(); }, []);
@@ -83,9 +83,9 @@
         else if (key === 'order') setTasks(function (ts) { var ix = {}; val.forEach(function (id, i) { ix[id] = i; }); return ts.slice().sort(function (a, b) { return (ix[a.id] == null ? 1e9 : ix[a.id]) - (ix[b.id] == null ? 1e9 : ix[b.id]); }); });
         else if (SR[key] && typeof val === 'object') { Object.keys(SR[key]).forEach(function (x) { delete SR[key][x]; }); Object.assign(SR[key], val); setClk(function (c) { return c + 1; }); }
       },
-      gacc: function (row) { setGacc(row); },
-      gaccReload: function () { SR.store.myGaccs().then(function (l) { setGlist(l); setGacc(SR.store.primaryOf(l)); if (!l.length) setGmsg(''); }, function () {}); },
-      gaccs: function (row) { SR.GACCS[row.user_id] = row; setClk(function (c) { return c + 1; }); },
+      gacc: function () {},
+      gaccReload: function () {},
+      gaccs: function () {},
       profiles: function (row) { if (!row) return; var l = Object.keys(SR.PROFILES).map(function (k) { return SR.PROFILES[k]; }).filter(function (p) { return p.user_id !== row.user_id; }).concat([row]); SR.applyProfiles(l); if (row.user_id === SR.store.myId()) SR.ME = row; setClk(function (c) { return c + 1; }); }
     };
     SR.store.onRemote(SR.remote);

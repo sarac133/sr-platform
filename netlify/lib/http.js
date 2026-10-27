@@ -61,7 +61,8 @@ async function googleFor(refreshToken) {
     list: async (timeMin, timeMax) => { let out = [], page = ''; do { const q = new URLSearchParams({ timeMin, timeMax, singleEvents: 'true', showDeleted: 'true', maxResults: '2500', ...(page ? { pageToken: page } : {}) }); const d = await j(await gfetch(B + '?' + q, { headers: H })); out = out.concat(d.items || []); page = d.nextPageToken || ''; } while (page); return out; },
     insert: async (body) => j(await gfetch(B, { method: 'POST', headers: H, body: JSON.stringify(body) })),
     patch: async (id, body) => j(await gfetch(B + '/' + encodeURIComponent(id), { method: 'PATCH', headers: H, body: JSON.stringify(body) })),
-    delete: async (id) => j(await gfetch(B + '/' + encodeURIComponent(id), { method: 'DELETE', headers: H })),
+    delete: async (id) => j(await gfetch(B + '/' + encodeURIComponent(id) + '?sendUpdates=none', { method: 'DELETE', headers: H })),
+    calTz: async () => { try { const d = await j(await gfetch('https://www.googleapis.com/calendar/v3/calendars/primary', { headers: H })); return d.timeZone || ''; } catch (e) { return ''; } },
   };
 }
 

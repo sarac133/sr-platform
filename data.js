@@ -358,6 +358,10 @@ window.SR = window.SR || {};
   SR.dur = function (m) { return m >= 60 ? (Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : '')) : m + 'm'; };
   /* team = everyone with a profile (Supabase), or the local list in this-browser mode */
   SR.PROFILES = {}; SR.GACCS = {};
+  /* Google Calendar sync is paused: nothing here talks to Google or to the sync functions. */
+  SR.store.gConnect = function () { return Promise.resolve(); }; SR.store.gSync = function () { return Promise.resolve({ paused: true }); };
+  SR.store.gaccs = function () { return Promise.resolve([]); }; SR.store.myGaccs = function () { return Promise.resolve([]); };
+  SR.store.gDisconnect = function () { return Promise.resolve(); }; SR.store.gPrimary = function () { return Promise.resolve(); };
   SR.applyProfiles = function (list) {
     SR.PROFILES = {}; list.forEach(function (p) { SR.PROFILES[p.username] = p; });
     var names = list.map(function (p) { return p.username; }).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });

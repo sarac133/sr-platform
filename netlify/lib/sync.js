@@ -21,9 +21,11 @@ async function syncUser({ sb, userId, name, tz, budgetMs }) {
       const email = t.google_email || '';
       try {
         const g = await googleFor(t.refresh_token);
-        const s = await runSync({ sb, g, userId, name, tz, account: email, primaryEmail: prim, isPrimary: email === prim, deadline });
+        const useTz = (tz && tz !== 'UTC') ? tz : ((await g.calTz()) || tz || 'UTC');
+        const s = await runSync({ sb, g, userId, name, tz: useTz, account: email, primaryEmail: prim, isPrimary: email === prim, deadline });
         ['pulledNew', 'pulledChanged', 'pushedNew', 'pushedChanged', 'removed'].forEach((k) => { total[k] += s[k] || 0; });
         if (s.partial) total.partial = true;
+        if (s.guard) total.errors.push((email || 'account') + ': held back ' + s.guard + ' deletions as a safety check. Nothing was removed from Google.');
         if (s.failed) total.errors.push((email || 'account') + ': ' + s.firstError);
         try { if (Date.now() < deadline - 500) await ensureWatch(sb, userId, g, email); } catch (e) { /* push is optional, polling still works */ }
         await sb.patch('google_accounts', 'user_id=eq.' + userId + '&google_email=eq.' + encodeURIComponent(email), { last_sync: new Date().toISOString(), last_error: s.failed ? s.firstError : null });
