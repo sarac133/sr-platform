@@ -40,7 +40,10 @@ window.SR = window.SR || {};
   var seoShim = function (cfg, DATA) {
     var P = 'srseo:', TABS = ['baseline', 'keywords', 'pages', 'citations', 'competitors', 'links', 'journal'];
     var g = function (k) { try { return JSON.parse(localStorage.getItem(P + k)); } catch (e) { return null; } };
-    var put = function (k, v) { try { localStorage.setItem(P + k, JSON.stringify(v)); } catch (e) {} };
+    var put = function (k, v) { try { localStorage.setItem(P + k, JSON.stringify(v)); } catch (e) {} try { parent.postMessage({ sr: 'seo', key: k, value: v }, '*'); } catch (e) {} };
+    /* every client has its own tables. They used to share one set, so the old shared data is handed to Lifestyle Insurance, where it was typed in. */
+    var dk = function (t) { return 'data:' + cfg.id + ':' + t; };
+    if (cfg.id === 'life') TABS.forEach(function (t) { if (g(dk(t)) == null && g('data:' + t)) put(dk(t), g('data:' + t)); });
     try { localStorage.setItem('token', 'local'); localStorage.setItem('theme', cfg.dark ? 'dark' : 'light'); } catch (e) {}
     var c = g('client:' + cfg.id);
     if (!c) { c = { id: cfg.id, name: cfg.name, domain: cfg.domain || '', service: cfg.service || '', city: cfg.city || '', start: cfg.start || new Date().toISOString().slice(0, 10), marks: {}, notes: '', updated: new Date().toISOString() }; put('client:' + cfg.id, c); }
@@ -59,14 +62,14 @@ window.SR = window.SR || {};
       if (path === '/clients' && m === 'GET') return json([summary(c)]);
       var d = path.match(/^\/clients\/([a-z0-9-]+)\/data(?:\/([a-z]+))?$/);
       if (d) {
-        if (!d[2] && m === 'GET') { var out = {}; TABS.forEach(function (t) { out[t] = g('data:' + t) || { order: [], rows: {} }; }); return json(out); }
+        if (!d[2] && m === 'GET') { var out = {}; TABS.forEach(function (t) { out[t] = g(dk(t)) || { order: [], rows: {} }; }); return json(out); }
         if (d[2] && m === 'PUT') {
-          var cur = g('data:' + d[2]) || { order: [], rows: {} };
+          var cur = g(dk(d[2])) || { order: [], rows: {} };
           Object.keys(body.puts || {}).forEach(function (rid) { cur.rows[rid] = body.puts[rid]; });
           (body.dels || []).forEach(function (rid) { delete cur.rows[rid]; });
           if (Array.isArray(body.order)) cur.order = body.order;
           cur.order = cur.order.filter(function (x) { return cur.rows[x]; });
-          put('data:' + d[2], cur); return json({ ok: true });
+          put(dk(d[2]), cur); return json({ ok: true });
         }
       }
       var mm = path.match(/^\/clients\/([a-z0-9-]+)(\/mark|\/notes|\/meta)?$/);
@@ -99,14 +102,14 @@ window.SR = window.SR || {};
     React.useEffect(function () {
       var f = fr.current;
       var sendV = function () { if (!f || !f.contentWindow) return; var r = f.getBoundingClientRect(); f.contentWindow.postMessage({ sr: 'v', t: Math.max(0, -r.top), h: window.innerHeight - Math.max(0, r.top) }, '*'); };
-      var onMsg = function (e) { if (!f || e.source !== f.contentWindow || !e.data) return; if (e.data.sr === 'h') setHt(Math.max(420, e.data.h)); if (e.data.sr === 'h' || e.data.sr === 'ready') sendV(); };
+      var onMsg = function (e) { if (!f || e.source !== f.contentWindow || !e.data) return; if (e.data.sr === 'seo' && e.data.key) { try { SR.store.saveKV('seo:' + e.data.key, e.data.value); } catch (x) {} return; } if (e.data.sr === 'h') setHt(Math.max(420, e.data.h)); if (e.data.sr === 'h' || e.data.sr === 'ready') sendV(); };
       window.addEventListener('message', onMsg); window.addEventListener('scroll', sendV, true); window.addEventListener('resize', sendV);
       var iv = setInterval(sendV, 600);
       return function () { window.removeEventListener('message', onMsg); window.removeEventListener('scroll', sendV, true); window.removeEventListener('resize', sendV); clearInterval(iv); };
     }, [doc]);
     return html`<section style="display:flex;flex-direction:column;gap:8px">
       <iframe ref=${fr} key=${id + dark} title="SEO / AEO workspace" scrolling="no" srcDoc=${doc} style=${'width:100%;height:' + ht + 'px;border:0;background:transparent;display:block'}></iframe>
-      <div style="font-size:12px;color:var(--muted)">Local SEO data is saved in this browser for now. A shared database comes later.</div>
+      <div style="font-size:12px;color:var(--muted)">Each client has its own baseline and tables. Saved with the rest of your data.</div>
     </section>`;
   };
 

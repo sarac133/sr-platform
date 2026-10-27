@@ -8,6 +8,7 @@ window.SR = window.SR || {};
 
   /* ---------- HOME ---------- */
   SR.Home = function (p) {
+    var mrr = SR.useMrr();
     var who = p.who;
     var sdn = useState(false), showDone = sdn[0], setShowDone = sdn[1];
     var liveCount = p.clients.length, slots = 14;
@@ -20,13 +21,13 @@ window.SR = window.SR || {};
     var T0 = SR.TODAY, T1 = SR.addDays(T0, 1), W7 = SR.addDays(T0, 7);
     var dayOk = function (t, k) { var d = t.date || ''; if (k === 'all') return true; if (k === 'over') return !!d && d < T0 && !t.done; if (k === 'today') return d === T0; if (k === 'tom') return d === T1; if (k === 'week') return !!d && d >= T0 && d <= W7; if (k === 'none') return !d; if (k === 'pick') return !dpick || d === dpick; return true; };
     var dayCount = function (k) { return p.tasks.filter(function (t) { return !t.done && dayOk(t, k); }).length; };
-    var filtered = p.tasks.filter(function (t) { return (showDone || !t.done || st0[t.id]) && (who === 'all' || (who === 'none' ? !t.owner : t.owner === who)) && dayOk(t, day); });
+    var filtered = p.tasks.filter(function (t) { return (showDone || !t.done || st0[t.id] || t.doneDay === SR.TODAY) && (who === 'all' || (who === 'none' ? !t.owner : t.owner === who)) && dayOk(t, day); });
     var chipCount = function (w) { return p.tasks.filter(function (t) { return !t.done && (w === 'all' || (w === 'none' ? !t.owner : t.owner === w)); }).length; };
     var openTotal = p.tasks.filter(function (t) { return !t.done; }).length;
     return html`<div style="display:flex;flex-direction:column;gap:20px">
       <div><div style="font-size:13px;color:var(--muted)">${(function () { var n = SR.nowParts(); return n.date + ' · ' + n.time + ' ' + n.zone; })()}</div>${H1('Home')}</div>
       <section aria-label="Numbers" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
-        <div style=${card + ';padding:18px 20px'}>${label('MRR')}<div style="font-size:30px;font-weight:700;color:var(--green);margin-top:6px">$7,800</div><div style="font-size:12px;color:var(--muted)">↻ Synced from Sales · Revenue</div></div>
+        <div style=${card + ';padding:18px 20px'}>${label('MRR')}<div style="font-size:30px;font-weight:700;color:var(--green);margin-top:6px">${mrr == null ? '—' : SR.money(mrr)}</div><div style="font-size:12px;color:var(--muted)">↻ Live from Sales · Revenue${SR.mrr.at ? ' · updated ' + new Date(SR.mrr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</div></div>
         <div style=${card + ';padding:18px 20px'}>${label('OPEN TASKS')}<div style="font-size:30px;font-weight:700;margin-top:6px">${openTotal}</div><div style="font-size:12px;color:var(--muted)">across all clients</div></div>
         <div style=${card + ';padding:18px 20px'}>${label('CLIENTS · CAPACITY')}<div style="font-size:30px;font-weight:700;margin-top:6px">${liveCount} <span style="font-size:15px;color:var(--muted);font-weight:400">of ${slots} slots</span></div><div style="height:6px;background:var(--line);border-radius:3px;margin-top:8px"><div style=${'width:' + Math.round(liveCount / slots * 100) + '%;height:100%;background:var(--accent);border-radius:3px'}></div></div></div>
       </section>
@@ -106,7 +107,7 @@ window.SR = window.SR || {};
     /* everything that sits on the grid on one day: task blocks and events, with side by side lanes when they overlap */
     var itemsOn = function (d) {
       var out = [];
-      tasks.forEach(function (t) { if (!taskVisible(t) || (t.done && !showDone && !(p.justDone && p.justDone[t.id]))) return; SR.blocks(t).forEach(function (b) { if (b.date !== d) return; if (b.done && !showDone) return; out.push({ kind: 'task', id: t.id, i: b.i, t: t, b: b, s: tmin(b.time), e: tmin(b.time) + b.min }); }); });
+      tasks.forEach(function (t) { if (!taskVisible(t) || (t.done && !showDone && t.doneDay !== SR.TODAY && !(p.justDone && p.justDone[t.id]))) return; SR.blocks(t).forEach(function (b) { if (b.date !== d) return; if (b.done && !showDone) return; out.push({ kind: 'task', id: t.id, i: b.i, t: t, b: b, s: tmin(b.time), e: tmin(b.time) + b.min }); }); });
       events.forEach(function (e) { if (e.date !== d || !evVisible(e) || e.allDay || !e.start) return; var s = tmin(e.start), en = e.end ? tmin(e.end) : s + 60; out.push({ kind: 'ev', id: e.id, ev: e, s: s, e: Math.max(en, s + 15) }); });
       out.sort(function (x, y) { return x.s - y.s || y.e - x.e; });
       var lanes = [], cluster = [], cEnd = -1;

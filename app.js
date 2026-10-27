@@ -51,7 +51,7 @@
     var cfS = useState(null); var cf = cfS[0], setCf = cfS[1];
     var ecS = useState(null); var editId = ecS[0], setEditId = ecS[1];
     var nfS = useState(function () { return INIT.notifs || []; }); var notifs = nfS[0], setNotifs = nfS[1];
-    var rlS = useState(function () { return INIT.rules || [{ id: 'r1', on: true, match: 'Launch', action: 'create', arg: 'Day-3 check on the launch', owner: '', days: 3 }, { id: 'r2', on: true, match: 'Get client approval', action: 'notify', arg: '', owner: '', days: 0 }]; }); var rules = rlS[0], setRules = rlS[1];
+    var rlS = useState(function () { return (INIT.rules || null) && INIT.rules.map(function (r) { return r && r.id === 'r1' && r.match === 'Launch' && r.arg === 'Day-3 check on the launch' ? Object.assign({}, r, { match: 'Launch the campaign' }) : r; }) || [{ id: 'r1', on: true, match: 'Launch the campaign', action: 'create', arg: 'Day-3 check on the launch', owner: '', days: 3 }, { id: 'r2', on: true, match: 'Get client approval', action: 'notify', arg: '', owner: '', days: 0 }]; }); var rules = rlS[0], setRules = rlS[1];
     var meS = useState(function () { return SR.ME ? SR.ME.username : ''; }); var me = meS[0], setMeS = meS[1];
     var pmS = useState(false); var profOpen = pmS[0], setProfOpen = pmS[1];
     var stgS = useState(false); var settingsOpen = stgS[0], setSettingsOpen = stgS[1];
@@ -134,7 +134,7 @@
     var patch = function (id, obj) {
       var o0 = typeof obj === 'function' ? null : obj, cur0 = null; for (var q = 0; q < tasks.length; q++) if (tasks[q].id === id) cur0 = tasks[q];
       if (cur0 && o0 && o0.owner && o0.owner !== cur0.owner && o0.owner !== me) notify(o0.owner, me + ' assigned you: ' + cur0.name, id);
-      setTasks(function (ts) { return ts.map(function (t) { return t.id === id ? Object.assign({}, t, typeof obj === 'function' ? obj(t) : obj) : t; }); }); };
+      setTasks(function (ts) { return ts.map(function (t) { if (t.id !== id) return t; var o = typeof obj === 'function' ? obj(t) : obj; var n = Object.assign({}, t, o); if (o && o.done === true && !t.done) n.doneDay = SR.TODAY; else if (o && o.done === false) n.doneDay = ''; return n; }); }); };
     var toast = function (m, undo) { setToastMsg(m); setToastUndo(undo ? { fn: undo } : null); clearTimeout(SR._tt); SR._tt = setTimeout(function () { setToastMsg(''); setToastUndo(null); SR._lastUndo = null; }, undo ? 8000 : 3500); };
     /* undo: snapshot before a delete, put it back from the toast or with Ctrl/Cmd+Z */
     var snapshot = function () { return { clients: clients, tasks: tasks, seq: seq, projSel: projSel, res: JSON.stringify({ p: SR.periods || {}, o: SR.orgP || {}, t: SR.orgT || {}, m: SR.metaReal || {}, a: SR.acct || {} }) }; };
@@ -152,7 +152,7 @@
       var n = seq, add = [];
       rules.forEach(function (r) {
         if (!r.on) return; if (r.match && cur.name.toLowerCase().indexOf(r.match.toLowerCase()) < 0) return;
-        if (r.action === 'create' && r.arg) { add.push({ id: n++, clientId: cur.clientId, proj: cur.proj, name: r.arg, owner: r.owner || cur.owner || '', date: SR.addDays(SR.TODAY, +r.days || 0), subs: [], note: 'Created by an automation after: ' + cur.name }); notify(r.owner || cur.owner || '', 'Automation created: ' + r.arg, n - 1); }
+        if (r.action === 'create' && r.arg) { if (tasks.some(function (x) { return !x.done && x.clientId === cur.clientId && x.name === r.arg; }) || add.some(function (x) { return x.clientId === cur.clientId && x.name === r.arg; })) return; add.push({ id: n++, clientId: cur.clientId, proj: cur.proj, name: r.arg, owner: r.owner || cur.owner || '', date: SR.addDays(SR.TODAY, +r.days || 0), subs: [], note: 'Created by an automation after: ' + cur.name }); notify(r.owner || cur.owner || '', 'Automation created: ' + r.arg, n - 1); }
         else if (r.action === 'notify') notify(r.owner || '', 'Done: ' + cur.name + (SR.clientById(clients, cur.clientId).name ? ' (' + SR.clientById(clients, cur.clientId).name + ')' : ''), cur.id);
       });
       if (add.length) { setTasks(function (ts) { return ts.concat(add); }); setSeq(n); }
@@ -188,7 +188,7 @@
       men.forEach(function (n) { if (n !== me) { sent[n] = 1; notify(n, me + ' mentioned you on "' + tk.name + '": ' + c.text, id); } });
       if (tk.owner && tk.owner !== me && !sent[tk.owner]) notify(tk.owner, me + ' commented on "' + tk.name + '": ' + c.text, id);
     };
-    var bulkPatch = function (map, msg) { undoable(msg, function () { setTasks(function (ts) { return ts.map(function (t) { return map[t.id] ? Object.assign({}, t, map[t.id]) : t; }); }); }); };
+    var bulkPatch = function (map, msg) { undoable(msg, function () { setTasks(function (ts) { return ts.map(function (t) { return map[t.id] ? (function () { var n = Object.assign({}, t, map[t.id]); if (map[t.id].done === true && !t.done) n.doneDay = SR.TODAY; else if (map[t.id].done === false) n.doneDay = ''; return n; })() : t; }); }); }); };
     SR._dbg = function () { return { tasks: tasks, events: events }; };
     SR.act2 = { patch: patch, bulkPatch: bulkPatch, me: me, notify: notify, events: events, setEvents: setEvents, gacc: gacc, gmsg: gmsg, syncNow: syncNow };
     /* scheduling: place tasks into free hours. ids = array of task ids, or true for everything the scheduler placed before */
@@ -239,7 +239,7 @@
         });
       });
       (tp.milestones || []).forEach(function (m) {
-        add.push({ id: n++, clientId: id, proj: pt, name: m[0] + ': ' + m[1], how: m[1].split(' · '), owner: me, date: '', milestone: true, maint: true, done: false, subs: [], note: '' });
+        add.push({ id: n++, clientId: id, proj: pt, name: m[0] + ': ' + m[1], how: m[2] || m[1].split(' · '), owner: me, date: '', milestone: true, maint: true, done: false, subs: [], note: '' });
       });
       setTasks(function (ts) { return ts.concat(add); }); setSeq(n); setExp({});
       var pk = pt === c.type ? id : id + ':' + pt; setPhase(pk, 'ongoing'); setJustLive(pk); setTimeout(function () { setJustLive(null); }, 1800);
@@ -530,8 +530,10 @@
     var load = function () {
       return SR.store.load().then(function (d) {
         var k = d.kv || {};
+        Object.keys(k).forEach(function (n) { if (n.indexOf('seo:') === 0) { try { localStorage.setItem('srseo:' + n.slice(4), JSON.stringify(k[n])); } catch (e) {} } });
         ['periods', 'orgP', 'orgT', 'metaReal', 'acct'].forEach(function (n) { if (k[n] && SR[n]) { Object.keys(SR[n]).forEach(function (x) { delete SR[n][x]; }); Object.assign(SR[n], k[n]); } });
         var tasks = d.tasks; if (tasks && k.order) { var ix = {}; k.order.forEach(function (id, i) { ix[id] = i; }); tasks = tasks.slice().sort(function (a, b) { return (ix[a.id] == null ? 1e9 : ix[a.id]) - (ix[b.id] == null ? 1e9 : ix[b.id]); }); }
+        if (tasks) { var MH = {}; Object.keys(SR.TEMPLATES || {}).forEach(function (tk) { ((SR.TEMPLATES[tk] || {}).milestones || []).forEach(function (m) { if (m[2]) MH[m[0] + ': ' + m[1]] = m[2]; }); }); tasks = tasks.map(function (t) { return t.milestone && MH[t.name] ? Object.assign({}, t, { how: MH[t.name] }) : t; }); }
         var ev = d.events; if (!ev && SR.store.mode === 'local') { var old = SR.jget('sr_events', null); if (old) ev = old; }
         SR.INIT = { clients: k.clients || null, tasks: tasks, seq: k.seq || 0, maxId: d.maxId || 0, rules: k.rules || null, notifs: d.notifs, events: ev, gacc: d.gacc, gaccList: d.gaccList || (d.gacc ? [d.gacc] : []) };
         if (location.search.indexOf('gcal=') >= 0) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }

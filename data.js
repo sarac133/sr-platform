@@ -118,7 +118,31 @@ window.SR = window.SR || {};
         { label: 'Fortnightly', items: [["Analyse the ads (end of the 2 week test)", ["List the best ads (lowest cost per result) and the worst (highest).", "Note the angles, formats, secondary formats and trends."]], ["Turn off the ads above breakeven", ["Any ad with cost per result above breakeven goes off.", "Don't touch the ones still gathering data."]], ["Creative generation", ["Go back through the Winner's Writing Process with the new data.", "Brainstorm new creatives from the winning angles, then make them."]]] },
         { label: 'Monthly', items: [["Launch the next batch of new ads", ["In a batch, then another 2 week test."]], ["Results vs project math", ["Compare leads, cost per result and ROAS to the promise and breakeven."]], ["Review the audiences", ["Refresh the warm audiences and the exclusions."]], ["Check account quality, billing and the pixel", ["Account Quality, payment method, domain, dataset."]]] }
       ],
-      milestones: [['Cost per result 20% below breakeven and frequency under 2', 'Scale budget 10 to 20% a week, on Monday'], ['Results drop when scaling', 'Check the market awareness mismatch · go back to research'], ['Frequency over 3', 'Refresh creative'], ['Lead quality low', 'Add a qualifying question to the form']],
+      milestones: [
+        ['Cost per result 20% below breakeven and frequency under 2', 'Scale budget 10 to 20% a week, on Monday', [
+          'Work out breakeven first: what one lead is worth. Breakeven cost per lead = value of a won client × the share of leads that become clients. Example: a client is worth $3,000 and 1 in 10 leads closes, so breakeven is $3,000 × 10% = $300 per lead.',
+          'Your target is 20% below that: $300 × 0.8 = $240. Write breakeven and target in the task note.',
+          'Open Ads Manager, set the date range to the last 7 days (at least 50 results, never judge on 1 or 2 days). Read "Cost per result" and "Frequency" for the campaign.',
+          'Frequency = impressions ÷ reach, so how many times the average person saw the ad. Under 2 means the audience is not tired of it yet.',
+          'Both true (cost at or under the target, frequency under 2)? Raise the daily budget by 10 to 20% on Monday. $50 a day becomes $55 to $60. Do not go higher, big jumps restart Meta\'s learning phase.',
+          'Check again next Monday. If cost goes back above breakeven, drop the budget by the same amount.']],
+        ['Results drop when scaling', 'Check the market awareness mismatch · go back to research', [
+          'A drop means cost per result is more than 25% above the 7 days before you raised the budget. Example: $240 before, $300 or more now.',
+          'First undo the last increase (reduce the budget by the same 10 to 20%) and leave it alone for 3 days.',
+          'If it does not recover, the ad is reaching people who are less ready to buy than your first audience. This is the market awareness mismatch: the ad speaks to people who already know the solution, but the new audience does not yet know they have the problem.',
+          'Go back to research. Reread the CIA interviews and the top player analysis, find what the colder audience says about the problem in their own words, and write a new hook for that level.',
+          'Test the new ad in a separate ad set at the old budget. Only scale again when it hits the cost target.']],
+        ['Frequency over 3', 'Refresh creative', [
+          'Frequency = impressions ÷ reach. Find it in Ads Manager (add the Frequency column, last 7 days). Over 3 means the same person saw the ad 3 or more times.',
+          'Confirm it is hurting: click-through rate has dropped by 20% or more, or cost per result is climbing.',
+          'Duplicate the ad set and give it fresh creative: a new first 3 seconds or headline, a different image or video, same offer. Pause the tired ad once the new one has spent about 2 days of budget.',
+          'If the audience is small (under about 100,000 people), widen it as well, otherwise frequency will climb again within a week.']],
+        ['Lead quality low', 'Add a qualifying question to the form', [
+          'Measure it first. Lead quality = qualified leads ÷ total leads. Call or check the last 20 leads. Example: 6 qualified out of 20 is 30%.',
+          'Low means under the level you set with the client (30 to 50% is a common starting point).',
+          'Add 1 or 2 questions to the lead form that filter: budget range, timeline, or location. Switch the form type to "Higher intent" so people review before submitting.',
+          'Keep it for 1 week, then measure the same 20 leads again. Expect fewer leads at a higher quality and a higher cost per lead. Compare cost per qualified lead = spend ÷ qualified leads, not cost per lead.']]
+      ],
       roadmap: [['Setup & launch', 'Live by the planned date', ['Requirements, project maths, brainstorm, tracking, structure, first batch'], 'Gate: requirements pass and maths checks out → build'], ['Weeks 1 to 2 · test', 'Do nothing, just monitor', ['Daily monitor only'], 'Gate: enough data on each ad'], ['Weeks 2 to 4 · analyse and create', 'Cut ads above breakeven, make new creative', ['Analyse', 'Optimise', 'Creative generation'], 'Gate: new batch ready'], ['Week 4+ · repeat and scale', 'Launch the next batch, scale the winners', ['New batch every 4 weeks', 'Scale 10 to 20% on Monday'], 'Gate: 20% below breakeven and frequency under 2 → scale']],
       metrics: ['Amount spent', 'Leads', 'Cost per lead', 'Link CTR', 'CPM', 'Frequency']
     },
@@ -357,6 +381,27 @@ window.SR = window.SR || {};
   SR.mins = function (t) { var a = String(t || '0:0').split(':'); return (+a[0]) * 60 + (+a[1] || 0); };
   SR.dur = function (m) { return m >= 60 ? (Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : '')) : m + 'm'; };
   /* team = everyone with a profile (Supabase), or the local list in this-browser mode */
+
+  /* MRR comes live from the Sales dashboard (Revenue tab, latest logged month). Read every 30 seconds and when the tab gets focus. */
+  SR.mrr = { v: (function () { try { var x = localStorage.getItem('sr_mrr'); return x == null ? null : +x; } catch (e) { return null; } })(), at: 0, subs: [] };
+  SR.mrrPull = function () {
+    return fetch('https://sales-dashboard-90e7f-default-rtdb.europe-west1.firebasedatabase.app/dashboard/data/revPlan/snaps.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (s) {
+      if (!s) return; var a = (Array.isArray(s) ? s : Object.keys(s).map(function (k) { return s[k]; })).filter(function (x) { return x && x.m; }).sort(function (x, y) { return String(x.m).localeCompare(String(y.m)); });
+      if (!a.length) return; var v = +a[a.length - 1].ret || 0; SR.mrr.at = Date.now();
+      if (v !== SR.mrr.v) { SR.mrr.v = v; try { localStorage.setItem('sr_mrr', String(v)); } catch (e) {} }
+      SR.mrr.subs.forEach(function (f) { f(); });
+    }).catch(function () {});
+  };
+  SR.useMrr = function () {
+    var st = React.useState(0), tick = st[1];
+    React.useEffect(function () {
+      var f = function () { tick(function (x) { return x + 1; }); }; SR.mrr.subs.push(f); SR.mrrPull();
+      var iv = setInterval(function () { if (!document.hidden) SR.mrrPull(); }, 30000), fo = function () { SR.mrrPull(); };
+      window.addEventListener('focus', fo);
+      return function () { SR.mrr.subs = SR.mrr.subs.filter(function (x) { return x !== f; }); clearInterval(iv); window.removeEventListener('focus', fo); };
+    }, []);
+    return SR.mrr.v;
+  };
   SR.PROFILES = {}; SR.GACCS = {};
   /* Google Calendar sync is paused: nothing here talks to Google or to the sync functions. */
   SR.store.gConnect = function () { return Promise.resolve(); }; SR.store.gSync = function () { return Promise.resolve({ paused: true }); };
