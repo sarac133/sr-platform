@@ -5,8 +5,8 @@ window.SR = window.SR || {};
   var R = React;
 
   SR.THEMES = {
-    light: { bg: '#F3F5F8', card: '#FFFFFF', card2: '#F6F8FB', border: '#DCE2EA', line: '#EBEFF4', text: '#13213A', muted: '#5B6678', accent: '#2F5C99', accentBg: '#E7EEF8', green: '#087443', greenBg: '#E5F4EC', red: '#B42318', redBg: '#FCEBEA', gold: '#8A5A00', goldBg: '#FBF1DC', input: '#FFFFFF', primary: '#2F5C99', nav: '#0F1C33', cbline: '#8896A8', pillBg: '#E6ECF4', pillInk: '#142C49', goldFill: '#C9A84C', onGold: '#142C49', greenBtn: '#1F8A56' },
-    dark: { bg: '#0B1626', card: '#11233A', card2: '#0F1E33', border: '#2F4A6C', line: '#223855', text: '#EEF2F7', muted: '#9FB0C5', accent: '#DBBF69', accentBg: '#1A2F4B', green: '#4CC38A', greenBg: '#13302A', red: '#F87171', redBg: '#3A1B20', gold: '#DBBF69', goldBg: '#3A3014', input: '#0B1626', primary: '#C9A84C', nav: '#08111F', cbline: '#5C7392', pillBg: '#1D3452', pillInk: '#E3CB86', goldFill: '#C9A84C', onGold: '#142C49', greenBtn: '#2E9E68' }
+    light: { bg: '#F3F5F8', card: '#FFFFFF', card2: '#F6F8FB', border: '#DCE2EA', line: '#EBEFF4', text: '#13213A', muted: '#5B6678', accent: '#2F5C99', accentBg: '#E7EEF8', green: '#087443', greenBg: '#E5F4EC', red: '#B42318', redBg: '#FCEBEA', gold: '#8A5A00', goldBg: '#FBF1DC', input: '#FFFFFF', primary: '#2F5C99', nav: '#0F1C33', cbline: '#8896A8', pillBg: '#E6ECF4', pillInk: '#142C49', goldFill: '#C9A84C', onGold: '#142C49', greenBtn: '#1F8A56', onPrimary: '#FFFFFF' },
+    dark: { bg: '#0B1626', card: '#11233A', card2: '#0F1E33', border: '#2F4A6C', line: '#223855', text: '#EEF2F7', muted: '#9FB0C5', accent: '#DBBF69', accentBg: '#1A2F4B', green: '#4CC38A', greenBg: '#13302A', red: '#F87171', redBg: '#3A1B20', gold: '#DBBF69', goldBg: '#3A3014', input: '#0B1626', primary: '#C9A84C', nav: '#08111F', cbline: '#5C7392', pillBg: '#1D3452', pillInk: '#E3CB86', goldFill: '#C9A84C', onGold: '#142C49', greenBtn: '#2E9E68', onPrimary: '#142C49' }
   };
   /* Switch between Clients and Sales. Both live in the same app, behind the same login. */
   SR.AppSwitch = function (p) {
@@ -234,7 +234,7 @@ window.SR = window.SR || {};
           return html`<div key=${gi} class="dgroup" onDragOver=${p.dnd && g.date !== null ? function (e) { if (SR._drag != null) e.preventDefault(); } : null} onDragEnter=${p.dnd ? hl(true) : null} onDragLeave=${p.dnd ? hl(false) : null}
             onDrop=${p.dnd && g.date !== null ? function (e) { e.preventDefault(); e.currentTarget.classList.remove('dover'); var id = SR._drag; SR._drag = null; if (id != null) SR.dnd.dropOnDay(id, g.date); } : null}>
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:18px;padding-bottom:6px;border-bottom:1px solid var(--border)">
-              <h3 style=${'margin:0;font-family:\'Playfair Display\',Georgia,serif;font-size:19px;color:' + (g.danger ? 'var(--red)' : 'var(--text)')}>${g.label}</h3>
+              <h3 style=${'margin:0;font-family:\'DM Sans\',system-ui,sans-serif;font-size:19px;color:' + (g.danger ? 'var(--red)' : 'var(--text)')}>${g.label}</h3>
               <span style="font-size:12px;color:var(--muted)">${g.open} open</span></div>
             ${g.items.map(function (t) { return row(t, g); })}
           </div>`;

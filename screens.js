@@ -2,8 +2,8 @@
 window.SR = window.SR || {};
 (function (SR) {
   var html = SR.html, R = React, useState = React.useState;
-  var card = 'background:var(--card);border:1px solid var(--border);border-radius:12px';
-  var H1 = function (t) { return html`<h1 style="margin:0;font-family:'Playfair Display',Georgia,serif;font-size:32px">${t}</h1>`; };
+  var card = 'background:var(--card);border:1px solid var(--border);border-radius:7px';
+  var H1 = function (t) { return html`<h1 style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:32px">${t}</h1>`; };
   var label = function (t) { return html`<div style="font-size:11px;letter-spacing:0.12em;font-weight:700;color:var(--muted)">${t}</div>`; };
 
   /* ---------- HOME ---------- */
@@ -403,7 +403,7 @@ window.SR = window.SR || {};
       var isC = d[2] === 'choice';
       if (isC) return html`<div key=${d[0]} style="display:flex;flex-direction:column;gap:6px"><span style="font-size:13px;color:var(--muted)">${d[1]}</span><div style="display:flex;gap:8px;flex-wrap:wrap">${(typeof d[3] === 'function' ? d[3]() : d[3]).map(function (o) {
         var on = f[d[0]] === o;
-        return html`<button key=${o} type="button" onClick=${choose(d[0], o)} aria-pressed=${on ? 'true' : 'false'} style=${'min-height:40px;padding:0 16px;border-radius:20px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;' + (on ? 'background:var(--accentBg);color:var(--accent);border:1.5px solid var(--accent)' : 'background:var(--card);color:var(--muted);border:1px solid var(--border)')}>${o}</button>`;
+        return html`<button key=${o} type="button" onClick=${choose(d[0], o)} aria-pressed=${on ? 'true' : 'false'} style=${'min-height:40px;padding:0 16px;border-radius:10px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;' + (on ? 'background:var(--accentBg);color:var(--accent);border:1.5px solid var(--accent)' : 'background:var(--card);color:var(--muted);border:1px solid var(--border)')}>${o}</button>`;
       })}</div></div>`;
       return html`<div key=${d[0]} style="display:flex;flex-direction:column;gap:6px"><label style="font-size:13px;color:var(--muted)">${d[1]}</label><input type=${d[2]} value=${f[d[0]] || ''} onChange=${set(d[0])} style="min-height:44px;background:var(--input);border:1px solid var(--border);border-radius:10px;color:var(--text);padding:0 12px;font-family:inherit;font-size:15px" /></div>`;
     };
@@ -417,7 +417,7 @@ window.SR = window.SR || {};
       body = html`<div role="group" aria-label="Project type" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px">
         ${['gads', 'meta', 'seo'].map(function (k) {
           var on = proj === k, t = SR.TEMPLATES[k];
-          return html`<button key=${k} type="button" onClick=${function () { p.setProj(k); }} aria-pressed=${on ? 'true' : 'false'} style=${'display:flex;flex-direction:column;gap:6px;text-align:left;border-radius:14px;font-family:inherit;color:var(--text);cursor:pointer;' + (on ? 'background:var(--accentBg);border:2px solid var(--accent);padding:17px 19px' : 'background:var(--card);border:1px solid var(--border);padding:18px 20px')}>
+          return html`<button key=${k} type="button" onClick=${function () { p.setProj(k); }} aria-pressed=${on ? 'true' : 'false'} style=${'display:flex;flex-direction:column;gap:6px;text-align:left;border-radius:8px;font-family:inherit;color:var(--text);cursor:pointer;' + (on ? 'background:var(--accentBg);border:2px solid var(--accent);padding:17px 19px' : 'background:var(--card);border:1px solid var(--border);padding:18px 20px')}>
             <span style="font-size:17px;font-weight:700">${t.label}</span><span style="font-size:13px;color:var(--muted)">${t.kind === 'ads' ? 'Paid ads · goal: leads' : 'Organic · goal: visibility'}</span></button>`;
         })}
       </div>`;
@@ -426,7 +426,7 @@ window.SR = window.SR || {};
       var creates = [tp.phases.reduce(function (a, ph) { return a + ph.steps.length; }, 0) + ' setup & launch steps from the ' + tp.label + ' template', 'Planned live ' + (plan || '—'), (f.updates || 'Weekly') + ' client update task', 'Added to Clients, Results and the task list'];
       body = html`<div style="display:flex;flex-direction:column;gap:16px">
         <div>${review.map(function (r, i) { return html`<div key=${i} style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line);font-size:15px"><span style="color:var(--muted)">${r[0]}</span><span style="font-weight:600;text-align:right">${r[1]}</span></div>`; })}</div>
-        <div style="background:var(--card2);border-radius:12px;padding:16px 18px"><div style="font-size:13px;color:var(--muted);margin-bottom:6px">Creating this client will add</div>${creates.map(function (x, i) { return html`<div key=${i} style="font-size:14px;padding:3px 0">✓ ${x}</div>`; })}</div>
+        <div style="background:var(--card2);border-radius:7px;padding:16px 18px"><div style="font-size:13px;color:var(--muted);margin-bottom:6px">Creating this client will add</div>${creates.map(function (x, i) { return html`<div key=${i} style="font-size:14px;padding:3px 0">✓ ${x}</div>`; })}</div>
       </div>`;
     } else {
       body = html`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 20px">${stepFields.map(fieldNode)}</div>`;
@@ -449,7 +449,7 @@ window.SR = window.SR || {};
     return html`<main style="max-width:780px;margin:0 auto;padding:36px 24px 60px;display:flex;flex-direction:column;gap:26px">
       <ol aria-label="Steps" style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px">${stepper}</ol>
       <section style=${card + ';padding:32px 36px;display:flex;flex-direction:column;gap:24px'}>
-        <div><h1 style="margin:0;font-family:'Playfair Display',Georgia,serif;font-size:30px">${STEPS[step][1]}</h1><p style="margin:6px 0 0;font-size:15px;color:var(--muted)">${STEPS[step][2]}</p></div>
+        <div><h1 style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:30px">${STEPS[step][1]}</h1><p style="margin:6px 0 0;font-size:15px;color:var(--muted)">${STEPS[step][2]}</p></div>
         ${body}
         ${step === 3 ? html`<div style="display:flex;flex-direction:column;gap:10px;padding-top:6px;border-top:1px solid var(--line)">
           <div style="font-size:13px;color:var(--muted);padding-top:14px">What these numbers add up to</div>

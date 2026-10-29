@@ -219,7 +219,7 @@
     <sc-if value="{{ saveError }}" hint-placeholder-val="{{ false }}"><span title="Couldn't reach the database. Retrying every 8 seconds." style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--s-red); border: 1px solid rgba(245,118,109,0.5); border-radius: 8px; white-space: nowrap;">⚠ Not saved · retrying</span></sc-if>
     <button onClick="{{ toggleSfx }}" title="{{ sfxTitle }}" style="padding: 6px 12px; background: var(--s-card2); color: {{ sfxColor }}; border: 1px solid var(--s-border); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="color: var(--s-text);">{{ sfxLabel }}</button>
     <button onClick="{{ openBackups }}" style="padding: 6px 14px; background: var(--s-card2); color: var(--s-muted); border: 1px solid var(--s-border); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="color: var(--s-text); border-color: #BDA262;">🕘 Backups</button>
-    <button onClick="{{ exportCSV }}" style="padding: 6px 14px; background: linear-gradient(135deg, #5A93C9, #1F4C74); color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: linear-gradient(135deg, #7FB0E0, #5A93C9);">⬇ Export CSV</button>
+    <button onClick="{{ exportCSV }}" style="padding: 6px 14px; background: #2C6396; color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: linear-gradient(135deg, #7FB0E0, #5A93C9);">⬇ Export CSV</button>
   </div>
 </div>
 
@@ -462,7 +462,7 @@
           <button onClick="{{ toggleApolloActiveOnly }}" style="padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; border: 1px solid var(--s-border); background: {{ apolloActiveOnlyBg }}; color: {{ apolloActiveOnlyColor }};">{{ apolloActiveOnlyLabel }}</button>
           <button onClick="{{ toggleApolloStatusFilter }}" style="padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; border: 1px solid var(--s-border); white-space: nowrap; transition: all 0.2s; background: {{ apolloStatusBtnBg }}; color: {{ apolloStatusBtnColor }};">{{ apolloStatusLabel }}</button>
           <input type="password" value="{{ apolloApiKey }}" onChange="{{ onApolloApiKeyChange }}" placeholder="API key…" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 8px 12px; border-radius: 8px; font-family: inherit; font-size: 12px; width: 140px;" style-focus="border-color: var(--s-blue);">
-          <button onClick="{{ syncApollo }}" style="padding: 8px 18px; background: linear-gradient(135deg, #5A93C9, #1F4C74); color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="opacity: 0.9;">↻ Sync</button>
+          <button onClick="{{ syncApollo }}" style="padding: 8px 18px; background: #2C6396; color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="opacity: 0.9;">↻ Sync</button>
         </div>
       </div>
 
@@ -520,7 +520,7 @@
           <div style="font-size: 17px; font-weight: 700; color: var(--s-blue); letter-spacing: -0.2px;">Email replies</div>
           <div style="font-size: 12px; color: var(--s-muted);">Synced from Apollo. Book them straight into the Pipeline, or send them to the Call Out Box to follow up.</div>
           <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap;">
-            <button onClick="{{ syncApolloContacts }}" style="padding: 7px 14px; background: linear-gradient(135deg, #5A93C9, #1F4C74); color: #ffffff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;">↻ Sync replies</button>
+            <button onClick="{{ syncApolloContacts }}" style="padding: 7px 14px; background: #2C6396; color: #ffffff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;">↻ Sync replies</button>
             <span style="font-size: 11px; color: var(--s-faint);">Synced {{ apolloContactsLastSync }}</span>
             <span style="font-size: 11px; color: var(--s-blue);">{{ apolloContactsProgress }}</span>
           </div>
@@ -1150,7 +1150,7 @@
             <div style="font-size: 11px; color: var(--s-muted); margin-top: 2px;">The board now reads the CRM, so these need importing to show up. They land in {{ legacyRegionName }} as pipeline leads.</div>
           </div>
           <div style="display: flex; gap: 6px;">
-            <button onClick="{{ importAllLegacy }}" style="padding: 6px 12px; background: linear-gradient(135deg, #5A93C9, #1F4C74); color: #ffffff; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;">Import all</button>
+            <button onClick="{{ importAllLegacy }}" style="padding: 6px 12px; background: #2C6396; color: #ffffff; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;">Import all</button>
             <button onClick="{{ discardAllLegacy }}" style="padding: 6px 12px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--s-red); color: var(--s-red);">Discard all</button>
           </div>
         </div>
@@ -1317,7 +1317,7 @@
                       </div>
                       <div style="padding: 14px 22px; display: flex; justify-content: space-between; align-items: center; gap: 10px;">
                         <button onClick="{{ item.remove }}" style="padding: 8px 14px; background: rgba(245,118,109,0.1); border: 1px solid rgba(245,118,109,0.3); color: var(--s-red); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;" style-hover="background: rgba(245,118,109,0.2);">Delete card</button>
-                        <button onClick="{{ item.closeMenu }}" style="padding: 8px 18px; background: linear-gradient(135deg, #5A93C9, #1F4C74); color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;">Done</button>
+                        <button onClick="{{ item.closeMenu }}" style="padding: 8px 18px; background: #2C6396; color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;">Done</button>
                       </div>
                     </div>
                   </div>
@@ -1372,7 +1372,7 @@
                 <input type="text" value="{{ pipelineAddIndustry }}" onChange="{{ onPipelineIndustryChange }}" placeholder="Industry..." style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 6px 8px; border-radius: 4px; font-family: inherit; font-size: 11px; width: 100%; box-sizing: border-box;">
                 <input type="number" value="{{ pipelineAddValue }}" onChange="{{ onPipelineValueChange }}" placeholder="USD Value" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 6px 8px; border-radius: 4px; font-family: inherit; font-size: 11px; width: 100%; box-sizing: border-box;">
                 <div style="display: flex; gap: 4px;">
-                  <button onClick="{{ col.confirmAdd }}" style="flex: 1; padding: 5px; background: linear-gradient(135deg, #5A93C9, #1F4C74); color: #ffffff; border: none; border-radius: 4px; font-size: 10px; font-weight: 600; cursor: pointer; font-family: inherit;">Add</button>
+                  <button onClick="{{ col.confirmAdd }}" style="flex: 1; padding: 5px; background: #2C6396; color: #ffffff; border: none; border-radius: 4px; font-size: 10px; font-weight: 600; cursor: pointer; font-family: inherit;">Add</button>
                   <button onClick="{{ col.cancelAdd }}" style="flex: 1; padding: 5px; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 4px; font-size: 10px; cursor: pointer; font-family: inherit;">Cancel</button>
                 </div>
               </div>
@@ -1439,7 +1439,7 @@
             <span style="font-size: 12px; color: var(--s-faint);">{{ callListTotalAll }} total</span>
             <span style="font-size: 11px; color: var(--s-faint);">Synced {{ apolloContactsLastSync }}</span>
           </div>
-          <button onClick="{{ syncApolloContacts }}" style="padding: 9px 18px; background: linear-gradient(135deg, #5A93C9, #1F4C74); color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="opacity: 0.9;">{{ apolloSyncLabel }}</button>
+          <button onClick="{{ syncApolloContacts }}" style="padding: 9px 18px; background: #2C6396; color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="opacity: 0.9;">{{ apolloSyncLabel }}</button>
         </div>
         <!-- FILTER BAR -->
         <div style="padding: 0 22px 16px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
@@ -1651,15 +1651,13 @@
           </div>
         </div>
         <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 1080px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 940px;">
             <thead><tr style="background: var(--s-card3);">
               <th style="padding: 10px 14px; text-align: left; color: var(--s-faint); font-weight: 600; font-size: 10px; letter-spacing: 0.7px; text-transform: uppercase; position: relative; min-width: {{ colWLead }};">Lead<span onMouseDown="{{ resizeLead }}" style="position: absolute; right: -2px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 2;"></span></th>
               <th style="padding: 10px 14px; text-align: left; color: var(--s-faint); font-weight: 600; font-size: 10px; letter-spacing: 0.7px; text-transform: uppercase; position: relative; min-width: {{ colWCompanyCrm }};">Company<span onMouseDown="{{ resizeCompanyCrm }}" style="position: absolute; right: -2px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 2;"></span></th>
-              <th style="padding: 10px 14px; text-align: left; color: var(--s-faint); font-weight: 600; font-size: 10px; letter-spacing: 0.7px; text-transform: uppercase; position: relative; min-width: {{ colWEmailCrm }};">Email<span onMouseDown="{{ resizeEmailCrm }}" style="position: absolute; right: -2px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 2;"></span></th>
-              <th style="padding: 10px 14px; text-align: left; color: var(--s-faint); font-weight: 600; font-size: 10px; letter-spacing: 0.7px; text-transform: uppercase; position: relative; min-width: {{ colWPhoneCrm }};">Phone<span onMouseDown="{{ resizePhoneCrm }}" style="position: absolute; right: -2px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 2;"></span></th>
+              <th style="padding: 10px 14px; text-align: left; color: var(--s-faint); font-weight: 600; font-size: 10px; letter-spacing: 0.7px; text-transform: uppercase; position: relative; min-width: {{ colWEmailCrm }};">Contact<span onMouseDown="{{ resizeEmailCrm }}" style="position: absolute; right: -2px; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 2;"></span></th>
               <!-- LEADS columns -->
               <sc-if value="{{ sec.isLeadsGroup }}" hint-placeholder-val="{{ false }}">
-                <th style="padding: 10px 14px; text-align: center; color: var(--s-faint); font-weight: 600; font-size: 10px; letter-spacing: 0.7px; text-transform: uppercase; min-width: 100px;">Response</th>
                 <th style="padding: 10px 14px; text-align: center; color: var(--s-faint); font-weight: 600; font-size: 10px; letter-spacing: 0.7px; text-transform: uppercase; min-width: 80px;">Attempts</th>
               </sc-if>
               <!-- PROSPECTS columns -->
@@ -1706,13 +1704,11 @@
                   <td style="padding: 7px 10px; display: flex; align-items: center; gap: 4px; border-left: 3px solid {{ lead.stageBorderColor }};">
                     <input type="text" value="{{ lead.name }}" onChange="{{ lead.onNameChange }}" placeholder="Enter name..." style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 6px 10px; border-radius: 6px; font-family: inherit; font-size: 13px; font-weight: 600; flex: 1; min-width: 0; box-sizing: border-box;" style-focus="border-color: var(--s-blue);">
                     <button onClick="{{ lead.openDetail }}" title="Details" style="background: none; border: none; color: var(--s-faint); cursor: pointer; padding: 3px; display: flex; align-items: center;" style-hover="color: var(--s-blue);"><svg width="12" height="10" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="5" rx="2.5" fill="currentColor"></rect><rect x="2" y="9.5" width="20" height="5" rx="2.5" fill="currentColor"></rect><rect x="2" y="17" width="20" height="5" rx="2.5" fill="currentColor"></rect></svg></button>
-                    <sc-if value="{{ sec.isPipelineGroup }}" hint-placeholder-val="{{ false }}"><span style="font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 8px; white-space: nowrap; background: {{ lead.chanBg }}; color: {{ lead.chanColor }};">{{ lead.chanLabel }}</span></sc-if>
+                    <sc-if value="{{ sec.isPipelineGroup }}" hint-placeholder-val="{{ false }}"><span style="font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 8px; white-space: nowrap; background: {{ lead.chanBg }}; color: {{ lead.chanColor }};">{{ lead.chanLabel }}</span><span style="font-size: 10px; color: var(--s-faint); white-space: nowrap;">{{ lead.ownerLine }}</span></sc-if>
                   </td>
                   <td style="padding: 7px 10px;"><input type="text" value="{{ lead.company }}" onChange="{{ lead.onCompanyChange }}" style="background: transparent; border: 1px solid transparent; color: var(--s-muted); padding: 6px 10px; border-radius: 6px; font-family: inherit; font-size: 13px; width: 100%; box-sizing: border-box;" style-hover="border-color: var(--s-border);" style-focus="border-color: var(--s-blue); background: var(--s-card2);"></td>
-                  <td style="padding: 7px 10px;"><input type="text" value="{{ lead.email }}" onChange="{{ lead.onEmailChange }}" style="background: transparent; border: 1px solid transparent; color: var(--s-blue); padding: 6px 10px; border-radius: 6px; font-family: inherit; font-size: 13px; width: 100%; box-sizing: border-box;" style-hover="border-color: var(--s-border);" style-focus="border-color: var(--s-blue); background: var(--s-card2);"></td>
-                  <td style="padding: 7px 10px;"><input type="text" value="{{ lead.phone }}" onChange="{{ lead.onPhoneChange }}" style="background: transparent; border: 1px solid transparent; color: var(--s-muted); padding: 6px 10px; border-radius: 6px; font-family: inherit; font-size: 13px; width: 100%; box-sizing: border-box;" style-hover="border-color: var(--s-border);" style-focus="border-color: var(--s-blue); background: var(--s-card2);"></td>
+                  <td style="padding: 7px 10px;"><div style="display: flex; flex-direction: column; gap: 2px;"><input type="text" value="{{ lead.email }}" onChange="{{ lead.onEmailChange }}" style="background: transparent; border: 1px solid transparent; color: var(--s-blue); padding: 6px 10px; border-radius: 6px; font-family: inherit; font-size: 13px; width: 100%; box-sizing: border-box;" style-hover="border-color: var(--s-border);" style-focus="border-color: var(--s-blue); background: var(--s-card2);"><input type="text" value="{{ lead.phone }}" onChange="{{ lead.onPhoneChange }}" style="background: transparent; border: 1px solid transparent; color: var(--s-muted); padding: 6px 10px; border-radius: 6px; font-family: inherit; font-size: 13px; width: 100%; box-sizing: border-box;" style-hover="border-color: var(--s-border);" style-focus="border-color: var(--s-blue); background: var(--s-card2);"></div></td>
                   <sc-if value="{{ sec.isLeadsGroup }}" hint-placeholder-val="{{ false }}">
-                    <td style="padding: 7px 10px; text-align: center;"><select value="{{ lead.response }}" onChange="{{ lead.onResponseChange }}" style="background: transparent; border: 1px solid var(--s-border); color: {{ lead.responseColor }}; padding: 6px 8px; border-radius: 6px; font-family: inherit; font-size: 12px; font-weight: 600;"><option value="">—</option><option value="Showed interest">Showed interest</option><option value="Asked for more info">Asked for more info</option><option value="Not interested">Not interested</option><option value="Bad timing">Bad timing</option></select></td>
                     <td style="padding: 7px 10px; text-align: center;"><div style="display: flex; align-items: center; justify-content: center; gap: 4px;"><button onClick="{{ lead.decrementAttempts }}" title="Lower attempts" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 5px; font-size: 11px; font-weight: 700; cursor: pointer; padding: 3px 6px; font-family: inherit;" style-hover="border-color: var(--s-red); color: var(--s-red);">-1</button><span style="font-size: 13px; font-weight: 700; color: var(--s-text); min-width: 14px;">{{ lead.attempts }}</span><button onClick="{{ lead.incrementAttempts }}" title="Log attempt" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-blue); border-radius: 5px; font-size: 11px; font-weight: 700; cursor: pointer; padding: 3px 6px; font-family: inherit;" style-hover="border-color: var(--s-blue);">+1</button></div></td>
                   </sc-if>
                   <sc-if value="{{ sec.canNurtureGroup }}" hint-placeholder-val="{{ false }}">
@@ -1825,7 +1821,7 @@
           </div>
           <div style="padding: 14px 24px 20px; display: flex; gap: 8px; justify-content: flex-end;">
             <button onClick="{{ closeReplyModal }}" style="padding: 9px 18px; background: var(--s-card); border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 8px; font-size: 13px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--s-faint);">Cancel</button>
-            <button onClick="{{ replyModal.save }}" style="padding: 9px 22px; background: linear-gradient(135deg, #5A93C9, #1F4C74); color: #ffffff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;" style-hover="opacity: 0.9;">Save reply</button>
+            <button onClick="{{ replyModal.save }}" style="padding: 9px 22px; background: #2C6396; color: #ffffff; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;" style-hover="opacity: 0.9;">Save reply</button>
           </div>
         </div>
       </div>
@@ -1990,7 +1986,7 @@
         <div style="font-size: 12px; font-weight: 600; color: var(--s-blue); margin-bottom: 12px;">Activity Thread</div>
         <div style="display: flex; gap: 8px; margin-bottom: 12px;">
           <input type="text" value="{{ crmNewNote }}" onChange="{{ onNewNoteChange }}" placeholder="Add a note or update..." style="flex: 1; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 8px 12px; border-radius: 6px; font-family: inherit; font-size: 12px;" style-focus="border-color: var(--s-blue);">
-          <button onClick="{{ submitNote }}" style="padding: 8px 16px; background: linear-gradient(135deg, #5A93C9, #1F4C74); color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;">Post</button>
+          <button onClick="{{ submitNote }}" style="padding: 8px 16px; background: #2C6396; color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;">Post</button>
         </div>
         <sc-if value="{{ leadDetail.hasActivity }}" hint-placeholder-val="{{ false }}">
           <div style="display: grid; gap: 8px;">
@@ -5597,10 +5593,10 @@ class Component extends DCLogic {
       tasksTabBorder: isTasks ? '#5A93C9' : 'transparent',
       setTabTasks: () => this.setState({ activeTab: 'tasks' }),
       personLabelJosh: isJosh ? 'Josh' : 'Matt',
-      joshBtnBg: isJosh ? 'linear-gradient(135deg, #5A93C9, #1F4C74)' : 'var(--s-card2)',
+      joshBtnBg: isJosh ? '#2C6396' : 'var(--s-card2)',
       joshBtnColor: isJosh ? 'var(--s-card)' : 'var(--s-muted)',
       joshBtnBorder: isJosh ? '#5A93C9' : 'var(--s-border)',
-      mattBtnBg: isMatt ? 'linear-gradient(135deg, #5A93C9, #1F4C74)' : 'var(--s-card2)',
+      mattBtnBg: isMatt ? '#2C6396' : 'var(--s-card2)',
       mattBtnColor: isMatt ? 'var(--s-card)' : 'var(--s-muted)',
       mattBtnBorder: isMatt ? '#5A93C9' : 'var(--s-border)',
       replyRateColor: (() => { const s2 = this.getFilteredApolloTotal(s, 'emailsSent'); const r2 = this.getFilteredApolloTotal(s, 'replies'); return s2 > 0 && (r2/s2*100) > 5 ? 'var(--s-green)' : 'var(--s-red)'; })(),
@@ -5878,7 +5874,7 @@ class Component extends DCLogic {
       // Campaign selectors
       emailCampaigns: (s.campaigns || []).map(c => ({
         id: c.id, name: c.name,
-        bgColor: c.id === s.activeEmailCampaign ? 'linear-gradient(135deg, #5A93C9, #1F4C74)' : 'var(--s-card2)',
+        bgColor: c.id === s.activeEmailCampaign ? '#2C6396' : 'var(--s-card2)',
         textColor: c.id === s.activeEmailCampaign ? 'var(--s-card)' : 'var(--s-muted)',
         borderColor: c.id === s.activeEmailCampaign ? '#5A93C9' : 'var(--s-border)',
         select: () => this.setState({ activeEmailCampaign: c.id }),
@@ -5888,7 +5884,7 @@ class Component extends DCLogic {
       })),
       callingCampaigns: (s.campaigns || []).map(c => ({
         id: c.id, name: c.name,
-        bgColor: c.id === s.activeCallingCampaign ? 'linear-gradient(135deg, #5A93C9, #1F4C74)' : 'var(--s-card2)',
+        bgColor: c.id === s.activeCallingCampaign ? '#2C6396' : 'var(--s-card2)',
         textColor: c.id === s.activeCallingCampaign ? 'var(--s-card)' : 'var(--s-muted)',
         borderColor: c.id === s.activeCallingCampaign ? '#5A93C9' : 'var(--s-border)',
         select: () => this.setState({ activeCallingCampaign: c.id }),
@@ -5924,7 +5920,7 @@ class Component extends DCLogic {
       onCrmSearchChange: (e) => this.setState({ crmSearch: e.target.value }),
       // Region selector
       crmActiveRegion: s.crmActiveRegion || 'all',
-      crmRegionTabs: [{ id: 'all', name: 'All Regions', canRemove: false, isActive: (s.crmActiveRegion || 'all') === 'all', showRemove: false, remove: () => {}, bgColor: (s.crmActiveRegion || 'all') === 'all' ? 'linear-gradient(135deg, #5A93C9, #1F4C74)' : 'var(--s-card2)', textColor: (s.crmActiveRegion || 'all') === 'all' ? 'var(--s-card)' : 'var(--s-muted)', select: () => this.setState({ crmActiveRegion: 'all' }) }, ...(s.crmRegions || []).map(r => ({ id: r.id, name: r.name, canRemove: (s.crmRegions || []).length > 1, isActive: s.crmActiveRegion === r.id, showRemove: (s.crmRegions || []).length > 1 && s.crmActiveRegion === r.id, remove: () => { if (window.confirm('Delete the region "' + r.name + '" and every lead, pipeline card and recycle row in it?')) this.crmRemoveRegion(r.id); }, bgColor: s.crmActiveRegion === r.id ? 'linear-gradient(135deg, #5A93C9, #1F4C74)' : 'var(--s-card2)', textColor: s.crmActiveRegion === r.id ? 'var(--s-card)' : 'var(--s-muted)', select: () => this.setState({ crmActiveRegion: r.id }) }))],
+      crmRegionTabs: [{ id: 'all', name: 'All Regions', canRemove: false, isActive: (s.crmActiveRegion || 'all') === 'all', showRemove: false, remove: () => {}, bgColor: (s.crmActiveRegion || 'all') === 'all' ? '#2C6396' : 'var(--s-card2)', textColor: (s.crmActiveRegion || 'all') === 'all' ? 'var(--s-card)' : 'var(--s-muted)', select: () => this.setState({ crmActiveRegion: 'all' }) }, ...(s.crmRegions || []).map(r => ({ id: r.id, name: r.name, canRemove: (s.crmRegions || []).length > 1, isActive: s.crmActiveRegion === r.id, showRemove: (s.crmRegions || []).length > 1 && s.crmActiveRegion === r.id, remove: () => { if (window.confirm('Delete the region "' + r.name + '" and every lead, pipeline card and recycle row in it?')) this.crmRemoveRegion(r.id); }, bgColor: s.crmActiveRegion === r.id ? '#2C6396' : 'var(--s-card2)', textColor: s.crmActiveRegion === r.id ? 'var(--s-card)' : 'var(--s-muted)', select: () => this.setState({ crmActiveRegion: r.id }) }))],
       // Overdue filter
       crmFilterOverdue: s.crmFilterOverdue || false,
       notCrmFilterOverdue: !s.crmFilterOverdue,
@@ -5960,7 +5956,7 @@ class Component extends DCLogic {
       crmIsLeads: s.crmActiveGroup === 'leads',
       crmIsPipeline: s.crmActiveGroup === 'pipeline',
       crmIsRecycle: s.crmActiveGroup === 'recycle',
-      crmAllBg: (s.crmActiveGroup || 'all') === 'all' ? 'linear-gradient(135deg, #5A93C9, #1F4C74)' : 'var(--s-card2)',
+      crmAllBg: (s.crmActiveGroup || 'all') === 'all' ? '#2C6396' : 'var(--s-card2)',
       crmAllColor: (s.crmActiveGroup || 'all') === 'all' ? 'var(--s-card)' : 'var(--s-muted)',
       crmLeadsBg: s.crmActiveGroup === 'leads' ? 'var(--s-green)' : 'var(--s-card2)',
       crmLeadsColor: s.crmActiveGroup === 'leads' ? 'var(--s-card)' : 'var(--s-green)',
@@ -8520,14 +8516,23 @@ class Component extends DCLogic {
     // the same set of deals. Undated cards show in every month.
     const pipeMonth = s.pipelineMonth || this._curMonthKey();
     const pipeMonthLabel = pipeMonth === 'all' ? 'All months' : this._monthLabel(pipeMonth);
+    // One person lives in one CRM list. Nurture beats Pipeline, Pipeline beats Recycle, Recycle beats Leads.
+    // Display only: nothing is deleted, and the Pipeline board keeps its own view.
+    const crmKey = (l) => { const e = (l.email || '').trim().toLowerCase(); if (e) return 'e:' + e; const n = ((l.name || '').trim() + '|' + (l.company || '').trim()).toLowerCase(); return n === '|' ? '' : 'n:' + n; };
+    const crmRank = { pipeline: 1, recycle: 2, leads: 3 };
     regionsToShow.forEach(region => {
       const regionData = s.crmData?.[region.id] || {};
+      const crmOwner = {};
+      ['pipeline', 'recycle', 'leads'].forEach(g => (regionData[g] || []).forEach(l => { const k = crmKey(l); if (!k) return; const r = l.nurture ? 0 : crmRank[g]; if (crmOwner[k] === undefined || r < crmOwner[k]) crmOwner[k] = r; }));
+      const crmSeen = {};
       // Prospects live in the Call List, not in a CRM table section
       const visibleGroups = groups.filter(g => g !== 'prospects');
       const filteredGroups = (groupFilter === 'all' ? visibleGroups : [groupFilter]).filter(g => visibleGroups.includes(g));
       filteredGroups.forEach(group => {
         const leads = (regionData[group] || []).map((lead, idx) => ({ ...lead, _idx: idx }))
           .filter(lead => {
+            if (lead.nurture) return false;
+            { const k = crmKey(lead); if (k) { if (crmOwner[k] !== undefined && crmOwner[k] < crmRank[group]) return false; const sk = group + k; if (crmSeen[sk]) return false; crmSeen[sk] = 1; } }
             if (search && !lead.name?.toLowerCase().includes(search) && !lead.company?.toLowerCase().includes(search) && !lead.email?.toLowerCase().includes(search) && !lead.phone?.includes(search)) return false;
             if (dealFilter !== 'all' && lead.dealStage !== dealFilter) return false;
             if (statusFilter !== 'all' && lead.leadStatus !== statusFilter) return false;
@@ -8621,6 +8626,7 @@ class Component extends DCLogic {
               onEmailChange: mk('email'), onValueChange: mkNum('value'), onDealStageChange: mk('dealStage'),
               onResponseChange: mk('response'), onLeadStatusChange: mk('leadStatus'),
               attempts: lead.attempts || 0,
+              ownerLine: [lead.owner, region.name].filter(Boolean).join(' · '),
               incrementAttempts: () => this.crmUpdateLead(region.id, group, idx, 'attempts', (lead.attempts || 0) + 1),
               decrementAttempts: () => this.crmUpdateLead(region.id, group, idx, 'attempts', Math.max(0, (lead.attempts || 0) - 1)),
               toggleNurture: () => this.crmUpdateLead(region.id, group, idx, 'nurture', !lead.nurture),

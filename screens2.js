@@ -2,7 +2,7 @@
 window.SR = window.SR || {};
 (function (SR) {
   var html = SR.html, useState = React.useState;
-  var card = 'background:var(--card);border:1px solid var(--border);border-radius:12px';
+  var card = 'background:var(--card);border:1px solid var(--border);border-radius:7px';
 
 
   var PIC = { research: 'search', gresearch: 'target', build: 'layers', launch: 'play', mresearch: 'target', mbuild: 'layers', mlaunch: 'play', aeosetup: 'spark', ongoing: 'repeat' };
@@ -35,7 +35,7 @@ window.SR = window.SR || {};
 
   /* ---------- Local SEO workspace: the SEO platform, running inside the client page ---------- */
   /* Runs in a same-origin iframe. This shim stands in for the SEO platform's server: it keeps the data in this browser. */
-  var SEO_CSS = 'html,body{overflow:hidden}.embed .sheetwrap{max-height:none}.embed .px.detail{position:absolute;top:var(--vt,0px);bottom:auto;height:var(--vh,100vh)}.embed .pxbw{position:absolute;bottom:auto;top:calc(var(--vt,0px) + var(--vh,100vh) - 96px);height:80px}#toast{position:absolute!important;bottom:auto!important;top:calc(var(--vt,0px) + var(--vh,100vh) - 70px)}.embed .wrap{max-width:none;padding:0 0 110px}.embed .tabs{border:0;gap:6px;margin:2px 0 18px}.embed .tab{border:1px solid var(--line);border-radius:99px;min-height:34px;padding:0 14px;font-size:13px}.embed .tab.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}.embed .phase .pi{display:inline-flex;color:var(--pc)}';
+  var SEO_CSS = 'html,body{overflow:hidden}.embed .sheetwrap{max-height:none}.embed .px.detail{position:absolute;top:var(--vt,0px);bottom:auto;height:var(--vh,100vh)}.embed .pxbw{position:absolute;bottom:auto;top:calc(var(--vt,0px) + var(--vh,100vh) - 16px);height:auto;transform:translateY(-100%)}.embed .pxbulk{width:min(980px,100%);flex-wrap:wrap}.embed .pxbd{display:inline-flex!important;flex-direction:row!important;align-items:center;white-space:nowrap;gap:8px}.embed .pxbd span{display:inline!important;position:static!important;font-size:13px}.embed .pxbd input{width:128px;min-width:0}.embed .pxbsel{max-width:150px}#toast{position:absolute!important;bottom:auto!important;top:calc(var(--vt,0px) + var(--vh,100vh) - 70px)}.embed .wrap{max-width:none;padding:0 0 110px}.embed .tabs{border:0;gap:6px;margin:2px 0 18px}.embed .tab{border:1px solid var(--line);border-radius:6px;min-height:34px;padding:0 14px;font-size:13px}.embed .tab.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}.embed .phase .pi{display:inline-flex;color:var(--pc)}';
   var SEO_JS = '\n;(function(){var ap=document.getElementById("app"),last=0;function post(){var h=Math.ceil(ap.getBoundingClientRect().height)+10;if(h!==last){last=h;parent.postMessage({sr:"h",h:h},"*");}}new ResizeObserver(post).observe(ap);addEventListener("load",post);addEventListener("message",function(e){var d=e.data;if(d&&d.sr==="v"){var st=document.documentElement.style;st.setProperty("--vt",d.t+"px");st.setProperty("--vh",d.h+"px");}});parent.postMessage({sr:"ready"},"*");setTimeout(post,300);})();\n;(function(){var N=["search","pin","gauge","clip","grid","spark","list","globe","radar","chart"];var r0=render;render=function(){r0();document.querySelectorAll(".phase").forEach(function(b,i){var d=b.querySelector(".dot");if(d){var s=document.createElement("span");s.className="pi";s.innerHTML=svg(N[i%N.length],16);d.replaceWith(s);}});};})();\n';
   var seoShim = function (cfg, DATA) {
     var P = 'srseo:', TABS = ['baseline', 'keywords', 'pages', 'citations', 'competitors', 'links', 'journal'];
@@ -85,12 +85,20 @@ window.SR = window.SR || {};
     location.hash = '#/c/' + cfg.id;
     document.documentElement.classList.add('embed');
   };
-  /* Tasks layer for the SEO Work tab: renames Ongoing to Tasks, adds your own tasks (one or a pasted list), and makes repeating tasks stay done until they are due again. Runs inside the SEO iframe, after the app and the embed layer. */
+  /* Tasks layer for the SEO Work tab. Runs inside the SEO iframe, after the app and the embed layer.
+     Adds: your own tasks on any phase (one or a pasted list), a Frequency setting on any task, repeating tasks that stay done until due again (reset at midnight, viewer's timezone), and the same task options as the dashboard panel. */
   var seoTasksLayer = function () {
     var CAD = { 'Daily': 1, 'Every 3 days': 3, 'Weekly': 7, 'Fortnightly': 14, 'Monthly': 'm1', 'Every 90 days': 90, 'Quarterly': 'm3' };
-    var REPS = ['Does not repeat', 'Daily', 'Every 3 days', 'Weekly', 'Fortnightly', 'Monthly', 'Every 90 days'];
+    var REPS = ['Daily', 'Every 3 days', 'Weekly', 'Fortnightly', 'Monthly', 'Every 90 days'];
     var ymd = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-    var cadOf = function (it) { if (it.rep) return it.rep === 'Does not repeat' ? '' : it.rep; var m = /^(Daily|Weekly|Fortnightly|Monthly|Quarterly)\b/.exec(it.text || ''); return m ? m[1] : ''; };
+    var meta = function (k) { return ((S.client && S.client.meta) || {})[k] || {}; };
+    var dur = function (m) { m = Math.max(0, Math.round(m || 0)); return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); };
+    var cadOf = function (it) {
+      var m = meta(it.id).rep; if (m !== undefined && m !== null && m !== '') return m === 'Does not repeat' ? '' : m;
+      if (it.rep) return it.rep === 'Does not repeat' ? '' : it.rep;
+      if (it.custom) return '';
+      var x = /^(Daily|Weekly|Fortnightly|Monthly|Quarterly)\b/.exec(it.text || ''); return x ? x[1] : '';
+    };
     var dueOf = function (cad, t) {
       var n = CAD[cad]; if (!n) return ''; var d = new Date(t); d = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       if (typeof n === 'string') { var mo = +n.slice(1), day = d.getDate(); d = new Date(d.getFullYear(), d.getMonth() + mo, 1); var last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(day, last)); }
@@ -100,79 +108,129 @@ window.SR = window.SR || {};
     var fmt = function (s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); };
     var tasksPhase = function () { return (S.work || []).find(function (p) { return p.name === 'Ongoing' || p.name === 'Tasks'; }); };
     var customs = function () { return (((S.client || {}).meta || {})._custom || {}).list || []; };
-    var itemsAll = function () { var p = tasksPhase(); return p ? (p._base || p.items) : []; };
-    var recurring = function () { var out = []; itemsAll().forEach(function (it) { if (it.kind !== 's' && cadOf(it)) out.push(it); }); customs().forEach(function (it) { if (cadOf(it)) out.push(it); }); return out; };
-
-    /* a done repeating task is cleared when its next due date arrives, at midnight in the viewer's timezone */
+    var phN = function (c) { var t = tasksPhase(); return c.ph !== undefined ? c.ph : (t ? t.n : 0); };
+    var allItems = function () { var out = []; (S.work || []).forEach(function (p) { (p._base || p.items).forEach(function (it) { if (it.kind !== 's') out.push(it); }); }); customs().forEach(function (c) { out.push({ id: c.id, text: c.text, rep: c.rep, custom: true }); }); return out; };
     var expire = function () {
       if (!S.client || !S.work) return false;
       var today = ymd(new Date()), changed = false;
-      recurring().forEach(function (it) {
+      allItems().forEach(function (it) {
+        var cad = cadOf(it); if (!cad) return;
         var m = S.client.marks[it.id]; if (!m || m.s !== 'done') return;
         if (!m.t) m.t = new Date().toISOString();
-        var due = dueOf(cadOf(it), m.t);
+        var due = dueOf(cad, m.t);
         if (due && due <= today) { delete S.client.marks[it.id]; changed = true; api('/clients/' + S.client.id + '/mark', 'POST', { key: it.id, status: null }).catch(function () {}); }
       });
       return changed;
     };
     var prep = function () {
-      var p = tasksPhase(); if (!p || !S.client) return;
-      if (p.name === 'Ongoing') p.name = 'Tasks';
-      if (!p._base) p._base = p.items.slice();
-      var fin = function (it) { return it.kind !== 's' && isFin(it.id) ? 1 : 0; };
-      var order = function (a) { return a.map(function (x, i) { return [x, i]; }).sort(function (a, b) { return fin(a[0]) - fin(b[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; }); };
-      var cs = customs().map(function (c) { return { kind: 't', id: c.id, text: c.text, rep: c.rep, how: [], links: [], custom: true }; });
-      p.items = order(p._base).concat(cs.length ? [{ kind: 's', text: 'Your tasks' }] : [], order(cs));
+      if (!S.client || !S.work) return;
+      var tp = tasksPhase();
+      S.work.forEach(function (p) {
+        if (p.name === 'Ongoing') p.name = 'Tasks';
+        if (!p._base) p._base = p.items.slice();
+        var isT = p === tp;
+        var sink = function (it) { return it.kind !== 's' && isFin(it.id) && (isT || cadOf(it)) ? 1 : 0; };
+        var chunks = [], cur = { head: null, rows: [] };
+        p._base.forEach(function (it) { if (it.kind === 's') { chunks.push(cur); cur = { head: it, rows: [] }; } else cur.rows.push(it); });
+        chunks.push(cur);
+        var out = [];
+        chunks.forEach(function (c) { if (c.head) out.push(c.head); out = out.concat(c.rows.map(function (x, i) { return [x, i]; }).sort(function (a, b) { return sink(a[0]) - sink(b[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; })); });
+        var cs = customs().filter(function (c) { return phN(c) === p.n; }).map(function (c) { return { kind: 't', id: c.id, text: c.text, rep: c.rep, how: [], links: [], custom: true }; });
+        if (cs.length) out = out.concat([{ kind: 's', text: 'Your tasks' }], cs.map(function (x, i) { return [x, i]; }).sort(function (a, b) { return sink(a[0]) - sink(b[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; }));
+        p.items = out;
+      });
+    };
+    var setM = function (keys, patch) {
+      S.client.meta = S.client.meta || {};
+      keys.forEach(function (k) { S.client.meta[k] = Object.assign({}, S.client.meta[k], patch); });
+      render();
+      keys.forEach(function (k) { api('/clients/' + S.client.id + '/meta', 'POST', { key: k, patch: patch }).catch(function (e) { toast('Could not save. ' + e.message); }); });
     };
     var save = function (list) {
       S.client.meta = S.client.meta || {}; S.client.meta._custom = { list: list };
       return api('/clients/' + S.client.id + '/meta', 'POST', { key: '_custom', patch: { list: list } }).catch(function (e) { toast('Could not save. ' + e.message); });
     };
+    var repOpts = function (cur, none) { return '<option value="Does not repeat" ' + (!cur ? 'selected' : '') + '>Does not repeat</option>' + REPS.map(function (r) { return '<option ' + (r === cur ? 'selected' : '') + '>' + r + '</option>'; }).join(''); };
     var addBox = function () {
       if (!S.ctOpen) return '<div style="margin-bottom:12px"><button class="btn" data-ct="open">+ Add your own task</button></div>';
       var rep = S.ctRep || 'Does not repeat', n = (S.ctText || '').split('\n').filter(function (l) { return l.trim(); }).length;
-      return '<div class="card" style="padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px"><div style="font-weight:700">Add your own task</div>' +
+      return '<div class="card" style="padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px"><div style="font-weight:700">Add your own task to this phase</div>' +
         '<textarea class="pxin full" rows="4" data-ct-in="text" placeholder="Type a task. To add many at once, paste a list with one task per line.">' + esc(S.ctText || '') + '</textarea>' +
-        '<div class="row" style="gap:10px;flex-wrap:wrap"><label class="muted" style="font-weight:600;font-size:13px">Repeats</label><select class="pxsel" data-ct-in="rep">' + REPS.map(function (r) { return '<option ' + (r === rep ? 'selected' : '') + '>' + r + '</option>'; }).join('') + '</select><span style="flex:1"></span>' +
+        '<div class="row" style="gap:10px;flex-wrap:wrap"><label class="muted" style="font-weight:600;font-size:13px">Repeats</label><select class="pxsel" data-ct-in="rep">' + repOpts(rep === 'Does not repeat' ? '' : rep) + '</select><span style="flex:1"></span>' +
         '<button class="btn" data-ct="close">Cancel</button><button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent)" data-ct="add">' + (n > 1 ? 'Add ' + n + ' tasks' : 'Add task') + '</button></div></div>';
+    };
+    var gcal = function (t, m, c) {
+      var d = m.date.replace(/-/g, ''), n = new Date(+m.date.slice(0, 4), +m.date.slice(5, 7) - 1, +m.date.slice(8, 10) + 1), e = ymd(n).replace(/-/g, '');
+      return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(t.text + ' · ' + c.name) + '&dates=' + d + '/' + e;
+    };
+    var extra = function (t, m) {
+      var cad = cadOf(t), spent = m.spent || 0, est = m.est || 0, subs = m.subs || [], sd = subs.filter(function (s) { return s.done; }).length;
+      var chip = function (label, on, attrs) { return '<button class="' + (on ? 'on' : '') + '" ' + attrs + '>' + label + '</button>'; };
+      return '<div class="pxs"><div class="pxl">Frequency</div><select class="pxsel" style="width:100%" data-cf="rep">' + repOpts(cad) + '</select><div class="pxsub">' + (cad ? 'When ticked it stays done until it is due again, then comes back at midnight.' : 'One time task.') + '</div></div>' +
+        '<div class="pxs"><div class="pxl">Attack time</div><input type="time" class="pxin full" data-cf="time" value="' + esc(m.time || '') + '"><div class="pxsub">Exact time you plan to start, e.g. 09:00 or 14:30.</div></div>' +
+        '<div class="pxs"><div class="pxl">Time</div><div class="pxsub">Duration, and how much is already done.</div><div class="pxchips">' + [15, 30, 60, 120, 240].map(function (x) { return chip(dur(x), est === x, 'data-ct="est" data-v="' + x + '"'); }).join('') + '</div>' +
+        '<div style="height:6px;border-radius:6px;background:var(--line);overflow:hidden;margin:8px 0 4px"><i style="display:block;height:100%;width:' + (est ? Math.min(100, Math.round(spent / est * 100)) : 0) + '%;background:var(--accent)"></i></div>' +
+        '<div class="pxsub"><b>' + dur(spent) + '</b> done' + (est ? ' of ' + dur(est) : '') + '</div><div class="pxchips">' + [[15, '+15m'], [30, '+30m'], [60, '+1h'], [-15, '-15m']].map(function (x) { return chip(x[1], false, 'data-ct="log" data-v="' + x[0] + '"'); }).join('') + '</div></div>' +
+        (m.date ? '<div class="pxs"><a class="btn" style="text-decoration:none;display:inline-block" href="' + esc(gcal(t, m, S.client)) + '" target="_blank" rel="noopener">Add to Google Calendar ↗</a></div>' : '') +
+        '<div class="pxs"><div class="pxl">Subitems <span class="pxsub" style="text-transform:none;letter-spacing:0">' + (subs.length ? sd + ' of ' + subs.length + ' done' : 'None yet') + '</span></div>' +
+        subs.map(function (s, i) { return '<div class="row" style="gap:8px;padding:4px 0"><button class="cb sm ' + (s.done ? 'done' : '') + '" data-ct="subt" data-i="' + i + '" aria-label="' + esc(s.name) + '"><span>' + (s.done ? '✓' : '') + '</span></button><span style="flex:1;' + (s.done ? 'text-decoration:line-through;opacity:.6' : '') + '">' + esc(s.name) + '</span><button class="pxx" data-ct="subx" data-i="' + i + '" aria-label="Remove subitem">✕</button></div>'; }).join('') +
+        '<input type="text" class="pxin full" data-cf="sub" placeholder="+ Add subitem, press Enter"></div>';
     };
     var _wv = workView;
     workView = function () {
-      var p = tasksPhase(); if (!p || S.work[S.phase] !== p) return _wv();
+      var p = S.work && S.work[S.phase]; if (!p || !S.client) return _wv();
       expire(); prep();
       var out = _wv(), today = ymd(new Date());
       p.items.forEach(function (it) {
-        if (it.kind === 's') return; var cad = cadOf(it), m = S.client.marks[it.id], bits = [];
-        if (it.custom && cad) bits.push(cad);
+        if (it.kind === 's') return;
+        var cad = cadOf(it), m = S.client.marks[it.id], bits = [], explicit = it.custom || meta(it.id).rep;
+        if (explicit && cad) bits.push(cad);
         if (cad && m && m.s === 'done') { var due = dueOf(cad, m.t || new Date().toISOString()); if (due && due > today) bits.push('back ' + fmt(due)); }
-        if (!bits.length) return;
-        var tt = '<span class="tt">' + esc(it.text) + '</span>';
-        out = out.replace(tt, tt + '<span class="pill gray">' + esc(bits.join(' · ')) + '</span>');
+        if (bits.length) { var tt = '<span class="tt">' + esc(it.text) + '</span>'; out = out.replace(tt, tt + '<span class="pill gray">' + esc(bits.join(' · ')) + '</span>'); }
         if (it.custom) out = out.replace('<span class="id">' + it.id + '</span>', '<span class="id">+</span>');
       });
       out = out.replace('<div class="card" style="padding:8px">', addBox() + '<div class="card" style="padding:8px">');
-      var sel = S.sel && customs().some(function (c) { return c.id === S.sel; });
-      if (sel) out = out.replace('<div class="pxf">', '<div class="pxf"><button class="pxna" data-ct="del">Delete task</button>');
+      var sel = S.sel && allItems().find(function (x) { return x.id === S.sel; });
+      if (sel) {
+        var m2 = meta(sel.id), mark = '<div class="pxs"><div class="pxl">Notes</div>';
+        out = out.replace(mark, extra(sel, m2) + mark);
+        if (sel.custom) out = out.replace('<div class="pxf">', '<div class="pxf"><button class="pxna" data-ct="del">Delete task</button>');
+      }
       return out;
     };
     var _r = render;
     render = function () { expire(); _r(); };
     document.addEventListener('click', function (e) {
       var b = e.target.closest('[data-ct]'); if (!b || !S.client) return; e.stopPropagation();
-      var a = b.dataset.ct;
+      var a = b.dataset.ct, v = +b.dataset.v, i = +b.dataset.i, k = S.sel, m = k ? meta(k) : {};
       if (a === 'open') { S.ctOpen = true; render(); var t = document.querySelector('[data-ct-in="text"]'); if (t) t.focus(); }
       else if (a === 'close') { S.ctOpen = false; S.ctText = ''; render(); }
       else if (a === 'add') {
         var lines = (S.ctText || '').split('\n').map(function (l) { return l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim(); }).filter(Boolean);
         if (!lines.length) { toast('Type a task first'); return; }
-        var rep = S.ctRep || 'Does not repeat', list = customs().slice();
-        lines.forEach(function (l, i) { list.push({ id: 'c' + Date.now().toString(36) + i, text: l, rep: rep }); });
+        var rep = S.ctRep || 'Does not repeat', list = customs().slice(), ph = S.work[S.phase].n;
+        lines.forEach(function (l, j) { list.push({ id: 'c' + Date.now().toString(36) + j, text: l, rep: rep, ph: ph }); });
         S.ctOpen = false; S.ctText = ''; S.ctRep = ''; save(list); render(); toast(lines.length > 1 ? lines.length + ' tasks added' : 'Task added');
       }
       else if (a === 'del') { var id = S.sel; S.sel = null; delete S.client.marks[id]; save(customs().filter(function (c) { return c.id !== id; })); api('/clients/' + S.client.id + '/mark', 'POST', { key: id, status: null }).catch(function () {}); render(); }
+      else if (a === 'est' && k) setM([k], { est: m.est === v ? 0 : v });
+      else if (a === 'log' && k) setM([k], { spent: Math.max(0, (m.spent || 0) + v) });
+      else if (a === 'subt' && k) setM([k], { subs: (m.subs || []).map(function (s, j) { return j === i ? { name: s.name, done: !s.done } : s; }) });
+      else if (a === 'subx' && k) setM([k], { subs: (m.subs || []).filter(function (s, j) { return j !== i; }) });
     }, true);
     document.addEventListener('input', function (e) { var f = e.target.dataset && e.target.dataset.ctIn; if (f === 'text') { S.ctText = e.target.value; var b = document.querySelector('[data-ct="add"]'); if (b) { var n = S.ctText.split('\n').filter(function (l) { return l.trim(); }).length; b.textContent = n > 1 ? 'Add ' + n + ' tasks' : 'Add task'; } } }, true);
-    document.addEventListener('change', function (e) { var f = e.target.dataset && e.target.dataset.ctIn; if (f === 'rep') { S.ctRep = e.target.value; e.stopPropagation(); } }, true);
+    document.addEventListener('change', function (e) {
+      var d = e.target.dataset || {}; if (d.ctIn === 'rep') { S.ctRep = e.target.value; e.stopPropagation(); return; }
+      if (!S.client || !S.sel) return;
+      if (d.cf === 'rep') { e.stopPropagation(); setM([S.sel], { rep: e.target.value }); }
+      else if (d.cf === 'time') { e.stopPropagation(); setM([S.sel], { time: e.target.value }); }
+    }, true);
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' || !e.target.dataset || e.target.dataset.cf !== 'sub' || !S.sel) return;
+      e.preventDefault(); var v = e.target.value.trim(); if (!v) return;
+      setM([S.sel], { subs: (meta(S.sel).subs || []).concat([{ name: v, done: false }]) });
+      var n = document.querySelector('[data-cf="sub"]'); if (n) n.focus();
+    }, true);
     setInterval(function () { if (expire()) render(); }, 20000);
   };
   SEO_JS += '\n;(' + seoTasksLayer.toString() + ')();\n';
@@ -273,7 +331,7 @@ window.SR = window.SR || {};
         <section class="acard"><h3>${SR.Icon('coin', 18)} Invoice status</h3>
           ${next ? html`<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
             <div><div class="lk" style="font-size:12px;color:var(--muted)">Next invoice</div><div style="font-size:26px;font-weight:700">${fmtLong(next.date)}</div><div style="font-size:14px;color:var(--muted)">${money(next.amount)} · ${next.note}</div></div>
-            <div style="text-align:right"><span style=${'display:inline-block;padding:5px 12px;border-radius:99px;font-size:12px;font-weight:700;border:1px solid ' + chipClr[eff(next)] + ';color:' + chipClr[eff(next)]}>${eff(next) === 'overdue' ? 'Overdue ' + Math.abs(dayDiff(SR.TODAY, next.date)) + ' days' : 'Due in ' + dayDiff(SR.TODAY, next.date) + ' days'}</span>
+            <div style="text-align:right"><span style=${'display:inline-block;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:700;border:1px solid ' + chipClr[eff(next)] + ';color:' + chipClr[eff(next)]}>${eff(next) === 'overdue' ? 'Overdue ' + Math.abs(dayDiff(SR.TODAY, next.date)) + ' days' : 'Due in ' + dayDiff(SR.TODAY, next.date) + ' days'}</span>
               <div style="margin-top:10px"><button type="button" class="sr-open" onClick=${function () { next.paid = true; force(); }}>Mark paid</button></div></div></div>` : html`<div style="font-size:15px;color:var(--green);font-weight:600">All invoices paid.</div>`}
           <div style="font-size:12px;color:var(--muted);margin-top:12px">${lastPaid ? 'Last payment ' + money(lastPaid.amount) + ' on ' + fmtLong(lastPaid.date) + '.' : 'No payment received yet.'}</div>
         </section>
@@ -554,10 +612,10 @@ window.SR = window.SR || {};
       var T = SR.TEMPLATES[type], on = tab === 'overview' && pt === type;
       return html`<span class="ptw" key=${type}><button type="button" class=${'ptab' + (on ? ' on' : '')} style=${'--pc:' + (T.color || '#C9A84C')} onContextMenu=${function (e) { SR.openMenu(e, projItems(type)); }} onClick=${function () { p.setProj(type); setTab('overview'); setMenu(false); }}><i></i>${T.label}</button>${on ? html`<button type="button" class="ptm" aria-label=${'Options for the ' + T.label + ' project'} title="Project options" onClick=${function (e) { var r = e.currentTarget.getBoundingClientRect(); SR.openMenuAt(r.left, r.bottom + 4, projItems(type)); }}>⋯</button>` : null}</span>`;
     };
-    var pill = pt === 'seo' ? null : html`<span style=${'font-size:12px;font-weight:700;padding:4px 10px;border-radius:12px;' + (live ? 'color:var(--green);background:var(--greenBg)' : 'color:var(--gold);background:var(--goldBg)')}>${live ? 'Maintenance' : (setupComplete ? 'Ready to go live' : 'Setup & launch · ' + doneSteps + ' of ' + allSteps)}</span>`;
+    var pill = pt === 'seo' ? null : html`<span style=${'font-size:12px;font-weight:700;padding:4px 10px;border-radius:7px;' + (live ? 'color:var(--green);background:var(--greenBg)' : 'color:var(--gold);background:var(--goldBg)')}>${live ? 'Maintenance' : (setupComplete ? 'Ready to go live' : 'Setup & launch · ' + doneSteps + ' of ' + allSteps)}</span>`;
     return html`<div style="display:flex;flex-direction:column;gap:18px">
       <div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style=${'width:12px;height:12px;border-radius:4px;background:' + c.color}></span><span style="font-size:13px;color:var(--muted)">${(c.contact || 'No contact') + ' · ' + c.region}</span>${tab === 'overview' ? pill : null}</div>
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:6px"><h1 style="margin:0;font-family:'Playfair Display',Georgia,serif;font-size:34px" onContextMenu=${function (e) { SR.clientMenu(e, c); }}>${c.name}</h1><button type="button" class="edbtn" onClick=${function () { SR.act.edit(c.id); }}>${SR.Icon('pen', 14)} Edit client</button></div></div>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:6px"><h1 style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:34px" onContextMenu=${function (e) { SR.clientMenu(e, c); }}>${c.name}</h1><button type="button" class="edbtn" onClick=${function () { SR.act.edit(c.id); }}>${SR.Icon('pen', 14)} Edit client</button></div></div>
       <div class="ptabs" role="tablist">
         ${projs.map(ptab)}
         <span class="padd">
@@ -771,11 +829,11 @@ window.SR = window.SR || {};
     var inp = function (k, lbl, step) { return html`<label key=${k}>${lbl}<input type="number" step=${step || 'any'} value=${draft[k] === undefined ? '' : draft[k]} onChange=${set(k)} /></label>`; };
     var hs = 'padding:10px 12px;font-size:12px';
     return html`<div style="display:flex;flex-direction:column;gap:0">
-      <section style=${card + ';border-radius:14px 14px 0 0;border-bottom:0;border-top:4px solid #4F86C6;padding:18px 22px;display:flex;flex-wrap:wrap;gap:16px 24px;justify-content:space-between;align-items:center'}>
-        <div style="flex:1 1 260px"><div style="font-size:13px;color:var(--muted)">${c.name} · Google Ads</div><h2 style="margin:4px 0 0;font-family:'Playfair Display',Georgia,serif;font-size:26px">${c.promise}</h2></div>
+      <section style=${card + ';border-radius:8px 14px 0 0;border-bottom:0;border-top:4px solid #4F86C6;padding:18px 22px;display:flex;flex-wrap:wrap;gap:16px 24px;justify-content:space-between;align-items:center'}>
+        <div style="flex:1 1 260px"><div style="font-size:13px;color:var(--muted)">${c.name} · Google Ads</div><h2 style="margin:4px 0 0;font-family:'DM Sans',system-ui,sans-serif;font-size:26px">${c.promise}</h2></div>
         <div style="text-align:right"><div style="font-size:34px;font-weight:700;color:var(--accent)">${L ? Math.round(L.conv * 10) / 10 : '—'} <span style="color:var(--text)">/ ${L ? Math.round(tgt('conv', L.days) * 10) / 10 : (M.leads || '—')}</span></div><div style="font-size:12px;color:var(--muted)">leads, ${L ? 'latest period (' + ls[ls.length - 1].label + ')' : 'no period logged yet'}</div></div>
         <span style="display:inline-flex;gap:10px;align-items:flex-start;flex-wrap:wrap"><${SR.CsvButton} kind="gads" onData=${doImport} /><button type="button" class="logbtn" style="min-height:38px;font-size:14px" onClick=${openNew}>${SR.Icon('plus', 16)} Log a period</button></span>
-        ${showForm ? html`<div style="flex:1 1 100%;padding:16px;background:var(--card2);border:1px solid var(--line);border-radius:12px">
+        ${showForm ? html`<div style="flex:1 1 100%;padding:16px;background:var(--card2);border:1px solid var(--line);border-radius:7px">
           <div style="font-size:14px;font-weight:700;margin-bottom:10px">${editI != null ? 'Edit ' + (ls[editI] ? ls[editI].label : 'period') : 'Log a new period'}</div>
           <div class="rform">
             <label>Period name<input type="text" value=${draft.label} onChange=${set('label')} /></label>
@@ -822,11 +880,11 @@ window.SR = window.SR || {};
     var bigM = OM.filter(function (m) { return m[0] === big; })[0];
     return html`<div style="display:flex;flex-direction:column;gap:16px">
       <div style="display:flex;flex-direction:column;gap:0">
-      <section style=${card + ';border-radius:14px 14px 0 0;border-bottom:0;border-top:4px solid #2FA79C;padding:18px 22px;display:flex;flex-wrap:wrap;gap:16px 24px;justify-content:space-between;align-items:center'}>
-        <div style="flex:1 1 260px"><div style="font-size:13px;color:var(--muted)">${c.name} · SEO / AEO</div><h2 style="margin:4px 0 0;font-family:'Playfair Display',Georgia,serif;font-size:26px">${G.text || c.promise || 'Set the goal on the client page'}</h2></div>
+      <section style=${card + ';border-radius:8px 14px 0 0;border-bottom:0;border-top:4px solid #2FA79C;padding:18px 22px;display:flex;flex-wrap:wrap;gap:16px 24px;justify-content:space-between;align-items:center'}>
+        <div style="flex:1 1 260px"><div style="font-size:13px;color:var(--muted)">${c.name} · SEO / AEO</div><h2 style="margin:4px 0 0;font-family:'DM Sans',system-ui,sans-serif;font-size:26px">${G.text || c.promise || 'Set the goal on the client page'}</h2></div>
         <div style="text-align:right"><div style="font-size:34px;font-weight:700;color:var(--accent)">${L ? ofm(bigM[3], L[big]) : '—'} <span style="color:var(--text)">/ ${T[big] ? ofm(bigM[3], T[big]) : '—'}</span></div><div style="font-size:12px;color:var(--muted)">${bigM[1].toLowerCase()}, ${L ? 'latest period (' + L.label + ')' : 'no period logged yet'}</div></div>
         <button type="button" class="logbtn" style="min-height:38px;font-size:14px" onClick=${openNew}>${SR.Icon('plus', 16)} Log a period</button>
-        ${showForm ? html`<div style="flex:1 1 100%;padding:16px;background:var(--card2);border:1px solid var(--line);border-radius:12px">
+        ${showForm ? html`<div style="flex:1 1 100%;padding:16px;background:var(--card2);border:1px solid var(--line);border-radius:7px">
           <div style="font-size:14px;font-weight:700;margin-bottom:10px">${editI != null ? 'Edit ' + (ls[editI] ? ls[editI].label : 'period') : 'Log a new period'}</div>
           <div class="rform">
           <label>Period name<input type="text" value=${draft.label} onChange=${function (e) { setDraft(Object.assign({}, draft, { label: e.target.value })); }} /></label>
@@ -927,7 +985,7 @@ window.SR = window.SR || {};
                foot="Targets for frequency, hook rate, qualified lead % and Event Match Quality are starting defaults. Breakeven cost per lead is the line. Testing means do nothing: only turn off ads above it after the test ends." />`;
            })()}
         </section>
-        ${isImp && (flags.ctr || flags.cvr) ? html`<section style="background:var(--goldBg);border:1px solid var(--gold);border-radius:12px;padding:16px 20px">
+        ${isImp && (flags.ctr || flags.cvr) ? html`<section style="background:var(--goldBg);border:1px solid var(--gold);border-radius:7px;padding:16px 20px">
           ${flags.ctr ? html`<div style="margin-bottom:10px"><h3 style="margin:0 0 6px;font-size:15px;color:var(--gold)">CTR is under target. Check:</h3>${['Ad doesn’t stand out', 'Ad isn’t relevant to the search', 'Offer isn’t interesting enough', 'Targeting is off'].map(function (x, i) { return html`<div key=${i} style="font-size:14px;padding:2px 0">☐ ${x}</div>`; })}</div>` : null}
           ${flags.cvr ? html`<div><h3 style="margin:0 0 6px;font-size:15px;color:var(--gold)">Conversion rate is under target. Check:</h3>${['Not enough social proof', 'CTA isn’t clear enough', 'Too much info too fast', 'Page is weak on mobile'].map(function (x, i) { return html`<div key=${i} style="font-size:14px;padding:2px 0">☐ ${x}</div>`; })}</div>` : null}
         </section>` : null}
@@ -935,7 +993,7 @@ window.SR = window.SR || {};
     }
 
     return html`<div style="display:flex;flex-direction:column;gap:18px">
-      <div><h1 style="margin:0;font-family:'Playfair Display',Georgia,serif;font-size:32px">Results</h1><p style="margin:6px 0 0;font-size:14px;color:var(--muted)">Targets come from the project math. Actuals come from the ad account.</p></div>
+      <div><h1 style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:32px">Results</h1><p style="margin:6px 0 0;font-size:14px;color:var(--muted)">Targets come from the project math. Actuals come from the ad account.</p></div>
       <div style="display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start">${listPane}<div style="flex:999 1 600px;min-width:0">${detail}</div></div>
     </div>`;
   };
