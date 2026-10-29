@@ -355,8 +355,35 @@ window.SR = window.SR || {};
     var tabBtn = function (key, lbl) { return html`<button key=${key} type="button" onClick=${function () { setTab(key); }} aria-pressed=${tab === key ? 'true' : 'false'} style=${seg(tab === key)}>${lbl}</button>`; };
 
     /* ---- Overview: promise + progress + accordion tasks ---- */
+      var ongoingTasks = tasks.filter(function (t) { return t.repeat || t.maint || (t.custom && !t.ph && !t.step); });
+      var just = p.just || {};
+      var rowFor = function (t, clr, num) {
+        return html`<${SR.TaskRow} key=${t.id} task=${t} num=${num} selected=${!!(p.sel && p.sel[t.id])} active=${p.openId === t.id} just=${!!just[t.id]}
+          onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} />`;
+      };
+      var secHead = function (icon, name, color, d, t) {
+        return html`<div class="sub" style=${'--sc:' + color}>${SR.Icon(icon, 18)}<span>${name}</span><span class="n">${d}/${t}</span></div>`;
+      };
+      var tasksBlock = function (on, clr) {
+        var order = ['One-off'].concat(SR.CADENCES, ['Milestones']);
+        var og = order.map(function (label) {
+          var ts = ongoingTasks.filter(function (t) { return label === 'Milestones' ? t.milestone : label === 'One-off' ? (!t.milestone && !t.repeat) : (!t.milestone && t.repeat === label); }).sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || (a.date || '').localeCompare(b.date || ''); });
+          return { label: label, tasks: ts };
+        }).filter(function (x) { return x.tasks.length; });
+        var k = 0;
+        return html`<div class="tasksblock">${og.map(function (x) {
+            var isM = x.label === 'Milestones', isO = x.label === 'One-off', dn = x.tasks.filter(function (t) { return t.done; }).length;
+            return html`<div key=${x.label}>
+              ${secHead(isM ? 'flag' : isO ? 'check' : 'repeat', isM ? 'Milestones' : x.label, isM ? '#8A6D1F' : isO ? '#4B5563' : ['#0E7490', '#3B6FD4', '#7C3AED', '#C77700', '#BE185D', '#0F766E'][SR.CADENCES.indexOf(x.label) % 6], dn, x.tasks.length)}
+              ${x.tasks.map(function (t) { k++; return rowFor(t, clr, on + '.' + k); })}</div>`;
+          })}
+          <${SR.AddCustom} first=${true} label="Repeats" opts=${[['Once', 'Does not repeat']].concat(['Weekly', 'Daily', 'Every 3 days', 'Fortnightly', 'Monthly', 'Every 90 days'].map(function (cd) { return [cd, cd]; }), [['Milestone', 'One-off milestone']])} onAdd=${p.addCustom}
+            make=${function (nm, rep) { return rep === 'Milestone' ? { clientId: c.id, proj: pt, name: nm, milestone: true, maint: true, date: '', custom: true, how: [] } : rep === 'Once' ? { clientId: c.id, proj: pt, name: nm, custom: true, how: [] } : { clientId: c.id, proj: pt, name: nm, repeat: rep, maint: true, custom: true, how: [] }; }} />
+        </div>`;
+      };
+      var seoTasks = function () { return tasksBlock(1, tp.color); };
     var overview = function () {
-      if (pt === 'seo') return html`<div style="display:flex;flex-direction:column;gap:18px"><${SR.GoalCard} key=${pk} client=${c} goal=${goalOf} gkey=${pk} label=${tp.label} color=${tp.color} latest=${latestOf()} supports=${supportsOf()} onGoal=${function (g) { p.setGoal(c.id, pt, g); }} goResults=${p.goResults} /><${SR.SeoWorkspace} client=${c} /></div>`;
+      if (pt === 'seo') return html`<div style="display:flex;flex-direction:column;gap:18px"><${SR.GoalCard} key=${pk} client=${c} goal=${goalOf} gkey=${pk} label=${tp.label} color=${tp.color} latest=${latestOf()} supports=${supportsOf()} onGoal=${function (g) { p.setGoal(c.id, pt, g); }} goResults=${p.goResults} /><${SR.SeoWorkspace} client=${c} /><div class="list"><div class="listhead"><h3>Tasks</h3><span>Your own tasks for this client. Repeating ones come back on schedule.</span></div><div class="listcard">${seoTasks()}</div></div></div>`;
             var promiseBlock = html`<${SR.GoalCard} key=${pk} client=${c} goal=${goalOf} gkey=${pk} label=${tp.label} color=${tp.color} latest=${latestOf()} supports=${supportsOf()} onGoal=${function (g) { p.setGoal(c.id, pt, g); }} goResults=${p.goResults} />`;
 
       var ask = null;
@@ -366,16 +393,10 @@ window.SR = window.SR || {};
       var progress = null;
 
       /* phases list + sections (same layout as the Local SEO platform) */
-      var ongoingTasks = tasks.filter(function (t) { return t.repeat || t.maint; });
-      var ONG = { id: 'ongoing', name: 'Ongoing', color: PC[Math.min(groups.length, 9)], scope: 'Recurring checks and milestones' };
+      var ONG = { id: 'ongoing', name: 'Tasks', color: PC[Math.min(groups.length, 9)], scope: 'Recurring checks, milestones and your own tasks' };
       var dueNow = ongoingTasks.filter(function (t) { return !t.done && !t.milestone && t.date && t.date <= SR.TODAY; }).length;
       var firstOpen = groups.filter(function (g) { return !g.complete; })[0];
       var cur = (p.phaseSel && p.phaseSel[pk]) || (live ? 'ongoing' : (firstOpen ? firstOpen.ph.id : groups[groups.length - 1].ph.id));
-      var just = p.just || {};
-      var rowFor = function (t, clr, num) {
-        return html`<${SR.TaskRow} key=${t.id} task=${t} num=${num} selected=${!!(p.sel && p.sel[t.id])} active=${p.openId === t.id} just=${!!just[t.id]}
-          onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} />`;
-      };
       var phaseBtn = function (id, n, name, color, label, pct, extra) {
         return html`<button key=${id} type="button" class=${'phase' + (cur === id ? ' on' : '') + (extra && extra.lock ? ' lock' : '') + (extra && extra.newly ? ' newly' : '')} style=${'--pc:' + color} onClick=${function () { p.setPhase(pk, id); }} aria-pressed=${cur === id ? 'true' : 'false'}>
           <span class="l"><span class="pi">${SR.Icon(PIC[id] || 'list', 16)}</span><span class="nm">${n}. ${name}</span>${extra && extra.lock ? SR.Icon('lock', 14) : null}<span class="ct" style=${extra && extra.done ? 'color:var(--green)' : ''}>${label}</span></span>
@@ -387,32 +408,17 @@ window.SR = window.SR || {};
           var pct = g.tot ? Math.round(g.dn / g.tot * 100) : 0;
           return phaseBtn(g.ph.id, gi + 1, g.ph.name, g.ph.color, g.dn + '/' + g.tot, pct, { done: g.complete });
         })}
-        ${live ? phaseBtn('ongoing', groups.length + 1, 'Ongoing', ONG.color, dueNow ? dueNow + ' due' : ongoingTasks.length + ' tasks', null, { newly: p.justLive === pk }) : phaseBtn('ongoing', groups.length + 1, 'Ongoing', ONG.color, 'Locked', null, { lock: true })}
+        ${live ? phaseBtn('ongoing', groups.length + 1, 'Tasks', ONG.color, dueNow ? dueNow + ' due' : ongoingTasks.length + ' tasks', null, { newly: p.justLive === pk }) : phaseBtn('ongoing', groups.length + 1, 'Tasks', ONG.color, 'Locked', null, { lock: true })}
       </div>`;
 
-      var secHead = function (icon, name, color, d, t) {
-        return html`<div class="sub" style=${'--sc:' + color}>${SR.Icon(icon, 18)}<span>${name}</span><span class="n">${d}/${t}</span></div>`;
-      };
       var panel;
       if (cur === 'ongoing') {
-        var order = SR.CADENCES.concat(['Milestones']);
-        var og = order.map(function (label) {
-          var ts = ongoingTasks.filter(function (t) { return label === 'Milestones' ? t.milestone : (!t.milestone && t.repeat === label); }).sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
-          return { label: label, tasks: ts };
-        }).filter(function (x) { return x.tasks.length; });
-        var on = groups.length + 1, k = 0;
+        var on = groups.length + 1;
         panel = html`<div class="list swap" key="ongoing">
-          <div class="listhead"><h3>${on}. Ongoing</h3><span>${live ? 'Each task comes back on its own schedule' : 'Starts when every setup task is done'}</span></div>
+          <div class="listhead"><h3>${on}. Tasks</h3><span>${live ? 'Repeating tasks come back on their own schedule' : 'Starts when every setup task is done'}</span></div>
           <div class="listcard">
-          ${live ? null : html`<div class="lockbox">${SR.Icon('lock', 20)}<div>The every 3 days, weekly, monthly and every 90 days checklists are added automatically after Go live is ticked.</div></div>`}
-          ${og.map(function (x) {
-            var isM = x.label === 'Milestones', dn = x.tasks.filter(function (t) { return t.done; }).length;
-            return html`<div key=${x.label}>
-              ${secHead(isM ? 'flag' : 'repeat', isM ? 'Milestones' : x.label, isM ? '#8A6D1F' : ['#0E7490', '#3B6FD4', '#7C3AED', '#C77700', '#BE185D'][SR.CADENCES.indexOf(x.label) % 5], dn, x.tasks.length)}
-              ${x.tasks.map(function (t) { k++; return rowFor(t, ONG.color, on + '.' + k); })}</div>`;
-          })}
-          <${SR.AddCustom} first=${true} label="Repeats" opts=${['Weekly', 'Daily', 'Every 3 days', 'Fortnightly', 'Monthly', 'Every 90 days'].map(function (cd) { return [cd, cd]; }).concat([['Milestone', 'One-off milestone']])} onAdd=${p.addCustom}
-            make=${function (nm, rep) { return rep === 'Milestone' ? { clientId: c.id, proj: pt, name: nm, milestone: true, maint: true, date: '', custom: true, how: [] } : { clientId: c.id, proj: pt, name: nm, repeat: rep, maint: true, custom: true, how: [] }; }} />
+          ${live ? null : html`<div class="lockbox">${SR.Icon('lock', 20)}<div>The every 3 days, weekly, monthly and every 90 days checklists are added automatically after Go live is ticked. You can still add your own tasks below.</div></div>`}
+          ${tasksBlock(on, ONG.color)}
           </div>
         </div>`;
       } else {

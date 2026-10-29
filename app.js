@@ -161,10 +161,12 @@
     var toggle = function (id) {
       var cur = null; for (var i = 0; i < tasks.length; i++) if (tasks[i].id === id) cur = tasks[i];
       if (!cur) return;
-      if (cur.done) { patch(id, { done: false }); return; }
+      if (cur.done) { patch(id, cur.next ? { done: false, next: '', ran: Math.max(0, (cur.ran || 0) - 1) } : { done: false }); return; }
       var bl = openBlockers(cur);
       if (bl.length) { toast('Blocked by "' + bl[0].name + '". Finish that first.'); return; }
-      patch(id, { done: true, spent: Math.max(cur.spent || 0, SR.estOf(cur)), timer: '', slots: (cur.slots || []).map(function (s) { return Object.assign({}, s, { done: true }); }) });
+      var recur = cur.repeat && !cur.milestone, nxd = '';
+      if (recur) { var dd = SR.CADENCE_DAYS[cur.repeat] || 7; nxd = SR.addDays(cur.date && cur.date > SR.TODAY ? cur.date : SR.TODAY, dd); if (cur.date && cur.date <= SR.TODAY) { nxd = SR.addDays(cur.date, dd); while (nxd <= SR.TODAY) nxd = SR.addDays(nxd, dd); } }
+      patch(id, { done: true, spent: Math.max(cur.spent || 0, SR.estOf(cur)), timer: '', slots: (cur.slots || []).map(function (s) { return Object.assign({}, s, { done: true }); }), next: nxd, ran: recur ? (cur.ran || 0) + 1 : cur.ran });
       SR.playTick();
       setSettling(function (o) { var n = Object.assign({}, o); n[id] = true; return n; });
       setJust(function (o) { var n = Object.assign({}, o); n[id] = true; return n; });
@@ -174,10 +176,6 @@
       }, 280);
       tasks.forEach(function (t) { if (!t.done && (t.blockedBy || []).indexOf(id) >= 0 && openBlockers(t).filter(function (x) { return x.id !== id; }).length === 0) notify(t.owner || '', 'Unblocked: ' + t.name + ' (after "' + cur.name + '")', t.id); });
       runRules(cur);
-      if (cur.repeat && !cur.milestone) {
-        var days = SR.CADENCE_DAYS[cur.repeat] || 7, nx = cur.date || SR.TODAY; nx = SR.addDays(nx, days); while (nx <= SR.TODAY) nx = SR.addDays(nx, days);
-        setTimeout(function () { patch(id, { done: false, date: nx, deadline: '', ran: (cur.ran || 0) + 1, subs: (cur.subs || []).map(function (s) { return Object.assign({}, s, { done: false }); }) }); }, 1250);
-      }
     };
     toggleRef.current = toggle;
     var addComment = function (id, text) {
@@ -449,6 +447,13 @@
       };
       document.addEventListener('keydown', kd); return function () { document.removeEventListener('keydown', kd); };
     }, []);
+    /* recurring tasks stay ticked until their next due day, then come back unticked (midnight in the browser's timezone) */
+    useEffect(function () {
+      var due = tasks.filter(function (t) { return t.done && t.next && t.next <= SR.TODAY; });
+      if (!due.length) return;
+      var ids = {}; due.forEach(function (t) { ids[t.id] = 1; });
+      setTasks(function (ts) { return ts.map(function (t) { return ids[t.id] && t.done && t.next ? Object.assign({}, t, { done: false, doneDay: '', date: t.next, deadline: '', next: '', spent: 0, subs: (t.subs || []).map(function (s) { return Object.assign({}, s, { done: false }); }), slots: (t.slots || []).map(function (s) { return Object.assign({}, s, { done: false }); }) }) : t; }); });
+    }, [clk, tasks.length]);
     useEffect(function () {
       var iv = setInterval(function () { if (!SR.tzManual) { var dz = SR.detectTz(); if (dz !== SR.tz) SR.tz = dz; } var t = SR.todayIn(SR.tz); if (t !== SR.TODAY) SR.TODAY = t; setClk(function (x) { return x + 1; }); }, 30000);
       return function () { clearInterval(iv); };
