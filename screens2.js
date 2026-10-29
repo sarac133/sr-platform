@@ -85,6 +85,97 @@ window.SR = window.SR || {};
     location.hash = '#/c/' + cfg.id;
     document.documentElement.classList.add('embed');
   };
+  /* Tasks layer for the SEO Work tab: renames Ongoing to Tasks, adds your own tasks (one or a pasted list), and makes repeating tasks stay done until they are due again. Runs inside the SEO iframe, after the app and the embed layer. */
+  var seoTasksLayer = function () {
+    var CAD = { 'Daily': 1, 'Every 3 days': 3, 'Weekly': 7, 'Fortnightly': 14, 'Monthly': 'm1', 'Every 90 days': 90, 'Quarterly': 'm3' };
+    var REPS = ['Does not repeat', 'Daily', 'Every 3 days', 'Weekly', 'Fortnightly', 'Monthly', 'Every 90 days'];
+    var ymd = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+    var cadOf = function (it) { if (it.rep) return it.rep === 'Does not repeat' ? '' : it.rep; var m = /^(Daily|Weekly|Fortnightly|Monthly|Quarterly)\b/.exec(it.text || ''); return m ? m[1] : ''; };
+    var dueOf = function (cad, t) {
+      var n = CAD[cad]; if (!n) return ''; var d = new Date(t); d = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      if (typeof n === 'string') { var mo = +n.slice(1), day = d.getDate(); d = new Date(d.getFullYear(), d.getMonth() + mo, 1); var last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(); d.setDate(Math.min(day, last)); }
+      else d.setDate(d.getDate() + n);
+      return ymd(d);
+    };
+    var fmt = function (s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); };
+    var tasksPhase = function () { return (S.work || []).find(function (p) { return p.name === 'Ongoing' || p.name === 'Tasks'; }); };
+    var customs = function () { return (((S.client || {}).meta || {})._custom || {}).list || []; };
+    var itemsAll = function () { var p = tasksPhase(); return p ? (p._base || p.items) : []; };
+    var recurring = function () { var out = []; itemsAll().forEach(function (it) { if (it.kind !== 's' && cadOf(it)) out.push(it); }); customs().forEach(function (it) { if (cadOf(it)) out.push(it); }); return out; };
+
+    /* a done repeating task is cleared when its next due date arrives, at midnight in the viewer's timezone */
+    var expire = function () {
+      if (!S.client || !S.work) return false;
+      var today = ymd(new Date()), changed = false;
+      recurring().forEach(function (it) {
+        var m = S.client.marks[it.id]; if (!m || m.s !== 'done') return;
+        if (!m.t) m.t = new Date().toISOString();
+        var due = dueOf(cadOf(it), m.t);
+        if (due && due <= today) { delete S.client.marks[it.id]; changed = true; api('/clients/' + S.client.id + '/mark', 'POST', { key: it.id, status: null }).catch(function () {}); }
+      });
+      return changed;
+    };
+    var prep = function () {
+      var p = tasksPhase(); if (!p || !S.client) return;
+      if (p.name === 'Ongoing') p.name = 'Tasks';
+      if (!p._base) p._base = p.items.slice();
+      var fin = function (it) { return it.kind !== 's' && isFin(it.id) ? 1 : 0; };
+      var order = function (a) { return a.map(function (x, i) { return [x, i]; }).sort(function (a, b) { return fin(a[0]) - fin(b[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; }); };
+      var cs = customs().map(function (c) { return { kind: 't', id: c.id, text: c.text, rep: c.rep, how: [], links: [], custom: true }; });
+      p.items = order(p._base).concat(cs.length ? [{ kind: 's', text: 'Your tasks' }] : [], order(cs));
+    };
+    var save = function (list) {
+      S.client.meta = S.client.meta || {}; S.client.meta._custom = { list: list };
+      return api('/clients/' + S.client.id + '/meta', 'POST', { key: '_custom', patch: { list: list } }).catch(function (e) { toast('Could not save. ' + e.message); });
+    };
+    var addBox = function () {
+      if (!S.ctOpen) return '<div style="margin-bottom:12px"><button class="btn" data-ct="open">+ Add your own task</button></div>';
+      var rep = S.ctRep || 'Does not repeat', n = (S.ctText || '').split('\n').filter(function (l) { return l.trim(); }).length;
+      return '<div class="card" style="padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px"><div style="font-weight:700">Add your own task</div>' +
+        '<textarea class="pxin full" rows="4" data-ct-in="text" placeholder="Type a task. To add many at once, paste a list with one task per line.">' + esc(S.ctText || '') + '</textarea>' +
+        '<div class="row" style="gap:10px;flex-wrap:wrap"><label class="muted" style="font-weight:600;font-size:13px">Repeats</label><select class="pxsel" data-ct-in="rep">' + REPS.map(function (r) { return '<option ' + (r === rep ? 'selected' : '') + '>' + r + '</option>'; }).join('') + '</select><span style="flex:1"></span>' +
+        '<button class="btn" data-ct="close">Cancel</button><button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent)" data-ct="add">' + (n > 1 ? 'Add ' + n + ' tasks' : 'Add task') + '</button></div></div>';
+    };
+    var _wv = workView;
+    workView = function () {
+      var p = tasksPhase(); if (!p || S.work[S.phase] !== p) return _wv();
+      expire(); prep();
+      var out = _wv(), today = ymd(new Date());
+      p.items.forEach(function (it) {
+        if (it.kind === 's') return; var cad = cadOf(it), m = S.client.marks[it.id], bits = [];
+        if (it.custom && cad) bits.push(cad);
+        if (cad && m && m.s === 'done') { var due = dueOf(cad, m.t || new Date().toISOString()); if (due && due > today) bits.push('back ' + fmt(due)); }
+        if (!bits.length) return;
+        var tt = '<span class="tt">' + esc(it.text) + '</span>';
+        out = out.replace(tt, tt + '<span class="pill gray">' + esc(bits.join(' · ')) + '</span>');
+        if (it.custom) out = out.replace('<span class="id">' + it.id + '</span>', '<span class="id">+</span>');
+      });
+      out = out.replace('<div class="card" style="padding:8px">', addBox() + '<div class="card" style="padding:8px">');
+      var sel = S.sel && customs().some(function (c) { return c.id === S.sel; });
+      if (sel) out = out.replace('<div class="pxf">', '<div class="pxf"><button class="pxna" data-ct="del">Delete task</button>');
+      return out;
+    };
+    var _r = render;
+    render = function () { expire(); _r(); };
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-ct]'); if (!b || !S.client) return; e.stopPropagation();
+      var a = b.dataset.ct;
+      if (a === 'open') { S.ctOpen = true; render(); var t = document.querySelector('[data-ct-in="text"]'); if (t) t.focus(); }
+      else if (a === 'close') { S.ctOpen = false; S.ctText = ''; render(); }
+      else if (a === 'add') {
+        var lines = (S.ctText || '').split('\n').map(function (l) { return l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim(); }).filter(Boolean);
+        if (!lines.length) { toast('Type a task first'); return; }
+        var rep = S.ctRep || 'Does not repeat', list = customs().slice();
+        lines.forEach(function (l, i) { list.push({ id: 'c' + Date.now().toString(36) + i, text: l, rep: rep }); });
+        S.ctOpen = false; S.ctText = ''; S.ctRep = ''; save(list); render(); toast(lines.length > 1 ? lines.length + ' tasks added' : 'Task added');
+      }
+      else if (a === 'del') { var id = S.sel; S.sel = null; delete S.client.marks[id]; save(customs().filter(function (c) { return c.id !== id; })); api('/clients/' + S.client.id + '/mark', 'POST', { key: id, status: null }).catch(function () {}); render(); }
+    }, true);
+    document.addEventListener('input', function (e) { var f = e.target.dataset && e.target.dataset.ctIn; if (f === 'text') { S.ctText = e.target.value; var b = document.querySelector('[data-ct="add"]'); if (b) { var n = S.ctText.split('\n').filter(function (l) { return l.trim(); }).length; b.textContent = n > 1 ? 'Add ' + n + ' tasks' : 'Add task'; } } }, true);
+    document.addEventListener('change', function (e) { var f = e.target.dataset && e.target.dataset.ctIn; if (f === 'rep') { S.ctRep = e.target.value; e.stopPropagation(); } }, true);
+    setInterval(function () { if (expire()) render(); }, 20000);
+  };
+  SEO_JS += '\n;(' + seoTasksLayer.toString() + ')();\n';
   SR.SeoWorkspace = function (p) {
     var c = p.client, B = SR.SEO_BUNDLE;
     var dark = document.documentElement.style.getPropertyValue('color-scheme') === 'dark';
@@ -383,7 +474,7 @@ window.SR = window.SR || {};
       };
       var seoTasks = function () { return tasksBlock(1, tp.color); };
     var overview = function () {
-      if (pt === 'seo') return html`<div style="display:flex;flex-direction:column;gap:18px"><${SR.GoalCard} key=${pk} client=${c} goal=${goalOf} gkey=${pk} label=${tp.label} color=${tp.color} latest=${latestOf()} supports=${supportsOf()} onGoal=${function (g) { p.setGoal(c.id, pt, g); }} goResults=${p.goResults} /><${SR.SeoWorkspace} client=${c} /><div class="list"><div class="listhead"><h3>Tasks</h3><span>Your own tasks for this client. Repeating ones come back on schedule.</span></div><div class="listcard">${seoTasks()}</div></div></div>`;
+      if (pt === 'seo') return html`<div style="display:flex;flex-direction:column;gap:18px"><${SR.GoalCard} key=${pk} client=${c} goal=${goalOf} gkey=${pk} label=${tp.label} color=${tp.color} latest=${latestOf()} supports=${supportsOf()} onGoal=${function (g) { p.setGoal(c.id, pt, g); }} goResults=${p.goResults} /><${SR.SeoWorkspace} client=${c} /></div>`;
             var promiseBlock = html`<${SR.GoalCard} key=${pk} client=${c} goal=${goalOf} gkey=${pk} label=${tp.label} color=${tp.color} latest=${latestOf()} supports=${supportsOf()} onGoal=${function (g) { p.setGoal(c.id, pt, g); }} goResults=${p.goResults} />`;
 
       var ask = null;
