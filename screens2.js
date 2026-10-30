@@ -35,7 +35,7 @@ window.SR = window.SR || {};
 
   /* ---------- Local SEO workspace: the SEO platform, running inside the client page ---------- */
   /* Runs in a same-origin iframe. This shim stands in for the SEO platform's server: it keeps the data in this browser. */
-  var SEO_CSS = 'html,body{overflow:hidden}.embed .sheetwrap{max-height:none}.embed .px.detail{position:absolute;top:var(--vt,0px);bottom:auto;height:var(--vh,100vh)}.embed .pxbw{position:absolute;bottom:auto;top:calc(var(--vt,0px) + var(--vh,100vh) - 16px);height:auto;transform:translateY(-100%)}.embed .pxbulk{width:min(980px,100%);flex-wrap:wrap}.embed .pxbd{display:inline-flex!important;flex-direction:row!important;align-items:center;white-space:nowrap;gap:8px}.embed .pxbd span{display:inline!important;position:static!important;font-size:13px}.embed .pxbd input{width:128px;min-width:0}.embed .pxbsel{max-width:150px}#toast{position:absolute!important;bottom:auto!important;top:calc(var(--vt,0px) + var(--vh,100vh) - 70px)}.embed .wrap{max-width:none;padding:0 0 110px}.embed .tabs{border:0;gap:6px;margin:2px 0 18px}.embed .tab{border:1px solid var(--line);border-radius:6px;min-height:34px;padding:0 14px;font-size:13px}.embed .tab.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}.embed .phase .pi{display:inline-flex;color:var(--pc)}';
+  var SEO_CSS = '.tabord,.viewbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}.ordchip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line2);border-radius:8px;padding:2px 4px;font-size:13px;background:var(--panel)}.ordchip span{padding:0 6px}.ordchip button,.blkbar button{border:0;background:transparent;cursor:pointer;color:var(--accent-ink);font-weight:700;border-radius:5px;min-width:24px;min-height:24px}.ordchip button:hover:not(:disabled),.blkbar button:hover:not(:disabled){background:var(--soft)}.ordchip button:disabled,.blkbar button:disabled{opacity:.3;cursor:default}.blkbar{display:flex;justify-content:space-between;align-items:center;margin:-4px -4px 10px;padding:4px 8px;border-radius:8px;background:var(--soft);font-size:12px}.blkgone{opacity:.45}.work.nobars .phase .bar{display:none}.work.nocnt .phase .muted{display:none}.work.noid .task .id{display:none}html,body{overflow:hidden}.embed .sheetwrap{max-height:none}.embed .px.detail{position:absolute;top:var(--vt,0px);bottom:auto;height:var(--vh,100vh)}.embed .pxbw{position:absolute;bottom:auto;top:calc(var(--vt,0px) + var(--vh,100vh) - 16px);height:auto;transform:translateY(-100%)}.embed .pxbulk{width:min(980px,100%);flex-wrap:wrap}.embed .pxbd{display:inline-flex!important;flex-direction:row!important;align-items:center;white-space:nowrap;gap:8px}.embed .pxbd span{display:inline!important;position:static!important;font-size:13px}.embed .pxbd input{width:128px;min-width:0}.embed .pxbsel{max-width:150px}#toast{position:absolute!important;bottom:auto!important;top:calc(var(--vt,0px) + var(--vh,100vh) - 70px)}.embed .wrap{max-width:none;padding:0 0 110px}.embed .tabs{border:0;gap:6px;margin:2px 0 18px}.embed .tab{border:1px solid var(--line);border-radius:6px;min-height:34px;padding:0 14px;font-size:13px}.embed .tab.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}.embed .phase .pi{display:inline-flex;color:var(--pc)}.colchip{display:inline-flex;align-items:center;gap:4px}.editp{padding:14px;margin-bottom:12px}.erow .pxsel{align-self:flex-start;max-width:260px}.erow .eord{display:flex;flex-direction:column;gap:2px}.erow .eord .pxx[disabled]{opacity:.3;cursor:default}.editbar{display:flex;align-items:center;gap:14px;justify-content:space-between;padding:12px 16px;border:1px solid var(--accent);background:var(--accent-soft);border-radius:8px;font-size:14px;line-height:1.45;margin-bottom:12px}.editbar .btn{flex:none}.erow{display:flex;gap:10px;align-items:flex-start;padding:10px 4px;border-top:1px solid var(--line)}.erow .ebody{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.erow .pxin{width:100%;box-sizing:border-box}.erow .ehow{font-size:13px;resize:vertical}.erow.gone{opacity:.55}.erow .edel{width:30px;height:30px}.edsec{display:flex;align-items:center;gap:10px;padding:8px 4px 2px}.edsec .pxin{max-width:420px;font-weight:600}.ddt{box-shadow:inset 0 2px 0 var(--accent,#4C7BD9)}.ddb{box-shadow:inset 0 -2px 0 var(--accent,#4C7BD9)}[data-dd]{cursor:grab}.ddgrip{color:var(--muted);padding:0 4px;user-select:none;font-size:14px;text-align:center}';
   var SEO_JS = '\n;(function(){var ap=document.getElementById("app"),last=0;function post(){var h=Math.ceil(ap.getBoundingClientRect().height)+10;if(h!==last){last=h;parent.postMessage({sr:"h",h:h},"*");}}new ResizeObserver(post).observe(ap);addEventListener("load",post);addEventListener("message",function(e){var d=e.data;if(d&&d.sr==="v"){var st=document.documentElement.style;st.setProperty("--vt",d.t+"px");st.setProperty("--vh",d.h+"px");}});parent.postMessage({sr:"ready"},"*");setTimeout(post,300);})();\n;(function(){var N=["search","pin","gauge","clip","grid","spark","list","globe","radar","chart"];var r0=render;render=function(){r0();document.querySelectorAll(".phase").forEach(function(b,i){var d=b.querySelector(".dot");if(d){var s=document.createElement("span");s.className="pi";s.innerHTML=svg(N[i%N.length],16);d.replaceWith(s);}});};})();\n';
   var seoShim = function (cfg, DATA) {
     var P = 'srseo:', TABS = ['baseline', 'keywords', 'pages', 'citations', 'competitors', 'links', 'journal'];
@@ -106,7 +106,12 @@ window.SR = window.SR || {};
       return ymd(d);
     };
     var fmt = function (s) { var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); };
-    var tasksPhase = function () { return (S.work || []).find(function (p) { return p.name === 'Ongoing' || p.name === 'Tasks'; }); };
+    var tasksPhase = function () { return (S.work || []).find(function (p) { var n = p._oname || p.name; return n === 'Ongoing' || n === 'Tasks'; }); };
+    var edits = function () {
+      var e = meta('_edits');
+      return { items: e.items || {}, gone: e.gone || {}, sec: e.sec || {}, ph: e.ph || {}, secGone: e.secGone || {}, mv: e.mv || {}, ord: e.ord || {}, newPh: e.newPh || [], phGone: e.phGone || {}, addSec: e.addSec || {}, cols: e.cols || {}, tabsRen: e.tabsRen || {}, tabsGone: e.tabsGone || {}, tabs: e.tabs || [], tabOrd: e.tabOrd || [], dash: Object.assign({ ord: [], col: {}, gone: {}, kv: {} }, e.dash), view: e.view || {},
+        acc: Object.assign({ gone: {}, ren: {}, add: [] }, e.acc), base: Object.assign({ gone: {}, ren: {}, add: [], secRen: {}, addSec: [] }, e.base) };
+    };
     var customs = function () { return (((S.client || {}).meta || {})._custom || {}).list || []; };
     var phN = function (c) { var t = tasksPhase(); return c.ph !== undefined ? c.ph : (t ? t.n : 0); };
     var allItems = function () { var out = []; (S.work || []).forEach(function (p) { (p._base || p.items).forEach(function (it) { if (it.kind !== 's') out.push(it); }); }); customs().forEach(function (c) { out.push({ id: c.id, text: c.text, rep: c.rep, custom: true }); }); return out; };
@@ -124,19 +129,38 @@ window.SR = window.SR || {};
     };
     var prep = function () {
       if (!S.client || !S.work) return;
-      var tp = tasksPhase();
+      S.work.forEach(function (p) { if (!p._orig) { p._orig = p.items.slice(); p._oname = p.name === 'Ongoing' ? 'Tasks' : p.name; } });
+      var tp = tasksPhase(), ed = edits(), edit = !!S.edit;
       S.work.forEach(function (p) {
-        if (p.name === 'Ongoing') p.name = 'Tasks';
-        if (!p._base) p._base = p.items.slice();
+        p.name = (ed.ph[p.n] || p._oname) + (edit && ed.phGone[p.n] ? ' (hidden)' : '');
         var isT = p === tp;
-        var sink = function (it) { return it.kind !== 's' && isFin(it.id) && (isT || cadOf(it)) ? 1 : 0; };
-        var chunks = [], cur = { head: null, rows: [] };
-        p._base.forEach(function (it) { if (it.kind === 's') { chunks.push(cur); cur = { head: it, rows: [] }; } else cur.rows.push(it); });
+        var sink = function (it) { return !edit && it.kind !== 's' && isFin(it.id) && (isT || cadOf(it)) ? 1 : 0; };
+        var base = p._orig.filter(function (it) { return edit || it.kind === 's' || !ed.gone[it.id]; }).map(function (it) {
+          if (it.kind === 's') return Object.assign({}, it, { text: ed.sec[it.text] || it.text, _o: it.text });
+          var e = ed.items[it.id], g = ed.gone[it.id];
+          return (e || g) ? Object.assign({}, it, e ? { text: e.text || it.text, how: e.how || it.how } : {}, g ? { _gone: true } : {}) : it;
+        });
+        p._base = base;
+        var chunks = [], cur = { head: null, key: '', rows: [] };
+        base.forEach(function (it) { if (it.kind === 's') { chunks.push(cur); cur = { head: it, key: it._o, rows: [] }; } else cur.rows.push(it); });
         chunks.push(cur);
+        (ed.addSec[p.n] || []).forEach(function (a) { chunks.push({ head: { kind: 's', text: ed.sec[a.id] || a.text, _o: a.id, _custom: true }, key: a.id, rows: [] }); });
+        var byKey = {}; chunks.forEach(function (c) { if (c.head) byKey[c.key] = c; });
+        chunks.forEach(function (c) { c.rows = c.rows.filter(function (it) { var t = ed.mv[it.id]; if (t && byKey[t] && byKey[t] !== c) { byKey[t].rows.push(it); return false; } return true; }); });
+        var rest = [];
+        customs().filter(function (c) { return phN(c) === p.n; }).forEach(function (c) {
+          var it = { kind: 't', id: c.id, text: c.text, rep: c.rep, how: c.how || [], links: [], custom: true, sec: c.sec };
+          if (c.sec && byKey[c.sec]) byKey[c.sec].rows.push(it); else rest.push(it);
+        });
+        var ord = ed.ord[p.n] || [], oi = function (it) { var i = ord.indexOf(it.id); return i < 0 ? 1e6 : i; };
+        var order = function (rows) { return rows.map(function (x, i) { return [x, i]; }).sort(function (a, b) { return sink(a[0]) - sink(b[0]) || oi(a[0]) - oi(b[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; }); };
         var out = [];
-        chunks.forEach(function (c) { if (c.head) out.push(c.head); out = out.concat(c.rows.map(function (x, i) { return [x, i]; }).sort(function (a, b) { return sink(a[0]) - sink(b[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; })); });
-        var cs = customs().filter(function (c) { return phN(c) === p.n; }).map(function (c) { return { kind: 't', id: c.id, text: c.text, rep: c.rep, how: [], links: [], custom: true }; });
-        if (cs.length) out = out.concat([{ kind: 's', text: 'Your tasks' }], cs.map(function (x, i) { return [x, i]; }).sort(function (a, b) { return sink(a[0]) - sink(b[0]) || a[1] - b[1]; }).map(function (x) { return x[0]; }));
+        chunks.forEach(function (c) {
+          var sg = c.head && ed.secGone[c.key]; if (sg && !edit) return;
+          if (c.head) out.push(sg ? Object.assign({}, c.head, { _gone: true }) : c.head);
+          out = out.concat(order(c.rows));
+        });
+        if (rest.length) out = out.concat([{ kind: 's', text: 'Your tasks', _o: '__your', _virtual: true }], order(rest));
         p.items = out;
       });
     };
@@ -156,7 +180,7 @@ window.SR = window.SR || {};
       var rep = S.ctRep || 'Does not repeat', n = (S.ctText || '').split('\n').filter(function (l) { return l.trim(); }).length;
       return '<div class="card" style="padding:14px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px"><div style="font-weight:700">Add your own task to this phase</div>' +
         '<textarea class="pxin full" rows="4" data-ct-in="text" placeholder="Type a task. To add many at once, paste a list with one task per line.">' + esc(S.ctText || '') + '</textarea>' +
-        '<div class="row" style="gap:10px;flex-wrap:wrap"><label class="muted" style="font-weight:600;font-size:13px">Repeats</label><select class="pxsel" data-ct-in="rep">' + repOpts(rep === 'Does not repeat' ? '' : rep) + '</select><span style="flex:1"></span>' +
+        '<div class="row" style="gap:10px;flex-wrap:wrap"><label class="muted" style="font-weight:600;font-size:13px">Repeats</label><select class="pxsel" data-ct-in="rep">' + repOpts(rep === 'Does not repeat' ? '' : rep) + '</select><label class="muted" style="font-weight:600;font-size:13px">Section</label><select class="pxsel" data-ct-in="sec"><option value="">Your tasks</option>' + ((S.work[S.phase] || {}).items || []).filter(function (i) { return i.kind === 's' && !i._virtual; }).map(function (i) { return '<option value="' + esc(i._o) + '"' + (S.ctSec === i._o ? ' selected' : '') + '>' + esc(i.text) + '</option>'; }).join('') + '</select><span style="flex:1"></span>' +
         '<button class="btn" data-ct="close">Cancel</button><button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent)" data-ct="add">' + (n > 1 ? 'Add ' + n + ' tasks' : 'Add task') + '</button></div></div>';
     };
     var gcal = function (t, m, c) {
@@ -176,11 +200,52 @@ window.SR = window.SR || {};
         subs.map(function (s, i) { return '<div class="row" style="gap:8px;padding:4px 0"><button class="cb sm ' + (s.done ? 'done' : '') + '" data-ct="subt" data-i="' + i + '" aria-label="' + esc(s.name) + '"><span>' + (s.done ? '✓' : '') + '</span></button><span style="flex:1;' + (s.done ? 'text-decoration:line-through;opacity:.6' : '') + '">' + esc(s.name) + '</span><button class="pxx" data-ct="subx" data-i="' + i + '" aria-label="Remove subitem">✕</button></div>'; }).join('') +
         '<input type="text" class="pxin full" data-cf="sub" placeholder="+ Add subitem, press Enter"></div>';
     };
+    var saveEd = function (patch) {
+      S.client.meta = S.client.meta || {};
+      if (!S._restoring) { var us = S._edUndo = S._edUndo || []; us.push(JSON.stringify(S.client.meta._edits || {})); if (us.length > 30) us.shift(); } var ed = Object.assign({}, S.client.meta._edits, patch); S.client.meta._edits = ed;
+      return api('/clients/' + S.client.id + '/meta', 'POST', { key: '_edits', patch: ed }).catch(function (e) { toast('Could not save. ' + e.message); });
+    };
+    var rid = function (pre) { return pre + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); };
+    var inp = function (attrs, val, cls, style) { return '<input class="pxin ' + (cls || '') + '" type="text" ' + attrs + ' value="' + esc(val) + '"' + (style ? ' style="' + style + '"' : '') + '>'; };
+    var editCard = function (p) {
+      var rows = '', secs = p.items.filter(function (i) { return i.kind === 's' && !i._virtual; });
+      var sopts = function (cur) { return '<option value="">Move to section...</option>' + secs.map(function (s) { return '<option value="' + esc(s._o) + '"' + (s._o === cur ? ' selected' : '') + '>' + esc(s.text) + '</option>'; }).join(''); };
+      var curSec = '';
+      p.items.forEach(function (it, ix) {
+        if (it.kind === 's') {
+          curSec = it._o;
+          if (it._virtual) { rows += '<div class="sub edsec"><span>Your tasks</span></div>'; return; }
+          rows += '<div class="sub edsec">' + inp('data-ed="sec" data-o="' + esc(it._o) + '" aria-label="Section name"', it.text) +
+            (it._gone ? '<button class="btn small" data-ed="secrestore" data-o="' + esc(it._o) + '">Restore section</button>' : '<button class="btn small" data-ed="secdel" data-o="' + esc(it._o) + '">Delete section</button>') + '</div>';
+          return;
+        }
+        var prevS = p.items[ix - 1] && p.items[ix - 1].kind === 's', nextS = !p.items[ix + 1] || p.items[ix + 1].kind === 's';
+        rows += '<div class="erow' + (it._gone ? ' gone' : '') + '" data-dt="task" data-id="' + esc(it.id) + '"><span class="eord"><span class="ddgrip" draggable="true" data-dd="task" data-id="' + esc(it.id) + '" title="Drag to reorder">⋮⋮</span><button class="pxx" data-ed="up" data-k="' + esc(it.id) + '" aria-label="Move up"' + (prevS ? ' disabled' : '') + '>↑</button><button class="pxx" data-ed="down" data-k="' + esc(it.id) + '" aria-label="Move down"' + (nextS ? ' disabled' : '') + '>↓</button></span>' +
+          '<div class="ebody">' + inp('data-ed="text" data-k="' + esc(it.id) + '" aria-label="Task name"' + (it._gone ? ' disabled' : ''), it.text) +
+          '<textarea class="pxin ehow" rows="' + Math.max(2, Math.min(7, (it.how || []).length + 1)) + '" data-ed="how" data-k="' + esc(it.id) + '" placeholder="How to do it. One step per line." aria-label="How to do it"' + (it._gone ? ' disabled' : '') + '>' + esc((it.how || []).map(function (h) { return typeof h === 'string' ? h : (h && h.text) || ''; }).join('\n')) + '</textarea>' +
+          (secs.length && !it._gone ? '<select class="pxsel" data-ed="mv" data-k="' + esc(it.id) + '" aria-label="Move to section">' + sopts('') + '</select>' : '') + '</div>' +
+          (it._gone ? '<button class="btn small" data-ed="restore" data-k="' + esc(it.id) + '">Restore</button>' : '<button class="pxx edel" data-ed="del" data-k="' + esc(it.id) + '" aria-label="Delete task" title="Delete task">✕</button>') + '</div>';
+      });
+      return '<div class="card" style="padding:10px">' + (rows || '<div class="muted" style="padding:12px">Nothing in this phase yet. Add a section or a task.</div>') + '</div>';
+    };
+    var spanOf = function (h, start) { var re = /<(\/?)div\b/g, d = 0, m; re.lastIndex = start; while ((m = re.exec(h))) { d += m[1] ? -1 : 1; if (d === 0) { return h.indexOf('>', m.index) + 1; } } return -1; };
     var _wv = workView;
     workView = function () {
       var p = S.work && S.work[S.phase]; if (!p || !S.client) return _wv();
       expire(); prep();
       var out = _wv(), today = ymd(new Date());
+      if (S.edit) {
+        var cs = out.indexOf('<div class="card" style="padding:8px">'), ce = cs < 0 ? -1 : spanOf(out, cs), edz = edits();
+        var gonePh = !!edz.phGone[p.n], isCustPh = !!p.custom;
+        var actions = '<div class="row" style="gap:8px;margin-bottom:10px;flex-wrap:wrap"><button class="btn" data-ed="secadd">+ Add section</button>' +
+          '<button class="btn" data-ed="' + (gonePh ? 'phrestore' : 'phhide') + '">' + (gonePh ? 'Restore this phase' : 'Hide this phase') + '</button>' +
+          (isCustPh ? '<button class="btn" data-ed="phdel">' + (S.confirmDel === 'ph' + p.n ? 'Click again to delete' : 'Delete this phase') + '</button>' : '') + '</div>';
+        if (cs >= 0 && ce > 0) out = out.slice(0, cs) + actions + addBox() + editCard(p) + out.slice(ce);
+        out = out.replace(/(<h2 style="font-size:24px">)\d+\. [^<]*(<\/h2>)/, '$1' + p.n + '. ' + inp('data-ed="ph" data-n="' + p.n + '" aria-label="Phase name"', edz.ph[p.n] || p._oname, '', 'font-size:20px;font-weight:700;max-width:420px;display:inline-block') + '$2');
+        out = out.replace('</nav>', '<button class="btn" style="margin-top:8px;width:100%" data-ed="phadd">+ Add phase</button></nav>');
+        return out;
+      }
+      out = out.replace('<button class="btn" data-ct="open">+ Add your own task</button>', '<button class="btn" data-ct="open">+ Add your own task</button> <button class="btn" data-ed="start">Edit checklist and process</button>');
       p.items.forEach(function (it) {
         if (it.kind === 's') return;
         var cad = cadOf(it), m = S.client.marks[it.id], bits = [], explicit = it.custom || meta(it.id).rep;
@@ -200,6 +265,243 @@ window.SR = window.SR || {};
     };
     var _r = render;
     render = function () { expire(); _r(); };
+    window.addEventListener('message', function (e) { if (e.data && e.data.sr === 'edit') { S.edit = !S.edit; render(); } });
+    /* ---- everything editable: tabs, columns, baseline metrics, access items, phases, sections, new tables ---- */
+    var TABS0 = TABS.map(function (t) { return t.slice(); }), SH0 = SHEET_TABS.slice(), ACC0 = ACCESS.map(function (a) { return a.slice(); });
+    var applyAll = function () {
+      if (!S.client) return;
+      var ed = edits(), edit = !!S.edit, SP = window.__SPECS;
+      TABS.length = 0; SHEET_TABS.length = 0;
+      TABS0.forEach(function (t) { var g = ed.tabsGone[t[0]]; if (g && (!edit || t[0] === 'dash')) return; TABS.push([t[0], (ed.tabsRen[t[0]] || t[1]) + (g ? ' (hidden)' : '')]); });
+      SH0.forEach(function (k) { if (!(ed.tabsGone[k] && !edit)) SHEET_TABS.push(k); });
+      ed.tabs.forEach(function (t) { TABS.push([t.id, t.title]); SHEET_TABS.push(t.id); });
+      if (ed.tabOrd.length) { var rank = function (id) { var i = ed.tabOrd.indexOf(id); return i < 0 ? 999 : i; }, keep = TABS.map(function (t, i) { return [t, i]; }); keep.sort(function (a, b) { return rank(a[0][0]) - rank(b[0][0]) || a[1] - b[1]; }); var sorted = keep.map(function (x) { return x[0]; }); TABS.length = 0; sorted.forEach(function (t) { TABS.push(t); }); }
+      if (!TABS.some(function (t) { return t[0] === S.tab; })) S.tab = 'dash';
+      if (SP) Object.keys(SP).forEach(function (tab) {
+        var sp = SP[tab]; if (!sp._c0) { sp._c0 = sp.cols.slice(); sp._t0 = sp.title; }
+        var ce = ed.cols[tab] || {};
+        sp.cols = sp._c0.filter(function (c) { return c.first || !(ce.gone || {})[c.k]; }).map(function (c) { return (ce.ren || {})[c.k] ? Object.assign({}, c, { label: ce.ren[c.k] }) : c; }).concat((ce.add || []).map(function (a) { return { k: a.k, label: a.label, w: 170 }; }));
+        sp.title = ed.tabsRen[tab] || sp._t0;
+      });
+      ACCESS.length = 0;
+      ACC0.forEach(function (a) { if (ed.acc.gone[a[0]] && !edit) return; ACCESS.push([a[0], (ed.acc.ren[a[0]] || a[1]) + (ed.acc.gone[a[0]] ? ' (hidden)' : '')]); });
+      (ed.acc.add || []).forEach(function (a) { ACCESS.push([a.id, a.text]); });
+      ACCESS.forEach(function (a) { if (!ACC_ICON[a[0]]) ACC_ICON[a[0]] = ['#475569', 'list']; });
+      if (S.baselineDef) {
+        if (!S._b0) S._b0 = S.baselineDef.slice();
+        var be = ed.base, secOf = null, out = [], addAt = {};
+        (be.add || []).forEach(function (m) { (addAt[m.sec || ''] = addAt[m.sec || ''] || []).push(m); });
+        var flush = function () { (addAt[secOf || ''] || []).forEach(function (m) { out.push({ id: m.id, label: m.label, where: m.where || '', freq: m.freq || 'Monthly' }); }); delete addAt[secOf || '']; };
+        S._b0.forEach(function (m) {
+          if (m.section) { flush(); secOf = m.section; out.push({ section: be.secRen[m.section] || m.section, _o: m.section }); return; }
+          if (be.gone[m.id] && !edit) return;
+          var r = be.ren[m.id] || {}; out.push({ id: m.id, label: r.label || m.label, where: r.where !== undefined ? r.where : m.where, freq: r.freq || m.freq, _gone: !!be.gone[m.id] });
+        });
+        flush(); Object.keys(addAt).forEach(function (k) { secOf = k; flush(); });
+        (be.addSec || []).forEach(function (s2) { out.push({ section: s2.label, _o: s2.id }); (be.add || []).filter(function (m) { return m.sec === s2.id; }).forEach(function (m) { out.push({ id: m.id, label: m.label, where: m.where || '', freq: m.freq || 'Monthly' }); }); });
+        S.baselineDef = out;
+      }
+      if (S.work) {
+        if (!S._w0) S._w0 = S.work.slice(); S._wc = S._wc || {};
+        var maxN = Math.max.apply(null, S._w0.map(function (p) { return p.n; })), list = S._w0.slice();
+        ed.newPh.forEach(function (np, i) { var ex = S._wc[np.id]; if (!ex) { ex = S._wc[np.id] = { n: maxN + 1 + i, name: np.name, items: [], custom: true, _oname: np.name, _id: np.id }; } ex.n = maxN + 1 + i; list.push(ex); });
+        S.work = list.filter(function (p) { return edit || !ed.phGone[p.n]; });
+        if (S.phase >= S.work.length) S.phase = 0;
+      }
+    };
+    var _cv = clientView;
+    clientView = function () {
+      applyAll(); _cv();
+      if (!S.client) return;
+      var w = document.querySelector('.wrap'), tb = document.querySelector('.tabs');
+      if (S.edit && w) w.insertAdjacentHTML('afterbegin', '<div class="editbar"><span><b>Edit everything.</b> Rename, add, hide or delete tabs, tables, columns, phases, sections and tasks. Changes save as you go and apply to this client only.</span><button class="btn" data-ed="done">Done editing</button></div>');
+      if (tb) tb.insertAdjacentHTML('beforeend', S.edit ? '<button class="tab" data-ed="newtab">+ New table</button>' : '<button class="tab" data-ed="start" title="Edit tabs, tables, phases and tasks">Edit everything</button>');
+      var ed2 = edits();
+      if (S.edit && tb) tb.insertAdjacentHTML('afterend', '<div class="tabord"><span class="pxl">Tab order</span>' + TABS.map(function (t, i) { return '<span class="ordchip" draggable="true" data-dd="tab" data-dt="tab" data-id="' + t[0] + '"><button data-ed="tabmv" data-t="' + t[0] + '" data-d="-1"' + (i === 0 ? ' disabled' : '') + ' aria-label="Move left">‹</button><span>' + esc(t[1]) + '</span><button data-ed="tabmv" data-t="' + t[0] + '" data-d="1"' + (i === TABS.length - 1 ? ' disabled' : '') + ' aria-label="Move right">›</button></span>'; }).join('') + '</div>');
+      var wk = document.querySelector('.wrap .work');
+      if (wk) {
+        if (ed2.view.nobars) wk.classList.add('nobars'); if (ed2.view.nocnt) wk.classList.add('nocnt'); if (ed2.view.noid) wk.classList.add('noid');
+        if (S.edit) wk.insertAdjacentHTML('beforebegin', '<div class="viewbar"><span class="pxl">On this page</span>' + [['nobars', 'Phase progress bars'], ['nocnt', 'Done counts'], ['noid', 'Task numbers']].map(function (v) { var off = !!ed2.view[v[0]]; return '<button class="btn small' + (off ? '' : ' on') + '" data-ed="viewtog" data-v="' + v[0] + '">' + (off ? 'Show ' : 'Hide ') + v[1] + '</button>'; }).join('') + '</div>');
+      }
+      var two = document.querySelector('.wrap .two');
+      if (S.tab === 'dash' && two) {
+        var cards = Array.prototype.slice.call(two.querySelectorAll(':scope > div > .card'));
+        if (cards.length === 5) {
+          var IDS = ['progress', 'focus', 'phases', 'numbers', 'links'], NAMES = { progress: 'Progress bar', focus: 'Focus', phases: 'Phases', numbers: 'Numbers', links: 'Quick links' }, byId = {};
+          cards.forEach(function (c, i) { byId[IDS[i]] = c; c.setAttribute('data-blk', IDS[i]); });
+          var dc = ed2.dash, colOf = function (id) { return dc.col[id] || (IDS.indexOf(id) < 3 ? 'l' : 'r'); };
+          var order = dc.ord.filter(function (id) { return byId[id]; }); IDS.forEach(function (id) { if (order.indexOf(id) < 0) order.push(id); });
+          var colsEl = two.querySelectorAll(':scope > div'), L = colsEl[0], R = colsEl[1];
+          order.forEach(function (id) {
+            var c = byId[id], gone = !!dc.gone[id];
+            if (gone && !S.edit) { c.remove(); return; }
+            (colOf(id) === 'l' ? L : R).appendChild(c);
+            if (gone) c.classList.add('blkgone');
+            if (S.edit) {
+              var colIds = order.filter(function (x) { return colOf(x) === colOf(id); }), ci = colIds.indexOf(id);
+              c.setAttribute('data-dt', 'blk'); c.setAttribute('data-id', id); c.insertAdjacentHTML('afterbegin', '<div class="blkbar" draggable="true" data-dd="blk" data-id="' + id + '"><b>⋮⋮ ' + NAMES[id] + (gone ? ' (hidden)' : '') + '</b><span>' +
+                '<button data-ed="blkmv" data-b="' + id + '" data-d="-1"' + (ci === 0 ? ' disabled' : '') + ' aria-label="Move up">↑</button><button data-ed="blkmv" data-b="' + id + '" data-d="1"' + (ci === colIds.length - 1 ? ' disabled' : '') + ' aria-label="Move down">↓</button>' +
+                '<button data-ed="blkcol" data-b="' + id + '" aria-label="Move to the other column">' + (colOf(id) === 'l' ? '→' : '←') + '</button>' +
+                '<button data-ed="' + (gone ? 'blkshow' : 'blkhide') + '" data-b="' + id + '">' + (gone ? 'Show' : 'Hide') + '</button></span></div>');
+            }
+          });
+          var nc = byId.numbers; if (nc) Array.prototype.slice.call(nc.querySelectorAll('.kv')).forEach(function (kv) {
+            var lab = (kv.querySelector('.muted') || {}).textContent || '', gone = !!dc.kv[lab];
+            if (gone && !S.edit) { kv.remove(); return; }
+            if (gone) kv.classList.add('blkgone');
+            if (S.edit) kv.insertAdjacentHTML('beforeend', '<button class="pxx" data-ed="' + (gone ? 'kvshow' : 'kvhide') + '" data-k="' + esc(lab) + '" aria-label="' + (gone ? 'Show row' : 'Hide row') + '" style="margin-left:8px">' + (gone ? '+' : '✕') + '</button>');
+          });
+        }
+      }
+    };
+    var tabPanel = function (tab) {
+      var ed = edits(), SP = window.__SPECS, cust = ed.tabs.find(function (t) { return t.id === tab; }), name = cust ? cust.title : (ed.tabsRen[tab] || (SP && SP[tab] ? SP[tab]._t0 : (TABS0.find(function (t) { return t[0] === tab; }) || [0, tab])[1]));
+      var cols = cust ? cust.cols : (SP && SP[tab] ? SP[tab].cols : null), gone = !!ed.tabsGone[tab];
+      var h = '<div class="card editp"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><b>This table</b>' + inp('data-ed="tabname" data-t="' + tab + '" aria-label="Table name"', name, '', 'max-width:280px');
+      h += cust ? '<button class="btn small" data-ed="tabdel" data-t="' + tab + '">' + (S.confirmDel === tab ? 'Click again to delete the table and its data' : 'Delete table') + '</button>' : '<button class="btn small" data-ed="' + (gone ? 'tabrestore' : 'tabhide') + '" data-t="' + tab + '">' + (gone ? 'Restore table' : 'Hide table') + '</button>';
+      h += '</div>';
+      if (cols) {
+        h += '<div class="pxl" style="margin:12px 0 6px">Columns</div><div class="row" style="gap:8px;flex-wrap:wrap">' + cols.map(function (c) { return '<span class="colchip">' + inp('data-ed="colren" data-t="' + tab + '" data-k="' + esc(c.k) + '" aria-label="Column name"', c.label, '', 'width:150px') + (c.first ? '' : '<button class="pxx" data-ed="coldel" data-t="' + tab + '" data-k="' + esc(c.k) + '" aria-label="Delete column">✕</button>') + '</span>'; }).join('') +
+          '<span class="colchip"><input class="pxin" id="newcol" type="text" placeholder="New column name" style="width:150px"><button class="btn small" data-ed="coladd" data-t="' + tab + '">+ Add column</button></span></div>';
+      }
+      return h + '</div>';
+    };
+    var cxTable = function (t) {
+      var head = '<tr><th class="rn" style="left:0;z-index:4"></th>' + t.cols.map(function (c) { return '<th style="min-width:170px">' + esc(c.label) + '</th>'; }).join('') + '<th style="width:34px"></th></tr>';
+      var rows = (t.rows.length ? t.rows : []).map(function (r, i) { return '<tr><td class="rn">' + (i + 1) + '</td>' + t.cols.map(function (c) { return '<td><input class="cell" data-cx="' + t.id + '" data-r="' + r.id + '" data-k="' + c.k + '" value="' + esc((r.v || {})[c.k] || '') + '" autocomplete="off" aria-label="' + esc(c.label) + '"></td>'; }).join('') + '<td style="width:34px"><button class="delx" data-ed="cxdel" data-t="' + t.id + '" data-r="' + r.id + '" aria-label="Delete row">✕</button></td></tr>'; }).join('');
+      return '<div class="sheetbar"><h2 style="font-size:22px">' + esc(t.title) + '</h2></div><div class="sheetwrap"><table class="sheet"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div><div class="row addrow"><button class="btn" data-ed="cxadd" data-t="' + t.id + '">+ Add 5 rows</button></div>';
+    };
+    var baseEditor = function () {
+      var ed = edits(), rows = '', secs = S.baselineDef.filter(function (m) { return m.section; });
+      S.baselineDef.forEach(function (m) {
+        if (m.section) { rows += '<div class="sub edsec">' + inp('data-ed="bsec" data-o="' + esc(m._o || m.section) + '" aria-label="Section name"', m.section) + '<button class="btn small" data-ed="bmadd" data-o="' + esc(m._o || '') + '">+ Add metric</button></div>'; return; }
+        rows += '<div class="erow' + (m._gone ? ' gone' : '') + '"><div class="ebody">' + inp('data-ed="bm" data-f="label" data-k="' + m.id + '" aria-label="Metric"' + (m._gone ? ' disabled' : ''), m.label) +
+          '<div class="row" style="gap:8px">' + inp('data-ed="bm" data-f="where" data-k="' + m.id + '" placeholder="Where to find it" aria-label="Where to find it"' + (m._gone ? ' disabled' : ''), m.where || '', '', 'flex:1') +
+          '<select class="pxsel" data-ed="bm" data-f="freq" data-k="' + m.id + '"' + (m._gone ? ' disabled' : '') + '>' + ['Monthly', 'Weekly', 'Every 2 months', 'Quarterly', 'One-off'].map(function (f) { return '<option' + (f === m.freq ? ' selected' : '') + '>' + f + '</option>'; }).join('') + '</select></div></div>' +
+          (m._gone ? '<button class="btn small" data-ed="bmrestore" data-k="' + m.id + '">Restore</button>' : '<button class="pxx edel" data-ed="bmdel" data-k="' + m.id + '" aria-label="Delete metric">✕</button>') + '</div>';
+      });
+      return '<div class="sheetbar"><h2 style="font-size:22px">Baseline and monthly results</h2></div><div class="card" style="padding:10px">' + rows + '<div class="row" style="padding:10px"><button class="btn" data-ed="bsecadd">+ Add section</button></div></div>';
+    };
+    var _sr = Sheets.render;
+    Sheets.render = function (tab) {
+      var ed = edits(), cust = ed.tabs.find(function (t) { return t.id === tab; });
+      if (!S.edit) return cust ? cxTable(cust) : _sr(tab);
+      var pnl = tab === 'journal' || cust || window.__SPECS ? tabPanel(tab) : '';
+      if (cust) return pnl + cxTable(cust);
+      if (tab === 'baseline') return pnl + baseEditor();
+      return pnl + _sr(tab);
+    };
+    var _av = accessView;
+    accessView = function () {
+      if (!S.edit) return _av();
+      var ed = edits();
+      return '<div class="card" style="max-width:720px"><h2 style="font-size:18px;margin-bottom:8px">Access and setup</h2>' + ACCESS.map(function (a) { var added = ed.acc.add.some(function (x) { return x.id === a[0]; }), g = ed.acc.gone[a[0]], t = g ? a[1].replace(/ \(hidden\)$/, '') : a[1];
+        return '<div class="erow' + (g ? ' gone' : '') + '"><div class="ebody">' + inp('data-ed="acc" data-k="' + a[0] + '" aria-label="Item"' + (g ? ' disabled' : ''), t) + '</div>' + (g ? '<button class="btn small" data-ed="accrestore" data-k="' + a[0] + '">Restore</button>' : '<button class="pxx edel" data-ed="accdel" data-k="' + a[0] + '" aria-label="Delete item">✕</button>') + '</div>'; }).join('') +
+        '<div class="row" style="padding:10px 0"><button class="btn" data-ed="accadd">+ Add item</button></div></div>';
+    };
+    var wph = function () { return S.work && S.work[S.phase]; };
+    var phItems = function () { var p = wph(); return p ? p.items : []; };
+    var act = {
+      start: function () { S.edit = true; },
+      done: function () { S.edit = false; },
+      del: function (d, ed) { var k = d.k; if (customs().some(function (c) { return c.id === k; })) { if (S.sel === k) S.sel = null; save(customs().filter(function (c) { return c.id !== k; })); } else { var g = Object.assign({}, ed.gone); g[k] = true; saveEd({ gone: g }); } },
+      restore: function (d, ed) { var g = Object.assign({}, ed.gone); delete g[d.k]; saveEd({ gone: g }); },
+      up: function (d, ed) { mvOrd(d.k, -1, ed); }, down: function (d, ed) { mvOrd(d.k, 1, ed); },
+      secadd: function (d, ed) { var p = wph(), a = Object.assign({}, ed.addSec); a[p.n] = (a[p.n] || []).concat([{ id: rid('s'), text: 'New section' }]); saveEd({ addSec: a }); },
+      secdel: function (d, ed) {
+        var p = wph(), o = d.o, a = Object.assign({}, ed.addSec);
+        if ((a[p.n] || []).some(function (x) { return x.id === o; })) { a[p.n] = a[p.n].filter(function (x) { return x.id !== o; }); save(customs().filter(function (c) { return c.sec !== o; })); saveEd({ addSec: a }); }
+        else { var g = Object.assign({}, ed.secGone); g[o] = true; saveEd({ secGone: g }); }
+      },
+      secrestore: function (d, ed) { var g = Object.assign({}, ed.secGone); delete g[d.o]; saveEd({ secGone: g }); },
+      phadd: function (d, ed) { saveEd({ newPh: ed.newPh.concat([{ id: rid('p'), name: 'New phase' }]) }); S.phase = (S.work ? S.work.length : 0); S._goLast = true; },
+      phhide: function (d, ed) { var p = wph(), g = Object.assign({}, ed.phGone); g[p.n] = true; saveEd({ phGone: g }); },
+      phrestore: function (d, ed) { var p = wph(), g = Object.assign({}, ed.phGone); delete g[p.n]; saveEd({ phGone: g }); },
+      phdel: function (d, ed) { var p = wph(); if (S.confirmDel !== 'ph' + p.n) { S.confirmDel = 'ph' + p.n; return; } S.confirmDel = ''; saveEd({ newPh: ed.newPh.filter(function (x) { return x.id !== p._id; }) }); save(customs().filter(function (c) { return phN(c) !== p.n; })); delete S._wc[p._id]; S.phase = 0; },
+      newtab: function (d, ed) { var id = 't' + Math.random().toString(36).replace(/[^a-z]/g, '').slice(0, 8) + 'x'; saveEd({ tabs: ed.tabs.concat([{ id: id, title: 'New table', cols: [{ k: 'a', label: 'Column 1' }, { k: 'b', label: 'Column 2' }, { k: 'c', label: 'Column 3' }], rows: [1, 2, 3, 4, 5].map(function () { return { id: rid('r'), v: {} }; }) }]) }); S.tab = id; },
+      tabhide: function (d, ed) { var g = Object.assign({}, ed.tabsGone); g[d.t] = true; saveEd({ tabsGone: g }); S.tab = 'dash'; },
+      tabrestore: function (d, ed) { var g = Object.assign({}, ed.tabsGone); delete g[d.t]; saveEd({ tabsGone: g }); },
+      tabdel: function (d, ed) { if (S.confirmDel !== d.t) { S.confirmDel = d.t; return; } S.confirmDel = ''; saveEd({ tabs: ed.tabs.filter(function (t) { return t.id !== d.t; }) }); S.tab = 'dash'; },
+      coladd: function (d, ed) {
+        var v = (document.getElementById('newcol') || {}).value || ''; v = v.trim(); if (!v) { toast('Type a column name first'); return; }
+        var cust = ed.tabs.find(function (t) { return t.id === d.t; });
+        if (cust) saveEd({ tabs: ed.tabs.map(function (t) { return t.id === d.t ? Object.assign({}, t, { cols: t.cols.concat([{ k: rid('k'), label: v }]) }) : t; }) });
+        else { var c = Object.assign({}, ed.cols), ce = Object.assign({ gone: {}, ren: {}, add: [] }, c[d.t]); ce.add = ce.add.concat([{ k: rid('x'), label: v }]); c[d.t] = ce; saveEd({ cols: c }); }
+      },
+      coldel: function (d, ed) {
+        var cust = ed.tabs.find(function (t) { return t.id === d.t; });
+        if (cust) saveEd({ tabs: ed.tabs.map(function (t) { return t.id === d.t ? Object.assign({}, t, { cols: t.cols.filter(function (c) { return c.k !== d.k; }) }) : t; }) });
+        else { var c = Object.assign({}, ed.cols), ce = Object.assign({ gone: {}, ren: {}, add: [] }, c[d.t]); if (ce.add.some(function (a) { return a.k === d.k; })) ce.add = ce.add.filter(function (a) { return a.k !== d.k; }); else { ce.gone = Object.assign({}, ce.gone); ce.gone[d.k] = true; } c[d.t] = ce; saveEd({ cols: c }); }
+      },
+      cxadd: function (d, ed) { saveEd({ tabs: ed.tabs.map(function (t) { return t.id === d.t ? Object.assign({}, t, { rows: t.rows.concat([1, 2, 3, 4, 5].map(function () { return { id: rid('r'), v: {} }; })) }) : t; }) }); },
+      cxdel: function (d, ed) { saveEd({ tabs: ed.tabs.map(function (t) { return t.id === d.t ? Object.assign({}, t, { rows: t.rows.filter(function (r) { return r.id !== d.r; }) }) : t; }) }); },
+      accadd: function (d, ed) { var a = Object.assign({}, ed.acc); a.add = (a.add || []).concat([{ id: rid('ax'), text: 'New access item' }]); saveEd({ acc: a }); },
+      accdel: function (d, ed) { var a = Object.assign({}, ed.acc); if ((a.add || []).some(function (x) { return x.id === d.k; })) a.add = a.add.filter(function (x) { return x.id !== d.k; }); else { a.gone = Object.assign({}, a.gone); a.gone[d.k] = true; } saveEd({ acc: a }); },
+      accrestore: function (d, ed) { var a = Object.assign({}, ed.acc); a.gone = Object.assign({}, a.gone); delete a.gone[d.k]; saveEd({ acc: a }); },
+      bmadd: function (d, ed) { var b = Object.assign({}, ed.base); b.add = (b.add || []).concat([{ id: rid('bx'), label: 'New metric', where: '', freq: 'Monthly', sec: d.o || '' }]); saveEd({ base: b }); },
+      bmdel: function (d, ed) { var b = Object.assign({}, ed.base); if ((b.add || []).some(function (x) { return x.id === d.k; })) b.add = b.add.filter(function (x) { return x.id !== d.k; }); else { b.gone = Object.assign({}, b.gone); b.gone[d.k] = true; } saveEd({ base: b }); },
+      bmrestore: function (d, ed) { var b = Object.assign({}, ed.base); b.gone = Object.assign({}, b.gone); delete b.gone[d.k]; saveEd({ base: b }); },
+      tabmv: function (d, ed) { var ids = TABS.map(function (t) { return t[0]; }), i = ids.indexOf(d.t), j = i + (+d.d); if (i < 0 || j < 0 || j >= ids.length) return; var t = ids[i]; ids[i] = ids[j]; ids[j] = t; saveEd({ tabOrd: ids }); },
+      viewtog: function (d, ed) { var v = Object.assign({}, ed.view); if (v[d.v]) delete v[d.v]; else v[d.v] = true; saveEd({ view: v }); },
+      blkmv: function (d, ed) { var IDS = ['progress', 'focus', 'phases', 'numbers', 'links'], dc = ed.dash, order = dc.ord.filter(function (x) { return IDS.indexOf(x) >= 0; }); IDS.forEach(function (x) { if (order.indexOf(x) < 0) order.push(x); }); var col = function (x) { return dc.col[x] || (IDS.indexOf(x) < 3 ? 'l' : 'r'); }, same = order.filter(function (x) { return col(x) === col(d.b); }), i = same.indexOf(d.b), o = same[i + (+d.d)]; if (!o) return; var a = order.indexOf(d.b), b = order.indexOf(o); order[a] = o; order[b] = d.b; saveEd({ dash: Object.assign({}, dc, { ord: order }) }); },
+      blkcol: function (d, ed) { var IDS = ['progress', 'focus', 'phases', 'numbers', 'links'], dc = ed.dash, c = Object.assign({}, dc.col), cur = c[d.b] || (IDS.indexOf(d.b) < 3 ? 'l' : 'r'); c[d.b] = cur === 'l' ? 'r' : 'l'; saveEd({ dash: Object.assign({}, dc, { col: c }) }); },
+      blkhide: function (d, ed) { var g = Object.assign({}, ed.dash.gone); g[d.b] = true; saveEd({ dash: Object.assign({}, ed.dash, { gone: g }) }); },
+      blkshow: function (d, ed) { var g = Object.assign({}, ed.dash.gone); delete g[d.b]; saveEd({ dash: Object.assign({}, ed.dash, { gone: g }) }); },
+      kvhide: function (d, ed) { var g = Object.assign({}, ed.dash.kv); g[d.k] = true; saveEd({ dash: Object.assign({}, ed.dash, { kv: g }) }); },
+      kvshow: function (d, ed) { var g = Object.assign({}, ed.dash.kv); delete g[d.k]; saveEd({ dash: Object.assign({}, ed.dash, { kv: g }) }); },
+      bsecadd: function (d, ed) { var b = Object.assign({}, ed.base); b.addSec = (b.addSec || []).concat([{ id: rid('bs'), label: 'New section' }]); saveEd({ base: b }); }
+    };
+    var mvOrd = function (id, dir, ed) {
+      var p = wph(); if (!p) return; var its = p.items, i = its.findIndex(function (x) { return x.id === id; }), o = its[i + dir];
+      if (i < 0 || !o || o.kind === 's') return;
+      var ids = its.filter(function (x) { return x.kind !== 's'; }).map(function (x) { return x.id; }), a = ids.indexOf(id), b = ids.indexOf(o.id), t = ids[a]; ids[a] = ids[b]; ids[b] = t;
+      var ord = Object.assign({}, ed.ord); ord[p.n] = ids; saveEd({ ord: ord });
+    };
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-ed]'); if (!b || !S.client || !act[b.dataset.ed]) return; e.stopPropagation(); e.preventDefault();
+      act[b.dataset.ed](b.dataset, edits()); render();
+      if (S._goLast) { S._goLast = false; S.phase = S.work.length - 1; render(); }
+    }, true);
+    var ddDrop = {
+      tab: function (dr, tg, after, ed) { var ids = TABS.map(function (t) { return t[0]; }).filter(function (x) { return x !== dr; }), i = ids.indexOf(tg); if (i < 0) return; ids.splice(after ? i + 1 : i, 0, dr); saveEd({ tabOrd: ids }); },
+      blk: function (dr, tg, after, ed) { var IDS = ['progress', 'focus', 'phases', 'numbers', 'links'], dc = ed.dash, order = dc.ord.filter(function (x) { return IDS.indexOf(x) >= 0; }); IDS.forEach(function (x) { if (order.indexOf(x) < 0) order.push(x); }); var col = function (x) { return dc.col[x] || (IDS.indexOf(x) < 3 ? 'l' : 'r'); }; order = order.filter(function (x) { return x !== dr; }); var i = order.indexOf(tg); if (i < 0) return; order.splice(after ? i + 1 : i, 0, dr); var c = Object.assign({}, dc.col); c[dr] = col(tg); saveEd({ dash: Object.assign({}, dc, { ord: order, col: c }) }); },
+      task: function (dr, tg, after, ed) { var p = wph(); if (!p) return; var ids = p.items.filter(function (x) { return x.kind !== 's'; }).map(function (x) { return x.id; }); var di = ids.findIndex(function (x) { return String(x) === dr; }); if (di < 0) return; var dv = ids[di]; ids.splice(di, 1); var ti = ids.findIndex(function (x) { return String(x) === tg; }); if (ti < 0) return; ids.splice(after ? ti + 1 : ti, 0, dv); var ord = Object.assign({}, ed.ord); ord[p.n] = ids; saveEd({ ord: ord }); }
+    };
+    var ddClear = function () { document.querySelectorAll('.ddt,.ddb').forEach(function (x) { x.classList.remove('ddt', 'ddb'); }); };
+    document.addEventListener('dragstart', function (e) { var h = e.target.closest && e.target.closest('[data-dd]'); if (!h || !S.edit) return; S._dd = { k: h.dataset.dd, id: h.dataset.id }; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'dd'); } catch (x) {} }, true);
+    document.addEventListener('dragend', function () { S._dd = null; ddClear(); }, true);
+    document.addEventListener('dragover', function (e) { var d = S._dd; if (!d) return; var t = e.target.closest('[data-dt="' + d.k + '"]'); if (!t) return; e.preventDefault(); var r = t.getBoundingClientRect(), after = d.k === 'tab' ? e.clientX > r.left + r.width / 2 : e.clientY > r.top + r.height / 2; ddClear(); if (t.dataset.id !== d.id) t.classList.add(after ? 'ddb' : 'ddt'); }, true);
+    document.addEventListener('drop', function (e) { var d = S._dd; if (!d) return; var t = e.target.closest('[data-dt="' + d.k + '"]'); if (!t) return; e.preventDefault(); e.stopPropagation(); var r = t.getBoundingClientRect(), after = d.k === 'tab' ? e.clientX > r.left + r.width / 2 : e.clientY > r.top + r.height / 2; S._dd = null; ddClear(); if (t.dataset.id !== d.id && ddDrop[d.k]) { ddDrop[d.k](d.id, t.dataset.id, after, edits()); render(); } }, true);
+    document.addEventListener('keydown', function (e) {
+      if (!((e.metaKey || e.ctrlKey) && (e.key || '').toLowerCase() === 'z' && !e.shiftKey) || !S.edit || !S.client) return;
+      var tg = e.target; if (tg && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || tg.isContentEditable)) return;
+      var us = S._edUndo || []; if (!us.length) return; e.preventDefault();
+      var prev = JSON.parse(us.pop()); S._restoring = true; S.client.meta = S.client.meta || {}; S.client.meta._edits = prev;
+      api('/clients/' + S.client.id + '/meta', 'POST', { key: '_edits', patch: prev }).catch(function () {}); S._restoring = false; render(); toast('Undone');
+    });
+    var chg = {
+      ph: function (v, d, ed) { var ph = Object.assign({}, ed.ph); if (v) ph[d.n] = v; else delete ph[d.n]; saveEd({ ph: ph }); },
+      sec: function (v, d, ed) { var sc = Object.assign({}, ed.sec); if (v) sc[d.o] = v; else delete sc[d.o]; saveEd({ sec: sc }); },
+      text: function (v, d, ed, t) { if (!v) return true; fld('text', v, d, ed); }, how: function (v, d, ed, t) { fld('how', t.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean), d, ed); },
+      mv: function (v, d, ed) { if (!v) return; var cu = customs().find(function (c) { return c.id === d.k; }); if (cu) save(customs().map(function (c) { return c.id === d.k ? Object.assign({}, c, { sec: v }) : c; })); else { var m = Object.assign({}, ed.mv); m[d.k] = v; saveEd({ mv: m }); } },
+      tabname: function (v, d, ed) { if (!v) return true; var cust = ed.tabs.find(function (t) { return t.id === d.t; }); if (cust) saveEd({ tabs: ed.tabs.map(function (t) { return t.id === d.t ? Object.assign({}, t, { title: v }) : t; }) }); else { var r = Object.assign({}, ed.tabsRen); r[d.t] = v; saveEd({ tabsRen: r }); } },
+      colren: function (v, d, ed) { if (!v) return true; var cust = ed.tabs.find(function (t) { return t.id === d.t; }); if (cust) saveEd({ tabs: ed.tabs.map(function (t) { return t.id === d.t ? Object.assign({}, t, { cols: t.cols.map(function (c) { return c.k === d.k ? Object.assign({}, c, { label: v }) : c; }) }) : t; }) }); else { var c = Object.assign({}, ed.cols), ce = Object.assign({ gone: {}, ren: {}, add: [] }, c[d.t]); if (ce.add.some(function (a) { return a.k === d.k; })) ce.add = ce.add.map(function (a) { return a.k === d.k ? Object.assign({}, a, { label: v }) : a; }); else { ce.ren = Object.assign({}, ce.ren); ce.ren[d.k] = v; } c[d.t] = ce; saveEd({ cols: c }); } },
+      acc: function (v, d, ed) { if (!v) return true; var a = Object.assign({}, ed.acc); if ((a.add || []).some(function (x) { return x.id === d.k; })) a.add = a.add.map(function (x) { return x.id === d.k ? Object.assign({}, x, { text: v }) : x; }); else { a.ren = Object.assign({}, a.ren); a.ren[d.k] = v; } saveEd({ acc: a }); },
+      bm: function (v, d, ed) { var b = Object.assign({}, ed.base), f = d.f; if ((b.add || []).some(function (x) { return x.id === d.k; })) b.add = b.add.map(function (x) { if (x.id !== d.k) return x; var n = Object.assign({}, x); n[f] = v; return n; }); else { b.ren = Object.assign({}, b.ren); var r = Object.assign({}, b.ren[d.k]); r[f] = v; b.ren[d.k] = r; } saveEd({ base: b }); },
+      bsec: function (v, d, ed) { if (!v) return true; var b = Object.assign({}, ed.base); if ((b.addSec || []).some(function (x) { return x.id === d.o; })) b.addSec = b.addSec.map(function (x) { return x.id === d.o ? Object.assign({}, x, { label: v }) : x; }); else { b.secRen = Object.assign({}, b.secRen); b.secRen[d.o] = v; } saveEd({ base: b }); }
+    };
+    var fld = function (kind, val, d, ed) {
+      var cu = customs().find(function (c) { return c.id === d.k; });
+      if (cu) save(customs().map(function (c) { if (c.id !== d.k) return c; var n = Object.assign({}, c); n[kind] = val; return n; }));
+      else { var it = Object.assign({}, ed.items), cur = Object.assign({}, it[d.k]); cur[kind] = val; it[d.k] = cur; saveEd({ items: it }); }
+    };
+    document.addEventListener('change', function (e) {
+      var t = e.target, d = t.dataset || {};
+      if (d.cx) { e.stopPropagation(); var ed0 = edits(); saveEd({ tabs: ed0.tabs.map(function (x) { return x.id !== d.cx ? x : Object.assign({}, x, { rows: x.rows.map(function (r) { if (r.id !== d.r) return r; var v = Object.assign({}, r.v); v[d.k] = t.value; return Object.assign({}, r, { v: v }); }) }); }) }); return; }
+      if (!d.ed || !S.client || !chg[d.ed]) return; e.stopPropagation();
+      var skip = chg[d.ed](t.value.trim(), d, edits(), t); render();
+    }, true);
+    ['keydown', 'keyup', 'keypress', 'input'].forEach(function (ev) { document.addEventListener(ev, function (e) { var d = e.target.dataset || {}; if (d.ed || d.cx) { e.stopPropagation(); if (ev === 'keydown' && e.key === 'Enter' && e.target.tagName === 'INPUT') e.target.blur(); } }, true); });
     document.addEventListener('click', function (e) {
       var b = e.target.closest('[data-ct]'); if (!b || !S.client) return; e.stopPropagation();
       var a = b.dataset.ct, v = +b.dataset.v, i = +b.dataset.i, k = S.sel, m = k ? meta(k) : {};
@@ -209,8 +511,8 @@ window.SR = window.SR || {};
         var lines = (S.ctText || '').split('\n').map(function (l) { return l.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim(); }).filter(Boolean);
         if (!lines.length) { toast('Type a task first'); return; }
         var rep = S.ctRep || 'Does not repeat', list = customs().slice(), ph = S.work[S.phase].n;
-        lines.forEach(function (l, j) { list.push({ id: 'c' + Date.now().toString(36) + j, text: l, rep: rep, ph: ph }); });
-        S.ctOpen = false; S.ctText = ''; S.ctRep = ''; save(list); render(); toast(lines.length > 1 ? lines.length + ' tasks added' : 'Task added');
+        lines.forEach(function (l, j) { list.push({ id: 'c' + Date.now().toString(36) + j, text: l, rep: rep, ph: ph, sec: S.ctSec || '' }); });
+        S.ctOpen = false; S.ctText = ''; S.ctRep = ''; S.ctSec = ''; save(list); render(); toast(lines.length > 1 ? lines.length + ' tasks added' : 'Task added');
       }
       else if (a === 'del') { var id = S.sel; S.sel = null; delete S.client.marks[id]; save(customs().filter(function (c) { return c.id !== id; })); api('/clients/' + S.client.id + '/mark', 'POST', { key: id, status: null }).catch(function () {}); render(); }
       else if (a === 'est' && k) setM([k], { est: m.est === v ? 0 : v });
@@ -220,7 +522,7 @@ window.SR = window.SR || {};
     }, true);
     document.addEventListener('input', function (e) { var f = e.target.dataset && e.target.dataset.ctIn; if (f === 'text') { S.ctText = e.target.value; var b = document.querySelector('[data-ct="add"]'); if (b) { var n = S.ctText.split('\n').filter(function (l) { return l.trim(); }).length; b.textContent = n > 1 ? 'Add ' + n + ' tasks' : 'Add task'; } } }, true);
     document.addEventListener('change', function (e) {
-      var d = e.target.dataset || {}; if (d.ctIn === 'rep') { S.ctRep = e.target.value; e.stopPropagation(); return; }
+      var d = e.target.dataset || {}; if (d.ctIn === 'rep') { S.ctRep = e.target.value; e.stopPropagation(); return; } if (d.ctIn === 'sec') { S.ctSec = e.target.value; e.stopPropagation(); return; }
       if (!S.client || !S.sel) return;
       if (d.cf === 'rep') { e.stopPropagation(); setM([S.sel], { rep: e.target.value }); }
       else if (d.cf === 'time') { e.stopPropagation(); setM([S.sel], { time: e.target.value }); }
@@ -234,6 +536,11 @@ window.SR = window.SR || {};
     setInterval(function () { if (expire()) render(); }, 20000);
   };
   SEO_JS += '\n;(' + seoTasksLayer.toString() + ')();\n';
+  if (SR.colResizer) SEO_JS += '\n;(' + SR.colResizer.toString() + ')(document);\n';
+  SR.seoEdit = function () {
+    var f = document.querySelector('iframe[title="SEO / AEO workspace"]');
+    if (f && f.contentWindow) f.contentWindow.postMessage({ sr: 'edit' }, '*'); else SR._seoEditPending = true;
+  };
   SR.SeoWorkspace = function (p) {
     var c = p.client, B = SR.SEO_BUNDLE;
     var dark = document.documentElement.style.getPropertyValue('color-scheme') === 'dark';
@@ -245,13 +552,13 @@ window.SR = window.SR || {};
       return '<!doctype html><html lang="en"' + (dark ? ' data-theme="dark"' : '') + '><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
         '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>' + B.css + SEO_CSS + '</style></head><body><div id="app"></div><div id="toast" role="status" aria-live="polite"></div>' +
         '<script>(' + seoShim.toString() + ')(' + safe(cfg) + ',' + safe({ work: B.work, baseline: B.baseline }) + ');<\/script>' +
-        '<script>' + B.tabs.replace(/<\/script/g, '<\\/script') + '<\/script><script>' + B.app.replace(/route\(\);\s*\}\)\(\);\s*$/, function () { return B.embed + SEO_JS + '\nroute();\n})();'; }).replace(/<\/script/g, '<\\/script') + '<\/script></body></html>';
+        '<script>' + B.tabs.replace('return { setup, render, dashStats', 'window.__SPECS = SPECS; return { setup, render, dashStats').replace(/<\/script/g, '<\\/script') + '<\/script><script>' + B.app.replace(/route\(\);\s*\}\)\(\);\s*$/, function () { return B.embed + SEO_JS + '\nroute();\n})();'; }).replace(/<\/script/g, '<\\/script') + '<\/script></body></html>';
     }, [id, dark, c.name, c.domain, SR.acct && SR.acct[c.id] && SR.acct[c.id].domain]);
     var fr = React.useRef(null), hs = React.useState(900), ht = hs[0], setHt = hs[1];
     React.useEffect(function () {
       var f = fr.current;
       var sendV = function () { if (!f || !f.contentWindow) return; var r = f.getBoundingClientRect(); f.contentWindow.postMessage({ sr: 'v', t: Math.max(0, -r.top), h: window.innerHeight - Math.max(0, r.top) }, '*'); };
-      var onMsg = function (e) { if (!f || e.source !== f.contentWindow || !e.data) return; if (e.data.sr === 'seo' && e.data.key) { try { SR.store.saveKV('seo:' + e.data.key, e.data.value); } catch (x) {} return; } if (e.data.sr === 'h') setHt(Math.max(420, e.data.h)); if (e.data.sr === 'h' || e.data.sr === 'ready') sendV(); };
+      var onMsg = function (e) { if (!f || e.source !== f.contentWindow || !e.data) return; if (e.data.sr === 'ready' && SR._seoEditPending) { SR._seoEditPending = false; f.contentWindow.postMessage({ sr: 'edit' }, '*'); } if (e.data.sr === 'seo' && e.data.key) { try { SR.store.saveKV('seo:' + e.data.key, e.data.value); } catch (x) {} return; } if (e.data.sr === 'h') setHt(Math.max(420, e.data.h)); if (e.data.sr === 'h' || e.data.sr === 'ready') sendV(); };
       window.addEventListener('message', onMsg); window.addEventListener('scroll', sendV, true); window.addEventListener('resize', sendV);
       var iv = setInterval(sendV, 600);
       return function () { window.removeEventListener('message', onMsg); window.removeEventListener('scroll', sendV, true); window.removeEventListener('resize', sendV); clearInterval(iv); };
@@ -468,12 +775,78 @@ window.SR = window.SR || {};
     var tab = p.tab, setTab = function (t) { p.setTab(t); };
     var rm = p.rm, ac = p.ac;
     var tasks = p.tasks.filter(function (t) { return t.clientId === c.id && (t.proj || c.type) === pt; });
+    /* edit mode: per client, per project overrides of the default checklist */
+    var edS = useState(null), editFor = edS[0], setEditFor = edS[1], edit = editFor === pk;
+    var delS = useState(''), delSec = delS[0], setDelSec = delS[1];
+    var ddH = useState(null), ddS = ddH[0], setDdS = ddH[1];
+    var colH = useState(function () { try { return JSON.parse(localStorage.getItem('sr_secol')) || {}; } catch (e) { return {}; } }), colS = colH[0], setColS = colH[1];
+    var isCol = function (k) { return !!colS[k]; };
+    var togCol = function (k, v) { setColS(function (o) { var n = Object.assign({}, o); if (v === undefined ? !n[k] : v) n[k] = 1; else delete n[k]; try { localStorage.setItem('sr_secol', JSON.stringify(n)); } catch (e) {} return n; }); };
+    var E = (c.edits || {})[pt] || {}, ePh = E.ph || {}, eSt = E.st || {}, eGone = E.gone || {}, eAdd = E.add || {};
+    var phs = tp.phases.map(function (ph) {
+      var st = ph.steps.filter(function (s) { return !eGone[s[0]]; }).map(function (s) { return [s[0], eSt[s[0]] || s[1], s[2], s[3]]; })
+        .concat((eAdd[ph.id] || []).map(function (a) { return [a.id, eSt[a.id] || a.name, [], 'list']; }));
+      var so = (E.sord || {})[ph.id]; if (so) st = st.slice().sort(function (a, b) { var i = so.indexOf(a[0]), j = so.indexOf(b[0]); return (i < 0 ? 999 : i) - (j < 0 ? 999 : j); });
+      return Object.assign({}, ph, { name: ePh[ph.id] || ph.name, steps: st });
+    });
+    var setE = function (fn) { if (p.setEdits) p.setEdits(c.id, pt, fn); };
+    var updT = function (id, patch) { p.setTasks(function (ts) { return ts.map(function (x) { return x.id === id ? Object.assign({}, x, patch) : x; }); }); };
+    var sk = function (t) { return [t.ph === 'research' ? '' : (t.step || ''), t.ph || '', t.repeat || '', t.milestone ? 1 : 0].join('|'); };
+    var U = function (msg, fn) { if (SR.undoable) SR.undoable(msg, fn); else fn(); };
+    var moveT = function (t, dir) { U('Task moved', function () {
+      p.setTasks(function (ts) {
+        var sib = ts.filter(function (x) { return x.clientId === t.clientId && (x.proj || c.type) === (t.proj || c.type) && sk(x) === sk(t); });
+        var i = sib.findIndex(function (x) { return x.id === t.id; }), o = sib[i + dir]; if (!o) return ts;
+        var a = ts.findIndex(function (x) { return x.id === t.id; }), b = ts.findIndex(function (x) { return x.id === o.id; });
+        var out = ts.slice(); var tmp = out[a]; out[a] = out[b]; out[b] = tmp; return out;
+      });
+    }); };
+    var delT = function (t) { U('Task deleted', function () { p.setTasks(function (ts) { return ts.filter(function (x) { return x.id !== t.id; }); }); }); };
+    /* drag to reorder: a grip on each row; same section reorders, another section moves the task there */
+    var ddProps = function (kind, id, fn) {
+      return { onDragOver: function (e) { var d = SR._dde; if (!d || d.kind !== kind) return; e.preventDefault(); var r = e.currentTarget.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2; setDdS(function (o) { return o && o.kind === kind && o.id === id && o.after === after ? o : { kind: kind, id: id, after: after }; }); },
+        onDragLeave: function () { setDdS(function (o) { return o && o.kind === kind && o.id === id ? null : o; }); },
+        onDrop: function (e) { var d = SR._dde; if (!d || d.kind !== kind) return; e.preventDefault(); e.stopPropagation(); var r = e.currentTarget.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2; SR._dde = null; setDdS(null); if (d.id !== id) fn(d.id, id, after); } };
+    };
+    var ddCls = function (kind, id) { return ddS && ddS.kind === kind && ddS.id === id ? (ddS.after ? ' dbot' : ' dtop') : ''; };
+    var grip = function (kind, id, sel) {
+      return html`<span class="dd-grip" draggable="true" title="Drag to reorder" aria-label="Drag to reorder" onDragStart=${function (e) { SR._dde = { kind: kind, id: id }; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'dd'); var row = e.currentTarget.closest(sel); if (row) e.dataTransfer.setDragImage(row, 12, 12); } catch (x) {} }} onDragEnd=${function () { SR._dde = null; setDdS(null); }}>⋮⋮</span>`;
+    };
+    var dropTask = function (dragId, targetId, after) {
+      U('Task moved', function () { p.setTasks(function (ts) {
+        var d = null, g = null; ts.forEach(function (x) { if (x.id === dragId) d = x; if (x.id === targetId) g = x; });
+        if (!d || !g || d.clientId !== g.clientId || (d.proj || c.type) !== (g.proj || c.type)) return ts;
+        var n = d;
+        if (sk(d) !== sk(g)) { if (!(d.step && g.step && !d.repeat && !g.repeat)) return ts; n = Object.assign({}, d, { step: g.step, ph: g.ph }); }
+        var rest = ts.filter(function (x) { return x.id !== dragId; }); var i = rest.findIndex(function (x) { return x.id === targetId; }); if (i < 0) return ts;
+        rest.splice(after ? i + 1 : i, 0, n); return rest;
+      }); });
+    };
+    var dropSec = function (dragSid, targetSid, after) {
+      var ph = null; phs.forEach(function (x) { if (x.steps.some(function (s) { return s[0] === dragSid; }) && x.steps.some(function (s) { return s[0] === targetSid; })) ph = x; });
+      if (!ph) return;
+      var ids = ph.steps.map(function (s) { return s[0]; }).filter(function (x) { return x !== dragSid; }); var i = ids.indexOf(targetSid); ids.splice(after ? i + 1 : i, 0, dragSid);
+      U('Section moved', function () { setE(function (o) { var so = Object.assign({}, o.sord); so[ph.id] = ids; return Object.assign({}, o, { sord: so }); }); });
+    };
+    var removeSec = function (sid) { U('Section deleted', function () {
+      p.setTasks(function (ts) { return ts.filter(function (x) { return !(x.clientId === c.id && (x.proj || c.type) === pt && x.step === sid); }); });
+      setE(function (o) {
+        var gone = Object.assign({}, o.gone), add = Object.assign({}, o.add);
+        Object.keys(add).forEach(function (k) { add[k] = add[k].filter(function (a) { return a.id !== sid; }); });
+        gone[sid] = true; return Object.assign({}, o, { gone: gone, add: add });
+      });
+    }); };
+    var addSec = function (phid) {
+      var id = 'x' + Date.now().toString(36);
+      setE(function (o) { var add = Object.assign({}, o.add); add[phid] = (add[phid] || []).concat([{ id: id, name: 'New section' }]); return Object.assign({}, o, { add: add }); });
+    };
+    var blurOnEnter = function (e) { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } };
 
     /* setup progress */
     var byStep = function (sid) { return tasks.filter(function (t) { return t.step === sid; }); };
     var stepDone = function (sid) { var ts = byStep(sid); return ts.length ? ts.every(function (t) { return t.done; }) : true; };
     var allSteps = 0, doneSteps = 0;
-    tp.phases.forEach(function (ph) { ph.steps.forEach(function (s) { allSteps++; if (stepDone(s[0])) doneSteps++; }); });
+    phs.forEach(function (ph) { ph.steps.forEach(function (s) { allSteps++; if (stepDone(s[0])) doneSteps++; }); });
     var setupComplete = doneSteps === allSteps;
     var live = SR.isLive(c, pt);
     var latestOf = function () {
@@ -487,11 +860,11 @@ window.SR = window.SR || {};
     var goalOf = (c.pg || {})[pt] || (pt === c.type ? (tp.kind === 'ads' ? { text: c.promise, target: (c.math || {}).leads || 0, unit: 'leads' } : tp.kind === 'seo' ? { text: c.promise, target: 0, unit: 'leads' } : { text: c.promise, target: (c.math || {}).vis || 0, unit: '%' }) : { text: '', target: 0, unit: 'leads' });
 
     /* accordion groups */
-    var groups = tp.phases.map(function (ph, gi) {
+    var groups = phs.map(function (ph, gi) {
       var tot = 0, dn = 0;
       var steps = ph.steps.map(function (s) {
         var stl = p.settling || {}; var fin = function (t) { return t.done && !stl[t.id]; };
-        var ts = byStep(s[0]).slice().sort(function (a, b) { return (fin(a) ? 1 : 0) - (fin(b) ? 1 : 0); });
+        var ts = byStep(s[0]).slice(); if (!edit) ts.sort(function (a, b) { return (fin(a) ? 1 : 0) - (fin(b) ? 1 : 0); });
         var sd = ts.length ? ts.every(function (t) { return t.done; }) : true;
         ts.forEach(function (t) { tot++; if (t.done) dn++; });
         var sc = secOf(s[0], s[3], ph.color); return { id: s[0], name: s[1], done: sd, tasks: ts, icon: sc[1], color: sc[0] };
@@ -506,12 +879,28 @@ window.SR = window.SR || {};
     /* ---- Overview: promise + progress + accordion tasks ---- */
       var ongoingTasks = tasks.filter(function (t) { return t.repeat || t.maint || (t.custom && !t.ph && !t.step); });
       var just = p.just || {};
+      var editRow = function (t) {
+        return html`<div class=${'erow dd-row' + ddCls('task', t.id)} key=${t.id} ...${ddProps('task', t.id, dropTask)}>
+          <span class="eord">${grip('task', t.id, '.erow')}<button type="button" aria-label="Move up" onClick=${function () { moveT(t, -1); }}>↑</button><button type="button" aria-label="Move down" onClick=${function () { moveT(t, 1); }}>↓</button></span>
+          <div class="ebody">
+            <input class="ein" type="text" defaultValue=${t.name} aria-label="Task name" onBlur=${function (e) { var v = e.target.value.trim(); if (v && v !== t.name) updT(t.id, { name: v }); else e.target.value = t.name; }} onKeyDown=${blurOnEnter} />
+            <textarea class="ehow" rows=${Math.max(2, Math.min(7, (t.how || []).length + 1))} placeholder="How to do it. One step per line." aria-label="How to do it" defaultValue=${(t.how || []).join('\n')} onBlur=${function (e) { var v = e.target.value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean); if (v.join('\n') !== (t.how || []).join('\n')) updT(t.id, { how: v }); }}></textarea>
+          </div>
+          <button type="button" class="edel" aria-label=${'Delete ' + t.name} title="Delete task" onClick=${function () { delT(t); }}>×</button>
+        </div>`;
+      };
       var rowFor = function (t, clr, num) {
+        if (edit) return editRow(t);
         return html`<${SR.TaskRow} key=${t.id} task=${t} num=${num} selected=${!!(p.sel && p.sel[t.id])} active=${p.openId === t.id} just=${!!just[t.id]}
           onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} />`;
       };
-      var secHead = function (icon, name, color, d, t) {
-        return html`<div class="sub" style=${'--sc:' + color}>${SR.Icon(icon, 18)}<span>${name}</span><span class="n">${d}/${t}</span></div>`;
+      var secHead = function (icon, name, color, d, t, sid, canDel, ck) {
+        if (edit && sid) return html`<div class=${'sub edsec dd-row' + ddCls('sec', sid)} style=${'--sc:' + color} ...${ddProps('sec', sid, dropSec)}>${grip('sec', sid, '.edsec')}${SR.Icon(icon, 18)}
+          <input class="ein" type="text" defaultValue=${name} aria-label="Section name" onBlur=${function (e) { var v = e.target.value.trim(); if (v && v !== name) setE(function (o) { var st = Object.assign({}, o.st); st[sid] = v; return Object.assign({}, o, { st: st }); }); else e.target.value = name; }} onKeyDown=${blurOnEnter} />
+          ${canDel ? html`<button type="button" class=${'edelsec' + (delSec === sid ? ' sure' : '')} onClick=${function () { if (delSec !== sid) { setDelSec(sid); return; } setDelSec(''); removeSec(sid); }}>${delSec === sid ? 'Delete section and its tasks?' : 'Delete section'}</button>` : null}</div>`;
+        var shut = ck && isCol(ck);
+        return html`<div class=${'sub subtog' + (shut ? ' shut' : '')} style=${'--sc:' + color} role="button" tabindex="0" aria-expanded=${shut ? 'false' : 'true'} onClick=${function () { if (ck) togCol(ck); }} onKeyDown=${function (e) { if (ck && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); togCol(ck); } }}
+          onContextMenu=${function (e) { if (!ck) return; SR.openMenu(e, [{ label: shut ? 'Expand section' : 'Collapse section', fn: function () { togCol(ck); } }, { label: 'Collapse all sections', fn: function () { var n = {}; groups.forEach(function (g) { g.steps.forEach(function (s) { n[pk + '/' + s.id] = 1; }); }); setColS(n); try { localStorage.setItem('sr_secol', JSON.stringify(n)); } catch (x) {} } }, { label: 'Expand all sections', fn: function () { setColS({}); try { localStorage.removeItem('sr_secol'); } catch (x) {} } }, { sep: true }, { label: 'Edit checklist and process', fn: function () { if (pt === 'seo') { SR.seoEdit && SR.seoEdit(c.id); } else setEditFor(pk); } }]); }}><span class="chv">${shut ? '▸' : '▾'}</span>${SR.Icon(icon, 18)}<span>${name}</span><span class="n">${d}/${t}</span></div>`;
       };
       var tasksBlock = function (on, clr) {
         var order = ['One-off'].concat(SR.CADENCES, ['Milestones']);
@@ -520,14 +909,15 @@ window.SR = window.SR || {};
           return { label: label, tasks: ts };
         }).filter(function (x) { return x.tasks.length; });
         var k = 0;
-        return html`<div class="tasksblock">${og.map(function (x) {
-            var isM = x.label === 'Milestones', isO = x.label === 'One-off', dn = x.tasks.filter(function (t) { return t.done; }).length;
-            return html`<div key=${x.label}>
-              ${secHead(isM ? 'flag' : isO ? 'check' : 'repeat', isM ? 'Milestones' : x.label, isM ? '#8A6D1F' : isO ? '#4B5563' : ['#0E7490', '#3B6FD4', '#7C3AED', '#C77700', '#BE185D', '#0F766E'][SR.CADENCES.indexOf(x.label) % 6], dn, x.tasks.length)}
-              ${x.tasks.map(function (t) { k++; return rowFor(t, clr, on + '.' + k); })}</div>`;
-          })}
+        return html`<div class="tasksblock">
           <${SR.AddCustom} first=${true} label="Repeats" opts=${[['Once', 'Does not repeat']].concat(['Weekly', 'Daily', 'Every 3 days', 'Fortnightly', 'Monthly', 'Every 90 days'].map(function (cd) { return [cd, cd]; }), [['Milestone', 'One-off milestone']])} onAdd=${p.addCustom}
             make=${function (nm, rep) { return rep === 'Milestone' ? { clientId: c.id, proj: pt, name: nm, milestone: true, maint: true, date: '', custom: true, how: [] } : rep === 'Once' ? { clientId: c.id, proj: pt, name: nm, custom: true, how: [] } : { clientId: c.id, proj: pt, name: nm, repeat: rep, maint: true, custom: true, how: [] }; }} />
+          ${og.map(function (x) {
+            var isM = x.label === 'Milestones', isO = x.label === 'One-off', dn = x.tasks.filter(function (t) { return t.done; }).length;
+            return html`<div key=${x.label}>
+              ${secHead(isM ? 'flag' : isO ? 'check' : 'repeat', isM ? 'Milestones' : x.label, isM ? '#8A6D1F' : isO ? '#4B5563' : ['#0E7490', '#3B6FD4', '#7C3AED', '#C77700', '#BE185D', '#0F766E'][SR.CADENCES.indexOf(x.label) % 6], dn, x.tasks.length, undefined, undefined, pk + '/ong/' + x.label)}
+              ${x.tasks.map(function (t) { k++; var r = rowFor(t, clr, on + '.' + k); return edit || !isCol(pk + '/ong/' + x.label) ? r : null; })}</div>`;
+          })}
         </div>`;
       };
       var seoTasks = function () { return tasksBlock(1, tp.color); };
@@ -574,21 +964,23 @@ window.SR = window.SR || {};
         var gi = Math.max(0, groups.findIndex(function (x) { return x.ph.id === cur; }));
         var g = groups[gi], k2 = 0, flat = g.ph.id === 'research';
         panel = html`<div class="list swap" key=${g.ph.id}>
-          <div class="listhead"><h3>${gi + 1}. ${g.ph.name}</h3><span>${g.dn}/${g.tot} done</span></div>
+          <div class="listhead">${edit ? html`<h3 style="display:flex;align-items:center;gap:8px;flex:1">${gi + 1}.<input class="ein ephase" type="text" defaultValue=${g.ph.name} aria-label="Phase name" onBlur=${function (e) { var v = e.target.value.trim(); if (v && v !== g.ph.name) setE(function (o) { var ph = Object.assign({}, o.ph); ph[g.ph.id] = v; return Object.assign({}, o, { ph: ph }); }); else e.target.value = g.ph.name; }} onKeyDown=${blurOnEnter} /></h3>` : html`<h3>${gi + 1}. ${g.ph.name}</h3>`}<span>${g.dn}/${g.tot} done</span></div>
           <div class="listcard">
+          <${SR.AddCustom} label="Section" opts=${(flat ? g.steps.slice(-1) : g.steps).map(function (st) { return [st.id, st.name]; })} onAdd=${p.addCustom}
+            make=${function (nm, step) { return { clientId: c.id, proj: pt, name: nm, ph: g.ph.id, step: step, custom: true, deadline: '', how: [] }; }} />
           ${flat ? html`<div class="sgrp" style=${'--sc:' + g.ph.color}>${(function () { var stl = p.settling || {}, all = []; g.steps.forEach(function (st) { st.tasks.forEach(function (t) { all.push(t); }); }); var fin = function (t) { return t.done && !stl[t.id] ? 1 : 0; }; var idx = function (t) { return all.indexOf(t); }; return all.slice().sort(function (a, b) { return fin(a) - fin(b) || idx(a) - idx(b); }); })().map(function (t) { k2++; return rowFor(t, g.ph.color, (gi + 1) + '.' + k2); })}</div>`
             : g.steps.map(function (st, si) {
               var d = st.tasks.filter(function (t) { return t.done; }).length;
-              return html`<div key=${si} class="sgrp" style=${'--sc:' + st.color}>${secHead(st.icon, st.name, st.color, d, st.tasks.length)}${st.tasks.map(function (t) { k2++; return rowFor(t, g.ph.color, (gi + 1) + '.' + k2); })}</div>`;
+              return html`<div key=${st.id} class="sgrp" style=${'--sc:' + st.color}>${secHead(st.icon, st.name, st.color, d, st.tasks.length, st.id, true, pk + '/' + st.id)}${edit || !isCol(pk + '/' + st.id) ? st.tasks.map(function (t) { k2++; return rowFor(t, g.ph.color, (gi + 1) + '.' + k2); }) : null}</div>`;
             })}
-          <${SR.AddCustom} label="Section" opts=${(flat ? g.steps.slice(-1) : g.steps).map(function (st) { return [st.id, st.name]; })} onAdd=${p.addCustom}
-            make=${function (nm, step) { return { clientId: c.id, proj: pt, name: nm, ph: g.ph.id, step: step, custom: true, deadline: '', how: [] }; }} />
+          ${edit && !flat ? html`<button type="button" class="ac-open" onClick=${function () { addSec(g.ph.id); }}>+ Add a section</button>` : null}
           </div>
         </div>`;
       }
 
       return html`<div style="display:flex;flex-direction:column;gap:20px">
         ${promiseBlock}${ask}${progress}
+        ${edit ? html`<div class="editbar"><span><b>Editing the checklist.</b> Rename phases and sections, change task names and how-to steps, move tasks up or down, delete or add anything. Changes save as you go and apply to this client only.</span><button type="button" onClick=${function () { setEditFor(null); }}>Done editing</button></div>` : null}
         <section style="padding:6px 2px 0">
           <h2 style="margin:0;font-size:18px">Tasks</h2>
           <div class="work">${phaseList}${panel}</div>
@@ -603,10 +995,19 @@ window.SR = window.SR || {};
       return [
         { label: 'Open ' + SR.TEMPLATES[type].label, fn: function () { p.setProj(type); setTab('overview'); } },
         { label: 'Edit client details', fn: function () { SR.act.edit(c.id); } },
+        { label: (editFor === (type === c.type ? c.id : c.id + ':' + type) ? 'Done editing the checklist' : 'Edit checklist and process'), fn: function () { var k = type === c.type ? c.id : c.id + ':' + type; p.setProj(type); setTab('overview'); if (type === 'seo') { SR.seoEdit && SR.seoEdit(c.id); } else setEditFor(editFor === k ? null : k); } },
         { label: 'Reset tasks to the defaults', fn: function () { SR.act.resetProject(c.id, type); } },
         { sep: true },
+        { label: 'Save checklist as a template', fn: function () { SR.act.saveTemplate(c.id, type); } }
+      ].concat((function () {
+        var all = Object.keys(SR.templates || {}).map(function (k) { return SR.templates[k]; }).filter(function (x) { return x.type === type; });
+        if (!all.length) return [];
+        return [{ head: 'Apply a saved template' }].concat(all.map(function (x) { return { label: x.name, hint: (x.tasks || []).length + ' tasks', fn: function () { SR.act.applyTemplate(c.id, type, x.id); } }; }))
+          .concat([{ head: 'Remove a template' }]).concat(all.map(function (x) { return { label: x.name, danger: true, fn: function () { SR.act.delTemplate(x.id); } }; }));
+      })()).concat([
+        { sep: true },
         { label: 'Delete project', hint: projs.length < 2 ? 'needs 2+ projects' : '', danger: true, disabled: projs.length < 2, fn: function () { SR.act.delProject(c.id, type); } }
-      ];
+      ]);
     };
     var ptab = function (type) {
       var T = SR.TEMPLATES[type], on = tab === 'overview' && pt === type;

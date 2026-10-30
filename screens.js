@@ -10,6 +10,7 @@ window.SR = window.SR || {};
   SR.Home = function (p) {
     var mrr = SR.useMrr();
     var who = p.who;
+    var hr = React.useRef(null), hw = SR.useWidth(hr), narrow = hw < 980;
     var sdn = useState(false), showDone = sdn[0], setShowDone = sdn[1];
     var liveCount = p.clients.length, slots = 14;
     var st0 = p.settling || {};
@@ -24,22 +25,23 @@ window.SR = window.SR || {};
     var filtered = p.tasks.filter(function (t) { return (showDone || !t.done || st0[t.id] || t.doneDay === SR.TODAY) && (who === 'all' || (who === 'none' ? !t.owner : t.owner === who)) && dayOk(t, day); });
     var chipCount = function (w) { return p.tasks.filter(function (t) { return !t.done && (w === 'all' || (w === 'none' ? !t.owner : t.owner === w)); }).length; };
     var openTotal = p.tasks.filter(function (t) { return !t.done; }).length;
-    return html`<div style="display:flex;flex-direction:column;gap:20px">
+    return html`<div ref=${hr} class=${'home' + (narrow ? ' narrow' : '')} style="display:flex;flex-direction:column;gap:20px">
       <div><div style="font-size:13px;color:var(--muted)">${(function () { var n = SR.nowParts(); return n.date + ' · ' + n.time + ' ' + n.zone; })()}</div>${H1('Home')}</div>
       <section aria-label="Numbers" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
-        <div style=${card + ';padding:18px 20px'}>${label('MRR')}<div style="font-size:30px;font-weight:700;color:var(--green);margin-top:6px">${mrr == null ? '—' : SR.money(mrr)}</div><div style="font-size:12px;color:var(--muted)">↻ Live from Sales · Revenue${SR.mrr.at ? ' · updated ' + new Date(SR.mrr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</div></div>
-        <div style=${card + ';padding:18px 20px'}>${label('OPEN TASKS')}<div style="font-size:30px;font-weight:700;margin-top:6px">${openTotal}</div><div style="font-size:12px;color:var(--muted)">across all clients</div></div>
-        <div style=${card + ';padding:18px 20px'}>${label('CLIENTS · CAPACITY')}<div style="font-size:30px;font-weight:700;margin-top:6px">${liveCount} <span style="font-size:15px;color:var(--muted);font-weight:400">of ${slots} slots</span></div><div style="height:6px;background:var(--line);border-radius:3px;margin-top:8px"><div style=${'width:' + Math.round(liveCount / slots * 100) + '%;height:100%;background:var(--accent);border-radius:3px'}></div></div></div>
+        <div style=${card + ';padding:14px 18px'}>${label('MRR')}<div style="font-size:26px;font-weight:700;color:var(--green);margin-top:4px">${mrr == null ? '—' : SR.money(mrr)}</div><div class="stc">↻ Live from Sales · Revenue${SR.mrr.at ? ' · updated ' + new Date(SR.mrr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</div></div>
+        <div style=${card + ';padding:14px 18px'}>${label('OPEN TASKS')}<div style="font-size:26px;font-weight:700;margin-top:4px">${openTotal}</div><div class="stc">across all clients</div></div>
+        <div style=${card + ';padding:14px 18px'}>${label('CLIENTS · CAPACITY')}<div style="font-size:26px;font-weight:700;margin-top:4px">${liveCount} <span style="font-size:15px;color:var(--muted);font-weight:400">of ${slots} slots</span></div><div style="height:6px;background:var(--line);border-radius:3px;margin-top:8px"><div style=${'width:' + Math.round(liveCount / slots * 100) + '%;height:100%;background:var(--accent);border-radius:3px'}></div></div></div>
       </section>
       <section style=${card + ';padding:20px 22px'}>
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="hd-row" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
           <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><h2 style="margin:0;font-size:18px">Tasks</h2>
             <div class="viewsw" role="group" aria-label="View">${[['list', 'List'], ['date', 'By date'], ['people', 'Workload']].map(function (v) { return html`<button key=${v[0]} type="button" aria-pressed=${view === v[0] ? 'true' : 'false'} class=${view === v[0] ? 'on' : ''} onClick=${function () { setView(v[0]); }}>${v[1]}</button>`; })}</div></div>
-          <div role="group" aria-label="Filter by person" style="display:flex;gap:8px;flex-wrap:wrap">
-            ${[['all', 'Everyone']].concat(SR.TEAM.map(function (n) { return [n, n]; })).concat([['none', 'Unassigned']]).map(function (c) {
+          <div role="group" aria-label="Filter by person" class="hd-fil" style="display:flex;gap:8px;flex-wrap:wrap">
+            ${narrow ? html`<select class="cal-in" aria-label="Filter by person" style="margin:0;min-height:34px;border-radius:17px;padding:0 12px;font-weight:600;max-width:190px" value=${who} onChange=${function (e) { p.setWho(e.target.value); }}>${[['all', 'Everyone']].concat(SR.TEAM.map(function (n) { return [n, n]; })).concat([['none', 'Unassigned']]).map(function (c) { return html`<option key=${c[0]} value=${c[0]}>${c[1] + ' · ' + chipCount(c[0])}</option>`; })}</select>`
+              : [['all', 'Everyone']].concat(SR.TEAM.map(function (n) { return [n, n]; })).concat([['none', 'Unassigned']]).map(function (c) {
               return html`<${SR.Pill} key=${c[0]} on=${who === c[0]} onClick=${function () { p.setWho(c[0]); }}>${c[1] + ' · ' + chipCount(c[0])}<//>`;
             })}
-            <${SR.Pill} on=${showDone} onClick=${function () { setShowDone(!showDone); }}>${(showDone ? 'Hide' : 'Show') + ' completed · ' + doneCount}<//>
+            <${SR.Pill} on=${showDone} onClick=${function () { setShowDone(!showDone); }}>${narrow ? 'Done · ' + doneCount : (showDone ? 'Hide' : 'Show') + ' completed · ' + doneCount}<//>
           </div>
         </div>
         ${view === 'people' ? html`<${SR.Workload} tasks=${filtered} clients=${p.clients} onOpen=${p.onOpen} openId=${p.openId} />` : html`<${SR.TaskList} tasks=${filtered} clients=${p.clients} showClient=${true} selected=${p.sel} flat=${view !== 'date'} dnd=${true}
@@ -49,6 +51,52 @@ window.SR = window.SR || {};
     </div>`;
   };
 
+
+  /* ---------- MY TASKS: everything assigned to you, grouped by when ---------- */
+  SR.MyTasks = function (p) {
+    var sd = useState(false), showDone = sd[0], setShowDone = sd[1];
+    var mrf = React.useRef(null); SR.useFlip(mrf, '.task[data-tid]', 'data-tid');
+    var cs = useState(function () { try { return JSON.parse(localStorage.getItem('sr_mtc')) || {}; } catch (e) { return {}; } }), shut = cs[0], setShut = cs[1];
+    var tog = function (k) { setShut(function (o) { var n = Object.assign({}, o); if (n[k]) delete n[k]; else n[k] = 1; try { localStorage.setItem('sr_mtc', JSON.stringify(n)); } catch (e) {} return n; }); };
+    var T0 = SR.TODAY, W7 = SR.addDays(T0, 7), me = p.me;
+    var mine = p.tasks.filter(function (t) { return t.owner === me; });
+    var open = mine.filter(function (t) { return !t.done || (p.settling || {})[t.id]; });
+    var byDate = function (a, b) { return String(a.date || '9999').localeCompare(String(b.date || '9999')); };
+    var G = [
+      { k: 'over', label: 'Overdue', danger: true, items: open.filter(function (t) { return t.date && t.date < T0; }) },
+      { k: 'today', label: 'Today', date: T0, items: open.filter(function (t) { return t.date === T0; }) },
+      { k: 'week', label: 'This week', items: open.filter(function (t) { return t.date && t.date > T0 && t.date <= W7; }) },
+      { k: 'later', label: 'Later', items: open.filter(function (t) { return !t.date || t.date > W7; }) }
+    ];
+    var done = mine.filter(function (t) { return t.done && !(p.settling || {})[t.id]; }).sort(function (a, b) { return String(b.doneDay || '').localeCompare(String(a.doneDay || '')); });
+    var just = p.just || {}, sel = p.sel || {};
+    var row = function (t, date) {
+      var c = SR.clientById(p.clients, t.clientId);
+      return html`<${SR.TaskRow} key=${t.id} task=${t} selected=${!!sel[t.id]} active=${p.openId === t.id} just=${!!just[t.id]} showClient=${true} clientColor=${c.color} clientName=${c.name} dnd=${true} dropDate=${date} onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} />`;
+    };
+    var openCount = open.filter(function (t) { return !t.done; }).length;
+    return html`<div ref=${mrf} style="display:flex;flex-direction:column;gap:6px">
+      <div><div style="font-size:13px;color:var(--muted)">Assigned to ${me}</div>${H1('My tasks')}</div>
+      <section style=${card + ';padding:20px 22px'}>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+          <div style="font-size:14px;color:var(--muted)">${openCount} open across ${new Set(open.map(function (t) { return t.clientId; })).size} clients</div>
+        </div>
+        ${G.map(function (g) {
+          if (!g.items.length && g.k !== 'today') return null;
+          var items = g.items.slice().sort(byDate);
+          return html`<div key=${g.k} class="mt-grp dgroup" onDragOver=${g.date ? function (e) { if (SR._drag != null) e.preventDefault(); } : null}
+            onDrop=${g.date ? function (e) { e.preventDefault(); var id = SR._drag; SR._drag = null; if (id != null) SR.dnd.dropOnDay(id, g.date); } : null}>
+            <h3 role="button" tabindex="0" aria-expanded=${shut[g.k] ? 'false' : 'true'} style=${'cursor:pointer;padding-bottom:6px;border-bottom:1px solid var(--border);color:' + (g.danger ? 'var(--red)' : 'var(--text)')} onClick=${function () { tog(g.k); }} onKeyDown=${function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(g.k); } }}><span class="chv" style="color:var(--muted)">${shut[g.k] ? '▸' : '▾'}</span>${g.label}<span>${items.length}</span></h3>
+            ${shut[g.k] ? null : items.length ? items.map(function (t) { return row(t, g.date); }) : html`<div style="font-size:13px;color:var(--muted);padding:8px 2px">Nothing due today.</div>`}
+          </div>`;
+        })}
+        <div class="mt-grp">
+          <h3 style="padding-bottom:6px;border-bottom:1px solid var(--border)">Done<span>${done.length}</span>${done.length ? html`<button type="button" class="edbtn" style="margin-left:auto" onClick=${function () { setShowDone(!showDone); }}>${showDone ? 'Hide' : 'Show'}</button>` : null}</h3>
+          ${showDone ? done.slice(0, 100).map(function (t) { return row(t); }) : null}
+        </div>
+      </section>
+    </div>`;
+  };
 
   /* ---------- CALENDAR: week / day / month, tasks as all-day items, timed events, team on the right ---------- */
   SR.personColor = function (n) { var pf = n && SR.PROFILES && SR.PROFILES[n]; if (pf && pf.color) return pf.color; var P = ['#4C7BD9', '#D9A441', '#3FA46A', '#B25AA6', '#D26363', '#3E9BB0']; if (!n) return '#8A94A6'; return P[n === 'Josh' ? 0 : n === 'Matt' ? 1 : 2 + (n.charCodeAt(0) + n.length) % 4]; };

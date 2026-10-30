@@ -10,6 +10,18 @@
   function App() {
     var s = useState(SR.getTheme()); var theme = s[0], setTheme = s[1];
     var snd = useState(SR.soundOn()), soundOn = snd[0], setSoundOn = snd[1];
+    var nm = useState(function () { try { return localStorage.getItem('sr_navmin') === '1'; } catch (e) { return false; } }); var navMin = nm[0], setNavMinS = nm[1];
+    var setNavMin = function (v) { setNavMinS(v); try { localStorage.setItem('sr_navmin', v ? '1' : '0'); } catch (e) {} };
+    var co = useState(function () { try { return localStorage.getItem('sr_navclients') !== '0'; } catch (e) { return true; } }); var clientsOpen = co[0], setClientsOpenS = co[1];
+    var dr = useState(null), dropAt = dr[0], setDropAt = dr[1];
+    var nwS = useState(function () { try { return Math.max(200, Math.min(420, parseInt(localStorage.getItem('sr_navw'), 10) || 232)); } catch (e) { return 232; } }), navW = nwS[0], setNavW = nwS[1];
+    var hpS = useState(false), helpOpen = hpS[0], setHelpOpen = hpS[1];
+    var vwS = useState(window.innerWidth), vw = vwS[0], setVw = vwS[1];
+    useEffect(function () { var f = function () { setVw(window.innerWidth); }; window.addEventListener('resize', f); return function () { window.removeEventListener('resize', f); }; }, []);
+    var navRef = React.useRef(null); SR.useFlip(navRef, '.sr-navrow[data-fk]', 'data-fk');
+    var setClientsOpen = function (v) { setClientsOpenS(v); try { localStorage.setItem('sr_navclients', v ? '1' : '0'); } catch (e) {} };
+    var na = useState(false); var navAuto = na[0], setNavAuto = na[1];
+    useEffect(function () { var on = function (e) { if (e.data && e.data.sr === 'nav') setNavAuto(!!e.data.compact); }; window.addEventListener('message', on); return function () { window.removeEventListener('message', on); }; }, []);
     var sc = useState(function () { return /[?&]screen=sales/.test(location.search) || location.hash === '#sales' ? 'sales' : 'home'; }); var screen = sc[0], setScreen = sc[1];
     var cl = useState('clear'); var activeClient = cl[0], setActiveClient = cl[1];
     var tb = useState('overview'); var clientTab = tb[0], setClientTab = tb[1];
@@ -21,7 +33,7 @@
     var op = useState(null); var openId = op[0], setOpenId = op[1];
     var dl = useState(null); var delId = dl[0], setDelId = dl[1];
     var sh = useState(false); var showHow = sh[0], setShowHow = sh[1];
-    var openFn = function (id, how) { setOpenId(id); setShowHow(!!how); };
+    var openFn = function (id, how) { if (openId === id && !how) { setOpenId(null); return; } setOpenId(id); setShowHow(!!how); };
     var sd = useState(''); var subDraft = sd[0], setSubDraft = sd[1];
     var nt = useState(''); var newTask = nt[0], setNewTask = nt[1];
     var INIT = SR.INIT || {};
@@ -70,7 +82,8 @@
     useEffect(function () { SR.store.saveKV('rules', rules); }, [rules]);
     useEffect(function () { SR.store.saveKV('clients', clients); }, [clients]);
     useEffect(function () { SR.store.saveKV('seq', seq); }, [seq]);
-    var RES = [['periods', 'periods'], ['orgP', 'orgP'], ['orgT', 'orgT'], ['metaReal', 'metaReal'], ['acct', 'acct']];
+    SR.templates = SR.templates || {};
+    var RES = [['periods', 'periods'], ['orgP', 'orgP'], ['orgT', 'orgT'], ['metaReal', 'metaReal'], ['acct', 'acct'], ['templates', 'templates']];
     useEffect(function () { var iv = setInterval(function () { RES.forEach(function (k) { if (SR[k[0]]) SR.store.saveKV(k[1], SR[k[0]]); }); }, 1500); return function () { clearInterval(iv); }; }, []);
     SR.remote = {
       coll: function (name, row) {
@@ -89,6 +102,13 @@
       profiles: function (row) { if (!row) return; var l = Object.keys(SR.PROFILES).map(function (k) { return SR.PROFILES[k]; }).filter(function (p) { return p.user_id !== row.user_id; }).concat([row]); SR.applyProfiles(l); if (row.user_id === SR.store.myId()) SR.ME = row; setClk(function (c) { return c + 1; }); }
     };
     SR.store.onRemote(SR.remote);
+    useEffect(function () {
+      var rs = function () { setTimeout(function () { SR._drag = null; SR._dragMulti = null; SR._dragC = null; if (SR._spr) { clearTimeout(SR._spr.t); SR._spr = null; } document.querySelectorAll('.tdrop').forEach(function (x) { x.classList.remove('tdrop'); }); }, 0); };
+      document.addEventListener('dragend', rs, true); document.addEventListener('drop', rs, false);
+      SR.colResizer(document);
+      return function () { document.removeEventListener('dragend', rs, true); document.removeEventListener('drop', rs, false); };
+    }, []);
+    useEffect(function () { if (SR.applyTheme) SR.applyTheme(SR.getTheme()); }, [me]);
     /* One sync at a time. If something changes while it runs, run once more afterwards. A big calendar finishes over a few quick rounds. */
     var syncNow = function () {
       if (!gacc) return Promise.resolve();
@@ -135,16 +155,20 @@
       var o0 = typeof obj === 'function' ? null : obj, cur0 = null; for (var q = 0; q < tasks.length; q++) if (tasks[q].id === id) cur0 = tasks[q];
       if (cur0 && o0 && o0.owner && o0.owner !== cur0.owner && o0.owner !== me) notify(o0.owner, me + ' assigned you: ' + cur0.name, id);
       setTasks(function (ts) { return ts.map(function (t) { if (t.id !== id) return t; var o = typeof obj === 'function' ? obj(t) : obj; var n = Object.assign({}, t, o); if (o && o.done === true && !t.done) n.doneDay = SR.TODAY; else if (o && o.done === false) n.doneDay = ''; return n; }); }); };
-    var toast = function (m, undo) { setToastMsg(m); setToastUndo(undo ? { fn: undo } : null); clearTimeout(SR._tt); SR._tt = setTimeout(function () { setToastMsg(''); setToastUndo(null); SR._lastUndo = null; }, undo ? 8000 : 3500); };
+    var toast = function (m, undo) { setToastMsg(m); setToastUndo(undo ? { fn: undo } : null); clearTimeout(SR._tt); SR._tt = setTimeout(function () { setToastMsg(''); setToastUndo(null); }, undo ? 8000 : 3500); };
     /* undo: snapshot before a delete, put it back from the toast or with Ctrl/Cmd+Z */
     var snapshot = function () { return { clients: clients, tasks: tasks, seq: seq, projSel: projSel, res: JSON.stringify({ p: SR.periods || {}, o: SR.orgP || {}, t: SR.orgT || {}, m: SR.metaReal || {}, a: SR.acct || {} }) }; };
     var restore = function (snap) {
       setClients(snap.clients); setTasks(snap.tasks); setSeq(snap.seq); setProjSel(snap.projSel);
       var r = JSON.parse(snap.res);
       [['periods', 'p'], ['orgP', 'o'], ['orgT', 't'], ['metaReal', 'm'], ['acct', 'a']].forEach(function (k) { var tgt = SR[k[0]] = SR[k[0]] || {}; Object.keys(tgt).forEach(function (x) { delete tgt[x]; }); Object.assign(tgt, r[k[1]] || {}); });
-      SR._lastUndo = null; toast('Restored');
+      toast('Restored');
     };
-    var undoable = function (msg, fn) { var snap = snapshot(); fn(); SR._lastUndo = function () { restore(snap); }; toast(msg, SR._lastUndo); };
+    var undoable = function (msg, fn) {
+      var snap = snapshot(); fn(); var st = SR._undoStack = SR._undoStack || [];
+      var u = function () { restore(snap); }; st.push(u); if (st.length > 30) st.shift();
+      toast(msg, function () { var i = st.indexOf(u); if (i >= 0) st.splice(i, 1); u(); });
+    };
     SR.undoable = undoable; SR.toast = toast;
     var openBlockers = function (t) { return (t.blockedBy || []).map(function (b) { for (var i = 0; i < tasks.length; i++) if (tasks[i].id === b) return tasks[i]; return null; }).filter(function (x) { return x && !x.done; }); };
     SR.blockers = openBlockers;
@@ -219,7 +243,13 @@
     var bulk = function (obj) { var ids = Object.keys(selected).filter(function (k) { return selected[k]; }).map(Number); setTasks(function (ts) { return ts.map(function (t) { return ids.indexOf(t.id) > -1 ? Object.assign({}, t, obj) : t; }); }); };
     var bulkComplete = function () { Object.keys(selected).filter(function (k) { return selected[k]; }).map(Number).forEach(function (id) { toggle(id); }); clearSel(); };
     var addCustom = function (list) { var id = seq; var out = list.map(function (t) { return Object.assign({ id: id++, owner: me, date: SR.TODAY, done: false, subs: [], note: '' }, t); }); setTasks(function (ts) { return ts.concat(out); }); setSeq(id); toast(out.length + (out.length > 1 ? ' tasks added' : ' task added')); };
-    var addTask = function () { if (!newTask.trim()) return; var t = { id: seq, clientId: screen === 'client' ? activeClient : 'agency', name: newTask.trim(), owner: SR.TEAM.indexOf(who) >= 0 ? who : me, date: SR.TODAY, subs: [], note: '' }; setTasks(tasks.concat([t])); setSeq(seq + 1); setNewTask(''); setOpenId(t.id); };
+    var addTask = function () {
+      var lines = newTask.split('\n').map(function (l) { return l.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/, '').trim(); }).filter(Boolean); if (!lines.length) return;
+      var cid = screen === 'client' ? activeClient : 'agency', ow = SR.TEAM.indexOf(who) >= 0 ? who : me;
+      var made = lines.map(function (nm, i) { return { id: seq + i, clientId: cid, name: nm, owner: ow, date: SR.TODAY, subs: [], note: '' }; });
+      setTasks(tasks.concat(made)); setSeq(seq + made.length); setNewTask('');
+      if (made.length === 1) setOpenId(made[0].id); else toast(made.length + ' tasks added');
+    };
     var toggleSub = function (id, i) { patch(id, function (t) { var subs = t.subs.map(function (s, j) { return j === i ? Object.assign({}, s, { done: !s.done }) : s; }); return { subs: subs, done: subs.length && subs.every(function (s) { return s.done; }) ? true : t.done }; }); };
     var addSub = function (id) { if (!subDraft.trim()) return; patch(id, function (t) { return { subs: (t.subs || []).concat([{ name: subDraft.trim(), done: false }]) }; }); setSubDraft(''); };
 
@@ -277,6 +307,10 @@
         promise: promise, retainer: parseFloat(draft.retainer) || 0, setup: parseFloat(draft.setup) || 0, term: draft.term, start: draft.start, updates: draft.updates, nextUpdate: '—', math: math, domain: draft.domain || '', seoId: draft.seoId || id };
       var newTasks = SR.genTasks(c, seq);
       setClients(clients.concat([c])); setTasks(tasks.concat(newTasks)); setSeq(seq + newTasks.length + 1); setDoneClient(c);
+    };
+    var setEdits = function (id, type, fn) {
+      setClients(function (cs) { return cs.map(function (x) {
+        if (x.id !== id) return x; var all = Object.assign({}, x.edits); all[type] = fn(Object.assign({ ph: {}, st: {}, gone: {}, add: {} }, all[type])); return Object.assign({}, x, { edits: all }); }); });
     };
     var setGoal = function (id, type, g) {
       setClients(function (cs) { return cs.map(function (x) {
@@ -363,7 +397,7 @@
       var nt = T.phases.length ? SR.genTasks(Object.assign({}, c, { type: type, start: SR.TODAY }), seq) : [];
       setTasks(function (ts) { return ts.filter(function (t) { return !(t.clientId === id && (t.proj || c.type) === type); }).concat(nt); });
       setSeq(seq + nt.length + 1);
-      setClients(function (cs) { return cs.map(function (x) { if (x.id !== id) return x; if (type === x.type) return Object.assign({}, x, { live: false }); var lp = Object.assign({}, x.liveP); lp[type] = false; return Object.assign({}, x, { liveP: lp }); }); });
+      setClients(function (cs) { return cs.map(function (x) { if (x.id !== id) return x; var ed = Object.assign({}, x.edits); delete ed[type]; x = Object.assign({}, x, { edits: ed }); if (type === x.type) return Object.assign({}, x, { live: false }); var lp = Object.assign({}, x.liveP); lp[type] = false; return Object.assign({}, x, { liveP: lp }); }); });
       setPhaseSel(function (o) { var n = Object.assign({}, o); delete n[type === c.type ? id : id + ':' + type]; return n; });
       });
     };
@@ -387,11 +421,37 @@
       setEditId(null); toast('Client saved');
     };
     SR.act = { edit: function (id) { setEditId(id); }, delProject: function (id, type) { var T = SR.TEMPLATES[type]; ask('Delete the ' + T.label + ' project?', 'Its tasks and logged results are removed. The client and the other projects stay.', 'Delete project', function () { deleteProject(id, type); }); }, resetProject: function (id, type) { var T = SR.TEMPLATES[type]; ask('Reset ' + T.label + ' to the defaults?', 'All its tasks, ticks and deadlines go back to the default list. Logged results stay.', 'Reset tasks', function () { resetProject(id, type); }); }, canDelProject: function (id) { var c = SR.clientById(clients, id); return (c.projects || [c.type]).length > 1; } };
+    var moveClient = function (dragId, targetId, after) {
+      if (dragId === targetId) return;
+      undoable('Clients reordered', function () { setClients(function (cs) { var d = null; cs.forEach(function (c) { if (c.id === dragId) d = c; }); if (!d) return cs; var rest = cs.filter(function (c) { return c.id !== dragId; }); var i = -1; rest.forEach(function (c, k) { if (c.id === targetId) i = k; }); if (i < 0) return cs; rest.splice(after ? i + 1 : i, 0, d); return rest; }); });
+    };
+    var toggleFav = function (c) { setClients(function (cs) { return cs.map(function (x) { return x.id === c.id ? Object.assign({}, x, { fav: !x.fav }) : x; }); }); toast(c.fav ? 'Removed from favorites' : 'Added to favorites'); };
+    /* checklist templates: save a tweaked project, start the next client from it */
+    var saveTemplate = function (id, type) {
+      var c = SR.clientById(clients, id), T = SR.TEMPLATES[type];
+      var nm = window.prompt('Name this template', c.name + ' ' + T.label); if (!nm || !nm.trim()) return;
+      var tid = 't' + Date.now().toString(36);
+      var tl = tasks.filter(function (t) { return t.clientId === id && (t.proj || c.type) === type; }).map(function (t) { return { name: t.name, how: t.how || [], owner: t.owner || '', ph: t.ph || '', step: t.step || '', repeat: t.repeat || '', milestone: !!t.milestone, maint: !!t.maint, custom: !!t.custom }; });
+      SR.templates[tid] = { id: tid, name: nm.trim(), type: type, by: me, at: SR.TODAY, edits: JSON.parse(JSON.stringify((c.edits || {})[type] || {})), tasks: tl };
+      setClk(function (x) { return x + 1; }); toast('Template saved: ' + nm.trim() + ' (' + tl.length + ' tasks)');
+    };
+    var applyTemplate = function (id, type, tid) {
+      var tpl = SR.templates[tid]; if (!tpl) return; var c = SR.clientById(clients, id);
+      undoable('Template applied: ' + tpl.name, function () {
+        var sq = seq, nt = tpl.tasks.map(function (t) { return { id: sq++, clientId: id, proj: type, name: t.name, how: t.how, owner: t.owner || 'Matt', date: c.start || SR.TODAY, ph: t.ph || undefined, step: t.step || undefined, repeat: t.repeat || undefined, milestone: t.milestone || undefined, maint: t.maint || undefined, custom: t.custom || undefined, done: false, subs: [], note: '' }; });
+        setTasks(function (ts) { return ts.filter(function (t) { return !(t.clientId === id && (t.proj || c.type) === type); }).concat(nt); });
+        setSeq(sq + 1);
+        setClients(function (cs) { return cs.map(function (x) { if (x.id !== id) return x; var ed = Object.assign({}, x.edits); ed[type] = JSON.parse(JSON.stringify(tpl.edits || {})); return Object.assign({}, x, { edits: ed }); }); });
+      });
+    };
+    var delTemplate = function (tid) { var tp = SR.templates[tid]; if (!tp) return; delete SR.templates[tid]; setClk(function (x) { return x + 1; }); toast('Template removed: ' + tp.name); };
+    SR.act.saveTemplate = saveTemplate; SR.act.applyTemplate = applyTemplate; SR.act.delTemplate = delTemplate;
     SR.clientMenu = function (e, c) {
       var projs = c.projects || [c.type], missing = SR.PROJ_TYPES.filter(function (t) { return projs.indexOf(t) < 0; });
       SR.openMenu(e, [
         { label: 'Open', fn: function () { openClient(c.id); } },
         { label: 'Edit client details', fn: function () { setEditId(c.id); } },
+        { label: c.fav ? 'Remove from favorites' : 'Add to favorites', fn: function () { toggleFav(c); } },
         { sep: true }
       ].concat(missing.length ? [{ head: 'Add a project' }].concat(missing.map(function (t) { return { label: SR.TEMPLATES[t].label, fn: function () { openClient(c.id); addProject(c.id, t); } }; })).concat([{ sep: true }]) : [])
        .concat([{ label: 'Duplicate client', fn: function () { duplicateClient(c.id); } }, { sep: true }, { label: 'Delete client', danger: true, fn: function () { ask('Delete ' + c.name + '?', 'The client, its projects, tasks and results are removed. This cannot be undone.', 'Delete client', function () { deleteClient(c.id); }); } }]));
@@ -407,7 +467,15 @@
         rest.splice(i, 0, n); return rest;
       });
     };
-    SR.dnd = { dropOnTask: function (id, targetId, date) { moveTask(id, targetId, date); }, dropOnDay: function (id, date) { patch(id, { date: date }); toast('Moved to ' + (date ? SR.fmtDeadline(date) : 'no date')); }, dropOnPerson: function (id, name) { patch(id, { owner: name }); toast(name ? 'Assigned to ' + name : 'Unassigned'); } };
+    var dragIds = function (id) { var ms = SR._dragMulti; SR._dragMulti = null; return ms && ms.indexOf(id) >= 0 ? ms : [id]; };
+    SR.selIds = function () { return Object.keys(selected).filter(function (k) { return selected[k]; }).map(Number); };
+    SR.dnd = {
+      dropOnTask: function (id, targetId, date) { var ids = dragIds(id); undoable(ids.length > 1 ? ids.length + ' tasks moved' : 'Task moved', function () { ids.forEach(function (x) { if (x !== targetId) moveTask(x, targetId, date); }); }); },
+      dropOnDay: function (id, date) { var ids = dragIds(id); undoable((ids.length > 1 ? ids.length + ' tasks moved to ' : 'Moved to ') + (date ? SR.fmtDeadline(date) : 'no date'), function () { ids.forEach(function (x) { patch(x, { date: date }); }); }); },
+      dropOnPerson: function (id, name) { var ids = dragIds(id); undoable(name ? 'Assigned to ' + name : 'Unassigned', function () { ids.forEach(function (x) { patch(x, { owner: name }); }); }); },
+      dropOnMine: function (id) { var ids = dragIds(id); undoable((ids.length > 1 ? ids.length + ' tasks' : 'Task') + ' assigned to you', function () { ids.forEach(function (x) { patch(x, { owner: me }); }); }); },
+      dropOnClient: function (id, cid) { var ids = dragIds(id), c = SR.clientById(clients, cid); undoable((ids.length > 1 ? ids.length + ' tasks' : 'Task') + ' moved to ' + c.name, function () { ids.forEach(function (x) { patch(x, { clientId: cid, proj: c.type, step: undefined, ph: undefined, custom: true }); }); }); }
+    };
     var addFromTemplate = function (tp) {
       var t = { id: seq, clientId: screen === 'client' ? activeClient : 'agency', name: tp.name, owner: tp.owner || '', how: tp.how || [], repeat: tp.repeat || '', date: SR.TODAY, subs: (tp.subs || []).map(function (n) { return { name: n, done: false }; }), note: tp.note || '' };
       setTasks(function (ts) { return ts.concat([t]); }); setSeq(seq + 1); setOpenId(t.id); toast('Task created from the template');
@@ -439,10 +507,24 @@
     useEffect(function () {
       var kd = function (e) {
         var k = (e.key || '').toLowerCase();
+        var tg0 = e.target, typ0 = tg0 && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg0.tagName) || tg0.isContentEditable);
+        if (!typ0 && !e.metaKey && !e.ctrlKey && !e.altKey && !document.querySelector('.mdl-bg, .sr-pal') && SR.kb) {
+          var rows = function () { return Array.prototype.slice.call(document.querySelectorAll('.task[data-tid]')); };
+          var cur = function () { var r = rows(); for (var i = 0; i < r.length; i++) if (r[i].getAttribute('data-kb') === '1') return i; return -1; };
+          var go = { h: 'home', m: 'mytasks', c: 'calendar', s: 'sales' };
+          if (SR._g && Date.now() - SR._g < 1200 && go[k]) { e.preventDefault(); SR._g = 0; SR.kb.go(go[k]); return; }
+          if (k === 'g') { SR._g = Date.now(); return; }
+          if (k === '?') { e.preventDefault(); SR.kb.help(); return; }
+          if (k === '/') { e.preventDefault(); SR.kb.search(); return; }
+          if (k === 'c') { e.preventDefault(); SR.kb.newTask(); return; }
+          if (k === 'j' || k === 'k') { var r = rows(); if (!r.length) return; e.preventDefault(); var i = cur(); r.forEach(function (x) { x.removeAttribute('data-kb'); }); i = k === 'j' ? Math.min(r.length - 1, i + 1) : Math.max(0, i < 0 ? 0 : i - 1); r[i].setAttribute('data-kb', '1'); r[i].scrollIntoView({ block: 'nearest' }); return; }
+          if (k === 'x' || k === 'e' || (k === 'enter' && tg0 === document.body)) { var r2 = rows(), j = cur(); if (j >= 0) { e.preventDefault(); var tid = +r2[j].getAttribute('data-tid'); if (k === 'x') SR.kb.toggle(tid); else SR.kb.open(tid); } return; }
+          if (k === 'escape') rows().forEach(function (x) { x.removeAttribute('data-kb'); });
+        }
         if ((e.metaKey || e.ctrlKey) && k === 'k') { e.preventDefault(); setPalOpen(function (o) { return !o; }); }
         else if ((e.metaKey || e.ctrlKey) && k === 'z' && !e.shiftKey) {
           var tg = e.target, typing = tg && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || tg.isContentEditable);
-          if (!typing && SR._lastUndo) { e.preventDefault(); var f = SR._lastUndo; SR._lastUndo = null; f(); }
+          var us = SR._undoStack || []; if (!typing && us.length) { e.preventDefault(); us.pop()(); }
         }
       };
       document.addEventListener('keydown', kd); return function () { document.removeEventListener('keydown', kd); };
@@ -460,42 +542,88 @@
     }, []);
     /* sidebar */
     var navItem = function (on) { return 'min-height:38px;display:flex;align-items:center;gap:10px;padding:0 12px;border:0;border-radius:8px;font-family:inherit;font-size:14px;text-align:left;cursor:pointer;' + (on ? 'background:rgba(255,255,255,0.12);color:#FFF;font-weight:600' : 'background:transparent;color:#C9D2E0'); };
-    var sidebar = html`<nav aria-label="Main" style=${'flex:1 1 232px;max-width:280px;background:var(--nav);color:#E8ECF2;padding:20px 14px;box-sizing:border-box;display:flex;flex-direction:column;gap:20px'}>
-      <div style="display:flex;align-items:center;gap:10px;padding:0 8px"><div style="width:36px;height:36px;border-radius:7px;background:#000;color:#FFF;font-family:'DM Sans',system-ui,sans-serif;font-size:16px;display:flex;align-items:center;justify-content:center">SR</div><div style="font-family:'DM Sans',system-ui,sans-serif;font-size:18px;font-weight:700">Sarac Ramsay</div></div>
+    var compact = navMin || (navAuto && screen === 'sales');
+    var NAVI = { home: 'grid', clients: 'users', calendar: 'calendar', results: 'chart', sales: 'funnel', mytasks: 'check' };
+    var logoOf = function (c) { if (c.logo) return c.logo; var d = String(c.domain || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim(); return d && d.indexOf('.') > 0 ? 'https://www.google.com/s2/favicons?sz=128&domain=' + encodeURIComponent(d) : ''; };
+    var ini = function (n) { return String(n || '?').split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase(); };
+    var toggleBtn = html`<button type="button" class="navtog" aria-label=${compact ? 'Expand the menu' : 'Tuck the menu in'} title=${compact ? 'Expand the menu' : 'Tuck the menu in'} onClick=${function () { if (navMin) setNavMin(false); else if (compact) { setNavAuto(false); setNavMin(false); } else setNavMin(true); }}>${compact ? '»' : '«'}</button>`;
+    var favs = clients.filter(function (c) { return c.fav; });
+    var myDue = tasks.filter(function (t) { return !t.done && t.owner === me && t.date && t.date <= SR.TODAY; }).length;
+    var navBtn = function (k) {
+      var label = { home: 'Home', sales: 'Sales', mytasks: 'My tasks', clients: 'Clients', results: 'Results', calendar: 'Calendar' }[k];
+      var on = screen === k || (k === 'clients' && false);
+      var tdp = (k === 'mytasks' || k === 'home' || k === 'calendar') ? {
+        onDragOver: function (e) { if (SR._drag == null) return; e.preventDefault(); e.currentTarget.classList.add('tdrop'); if (k !== 'mytasks' && screen !== k && (!SR._spr || SR._spr.k !== k)) { if (SR._spr) clearTimeout(SR._spr.t); SR._spr = { k: k, t: setTimeout(function () { setScreen(k); setOpenId(null); SR._spr = null; }, 650) }; } },
+        onDragLeave: function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._spr && SR._spr.k === k) { clearTimeout(SR._spr.t); SR._spr = null; } },
+        onDrop: function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._spr) { clearTimeout(SR._spr.t); SR._spr = null; } if (SR._drag == null) return; e.preventDefault(); var id = SR._drag; SR._drag = null; if (k === 'mytasks') SR.dnd.dropOnMine(id); }
+      } : {};
+      return html`<button key=${k} type="button" ...${tdp} title=${label} aria-label=${label} onClick=${function () { setScreen(k); setOpenId(null); }} style=${navItem(on) + (compact ? ';justify-content:center;padding:0;flex:1;width:100%' : ';flex:1;min-width:0')}>${compact ? SR.Icon(NAVI[k], 18) : html`<span class="sr-ni">${SR.Icon(NAVI[k], 17)}</span><span style="flex:1;min-width:0">${label}</span>`}${!compact && k === 'mytasks' && myDue ? html`<span class="sr-navcount">${myDue}</span>` : null}</button>`;
+    };
+    var logoImg = function (c, px) {
+      var u = logoOf(c);
+      return html`<span style=${'width:' + px + 'px;height:' + px + 'px;flex:none;position:relative;display:block'}>${u ? html`<img src=${u} alt="" width=${px} height=${px} style=${'width:' + px + 'px;height:' + px + 'px;object-fit:contain;display:block;border-radius:' + Math.round(px / 4) + 'px'} onError=${function (e) { e.target.style.display = 'none'; if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; }} />` : null}<span style=${'width:' + px + 'px;height:' + px + 'px;border-radius:' + Math.round(px / 3.2) + 'px;align-items:center;justify-content:center;font-size:' + (px > 20 ? 11 : 10) + 'px;font-weight:700;color:#fff;background:' + c.color + ';display:' + (u ? 'none' : 'flex')}>${ini(c.name).charAt(0)}</span></span>`;
+    };
+    var clientRow = function (c, grp) {
+      var on = screen === 'client' && activeClient === c.id; var askd = delId === c.id;
+      var dp = {
+        draggable: true,
+        onDragStart: function (e) { SR._dragC = c.id; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'client:' + c.id); } catch (x) {} },
+        onDragOver: function (e) { if (SR._drag != null && SR._dragC == null) { e.preventDefault(); setDropAt(function (o) { return o && o.id === c.id && o.g === grp && o.task ? o : { id: c.id, g: grp, task: true }; }); return; } if (SR._dragC == null) return; e.preventDefault(); var r = e.currentTarget.getBoundingClientRect(); var after = e.clientY > r.top + r.height / 2; setDropAt(function (o) { return o && o.id === c.id && o.after === after && o.g === grp ? o : { id: c.id, after: after, g: grp }; }); },
+        onDragLeave: function () { setDropAt(function (o) { return o && o.id === c.id && o.g === grp ? null : o; }); },
+        onDrop: function (e) { if (SR._drag != null && SR._dragC == null) { e.preventDefault(); e.stopPropagation(); var tid = SR._drag; SR._drag = null; setDropAt(null); SR.dnd.dropOnClient(tid, c.id); return; } e.preventDefault(); var d = SR._dragC; SR._dragC = null; setDropAt(null); if (d == null) return; var r = e.currentTarget.getBoundingClientRect(); moveClient(d, c.id, e.clientY > r.top + r.height / 2); },
+        onDragEnd: function () { SR._dragC = null; setDropAt(null); }
+      };
+      var dcls = dropAt && dropAt.id === c.id && dropAt.g === grp ? (dropAt.task ? ' tdrop' : dropAt.after ? ' dbot' : ' dtop') : '';
+      if (compact) return html`<div key=${grp + c.id} data-fk=${grp + c.id} class=${'sr-navrow' + dcls} ...${dp}><button type="button" title=${c.name} aria-label=${c.name} onClick=${function () { openClient(c.id); }} style=${navItem(on) + ';justify-content:center;padding:0;flex:1;min-height:36px;width:100%'}>${logoImg(c, 22)}</button></div>`;
+      return html`<div key=${grp + c.id} data-fk=${grp + c.id} class=${'sr-navrow' + dcls} onContextMenu=${function (e) { SR.clientMenu(e, c); }} ...${dp}><button type="button" onClick=${function () { openClient(c.id); }} style=${navItem(on) + ';flex:1;min-width:0;min-height:34px;font-size:13px'}>${logoImg(c, 20)}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</span></button>
+        <button type="button" class=${'sr-navfav' + (c.fav ? ' on' : '')} aria-label=${c.fav ? 'Remove from favorites' : 'Add to favorites'} title=${c.fav ? 'Remove from favorites' : 'Add to favorites'} onClick=${function () { toggleFav(c); }}><svg width="13" height="13" viewBox="0 0 24 24" fill=${c.fav ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/></svg></button>
+        <button type="button" class="sr-navmore" aria-label=${'Options for ' + c.name} title="Options" onClick=${function (e) { var r = e.currentTarget.getBoundingClientRect(); SR.clientMenu({ preventDefault: function () {}, stopPropagation: function () {}, clientX: r.right, clientY: r.bottom + 4 }, c); }}>⋯</button>
+        <button type="button" class=${'sr-navdel' + (askd ? ' ask' : '')} aria-label=${'Delete ' + c.name} title="Delete client" onClick=${function () { if (askd) deleteClient(c.id); else { setDelId(c.id); setTimeout(function () { setDelId(function (x) { return x === c.id ? null : x; }); }, 3000); } }}>${askd ? 'Delete?' : SR.Icon('close', 13)}</button></div>`;
+    };
+    var sidebar = html`<nav aria-label="Main" ref=${navRef} class=${'sr-nav' + (compact ? ' mini' : '')} style=${(compact ? 'flex:0 0 64px;width:64px;max-width:64px;padding:20px 8px;' : 'flex:0 0 ' + navW + 'px;width:' + navW + 'px;max-width:' + navW + 'px;padding:20px 14px;') + 'background:var(--nav);color:#E8ECF2;box-sizing:border-box;display:flex;flex-direction:column;gap:20px;transition:flex-basis .18s ease,width .18s ease;overflow:hidden'}>
+      <div style=${'display:flex;align-items:center;gap:8px;' + (compact ? 'flex-direction:column;padding:0' : 'padding:0 2px')}><div style="width:36px;height:36px;border-radius:7px;background:#000;color:#FFF;font-family:'DM Sans',system-ui,sans-serif;font-size:16px;display:flex;align-items:center;justify-content:center;flex:none">SR</div>${compact ? null : html`<div style="font-family:'DM Sans',system-ui,sans-serif;font-size:16px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden">Sarac Ramsay</div>`}${toggleBtn}</div>
       <div style="display:flex;flex-direction:column;gap:2px">
-        ${[['home', 'Home'], ['clients', 'Clients'], ['calendar', 'Calendar'], ['results', 'Results'], ['sales', 'Sales']].map(function (n) { return html`<button key=${n[0]} type="button" onClick=${function () { setScreen(n[0]); setOpenId(null); }} style=${navItem(screen === n[0])}>${n[1]}</button>`; })}
+        ${['home', 'sales', 'mytasks'].map(navBtn)}
+        ${favs.length ? html`<div style="display:flex;flex-direction:column;gap:1px;margin-top:10px">${compact ? html`<div style="height:1px;background:rgba(255,255,255,0.1);margin:2px 8px 6px"></div>` : html`<div class="sr-navhd">Favorites</div>`}${favs.map(function (c) { return clientRow(c, 'f'); })}</div>` : null}
+        <div style=${'display:flex;flex-direction:column;gap:2px;' + (favs.length ? 'margin-top:8px' : '')}>
+          <div style="display:flex;align-items:center;gap:2px">${navBtn('clients')}${compact ? null : html`<button type="button" class="sr-chev" aria-label=${clientsOpen ? 'Hide clients' : 'Show clients'} aria-expanded=${clientsOpen} title=${clientsOpen ? 'Hide clients' : 'Show clients'} onClick=${function () { setClientsOpen(!clientsOpen); }}><span style=${'display:inline-block;transition:transform .18s ease;transform:rotate(' + (clientsOpen ? '90' : '0') + 'deg)'}>»</span></button>`}</div>
+          ${clientsOpen ? html`<div style=${compact ? 'display:flex;flex-direction:column;gap:2px;padding-top:2px' : 'display:flex;flex-direction:column;gap:1px;margin-left:16px;padding-left:6px;border-left:1px solid rgba(255,255,255,0.1)'}>
+            ${clients.map(function (c) { return clientRow(c, 'c'); })}
+            <button type="button" title="Onboard client" onClick=${startOnboard} style=${'min-height:32px;margin-top:4px;border-radius:8px;border:1px dashed #3A4A66;background:transparent;color:#A9C1E8;font-family:inherit;font-size:13px;cursor:pointer;' + (compact ? 'padding:0;text-align:center' : 'padding:0 12px;text-align:left')}>${compact ? '+' : '+ Onboard client'}</button>
+          </div>` : null}
+        </div>
+        ${['results', 'calendar'].map(navBtn)}
       </div>
-      <div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:11px;letter-spacing:0.12em;color:#8E9AB0;font-weight:700;padding:0 12px 6px">CLIENTS</div>
-        ${clients.map(function (c) { var on = screen === 'client' && activeClient === c.id; var askd = delId === c.id; return html`<div key=${c.id} class="sr-navrow" onContextMenu=${function (e) { SR.clientMenu(e, c); }}><button type="button" onClick=${function () { openClient(c.id); }} style=${navItem(on) + ';flex:1;min-width:0'}><span style=${'width:9px;height:9px;border-radius:3px;flex:none;background:' + c.color}></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</span></button>
-          <button type="button" class="sr-navmore" aria-label=${'Options for ' + c.name} title="Options" onClick=${function (e) { var r = e.currentTarget.getBoundingClientRect(); SR.clientMenu({ preventDefault: function () {}, stopPropagation: function () {}, clientX: r.right, clientY: r.bottom + 4 }, c); }}>⋯</button>
-          <button type="button" class=${'sr-navdel' + (askd ? ' ask' : '')} aria-label=${'Delete ' + c.name} title="Delete client" onClick=${function () { if (askd) deleteClient(c.id); else { setDelId(c.id); setTimeout(function () { setDelId(function (x) { return x === c.id ? null : x; }); }, 3000); } }}>${askd ? 'Delete?' : SR.Icon('close', 13)}</button></div>`; })}
-        <button type="button" onClick=${startOnboard} style="min-height:36px;margin-top:8px;padding:0 12px;border-radius:8px;border:1px dashed #3A4A66;background:transparent;color:#A9C1E8;font-family:inherit;font-size:14px;text-align:left;cursor:pointer">+ Onboard client</button>
-      </div>
+      ${compact ? null : html`<div class="sr-nresize" title="Drag to resize, double-click to reset" onDoubleClick=${function () { setNavW(232); try { localStorage.setItem('sr_navw', '232'); } catch (x) {} }} onMouseDown=${function (e) { e.preventDefault(); var x0 = e.clientX, w0 = navW, last = w0; document.body.style.cursor = 'ew-resize'; var mv = function (ev) { last = Math.max(200, Math.min(420, w0 + ev.clientX - x0)); setNavW(last); }; var up = function () { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.style.cursor = ''; try { localStorage.setItem('sr_navw', String(last)); } catch (x) {} }; document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up); }}></div>`}
     </nav>`;
 
-    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', onboard: 'New client', sales: 'Sales', calendar: 'Calendar' }[screen];
+    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', onboard: 'New client', sales: 'Sales', calendar: 'Calendar', mytasks: 'My tasks' }[screen];
     var topbar = html`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px">
       <div style="font-size:13px;color:var(--muted)">${crumb}</div>
       <div style="display:flex;align-items:center;gap:8px">
       <span class=${"savest " + saveState} title=${SR.store.mode === "cloud" ? "Saved to Supabase" : "Saved in this browser only"}>${saveState === "saving" ? "Saving…" : saveState === "error" ? "Not saved, retrying" : (SR.store.mode === "cloud" ? "Saved" : "Saved on this device")}</span>
       <${SR.Bell} notifs=${notifs} me=${me} setMe=${setMe} open=${bellOpen} setOpen=${setBellOpen} onOpenTask=${function (id) { if (id != null) { setBellOpen(false); setOpenId(id); } }} setNotifs=${setNotifs} onAuto=${function () { setBellOpen(false); setAutoOpen(true); }} />
       <button type="button" class="kbtn" onClick=${function () { setPalOpen(true); }} aria-label="Search and commands">Search <kbd>${/Mac|iPhone|iPad/.test(navigator.platform || '') ? '⌘' : 'Ctrl'} K</kbd></button>
-      <button type="button" class="tb-av" aria-label="Your account and settings" title=${me} onClick=${function (e) { var r = e.currentTarget.getBoundingClientRect(); var it = [{ head: me }, { label: 'Settings', fn: function () { setSettingsOpen(true); } }, { label: 'Edit profile', fn: function () { setProfOpen(true); } }]; if (SR.store.mode === 'cloud') it.push({ sep: true }, { label: 'Sign out', danger: true, fn: function () { SR.store.signOut(); } }); SR.openMenuAt(r.right - 200, r.bottom + 6, it); }}>${SR.Avatar(me, 34)}</button>
+      <button type="button" class="tb-av" aria-label="Your account and settings" title=${me} onClick=${function (e) { var r = e.currentTarget.getBoundingClientRect(); var it = [{ head: me }, { label: 'Settings', fn: function () { setSettingsOpen(true); } }, { label: 'Edit profile', fn: function () { setProfOpen(true); } }, { label: 'Keyboard shortcuts', fn: function () { setHelpOpen(true); } }]; if (SR.store.mode === 'cloud') it.push({ sep: true }, { label: 'Sign out', danger: true, fn: function () { SR.store.signOut(); } }); SR.openMenuAt(r.right - 200, r.bottom + 6, it); }}>${SR.Avatar(me, 34)}</button>
       </div>
     </div>`;
 
+    SR.kb = { toggle: toggle, open: openFn, go: function (sc) { setScreen(sc); setOpenId(null); }, help: function () { setHelpOpen(function (o) { return !o; }); }, search: function () { setPalOpen(true); }, newTask: function () { setScreen('home'); setOpenId(null); setTimeout(function () { var t = document.querySelector('textarea[aria-label="Add tasks"]'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); } }, 60); } };
     var taskProps = { tasks: tasks, clients: clients, sel: selected, onToggle: toggle, onOpen: openFn, onSelect: onSelect, onClearSel: clearSel, onBulk: bulk, newTask: newTask, onNewTask: setNewTask, onAdd: addTask, settling: settling, just: just, openId: openId };
 
     var body;
     if (screen === 'home') body = html`<${SR.Home} ...${taskProps} who=${who} setWho=${setWho} />`;
+    else if (screen === 'mytasks') body = html`<${SR.MyTasks} ...${taskProps} me=${me} />`;
     else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1029d')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1030h')}></iframe>`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;
-    else body = html`<${SR.ClientPage} proj=${projSel[activeClient]} setProj=${function (t) { setProjSel(function (o) { var n = Object.assign({}, o); n[activeClient] = t; return n; }); }} addProject=${addProject} setGoal=${setGoal} client=${SR.clientById(clients, activeClient)} tasks=${tasks} tab=${clientTab} setTab=${setClientTab} exp=${exp} toggleExp=${function (id, v) { setExp(function (e) { var n = Object.assign({}, e); n[id] = v; return n; }); }} rm=${rm} setRm=${setRm} ac=${ac} setAc=${setAc} onToggle=${toggle} onOpen=${openFn} goResults=${goResults} goLive=${goLive} sel=${selected} onSelect=${onSelect} openId=${openId} settling=${settling} just=${just} phaseSel=${phaseSel} setPhase=${setPhase} justLive=${justLive} addCustom=${addCustom} />`;
+    else body = html`<${SR.ClientPage} proj=${projSel[activeClient]} setProj=${function (t) { setProjSel(function (o) { var n = Object.assign({}, o); n[activeClient] = t; return n; }); }} addProject=${addProject} setGoal=${setGoal} client=${SR.clientById(clients, activeClient)} tasks=${tasks} tab=${clientTab} setTab=${setClientTab} exp=${exp} toggleExp=${function (id, v) { setExp(function (e) { var n = Object.assign({}, e); n[id] = v; return n; }); }} rm=${rm} setRm=${setRm} ac=${ac} setAc=${setAc} onToggle=${toggle} onOpen=${openFn} goResults=${goResults} goLive=${goLive} sel=${selected} onSelect=${onSelect} openId=${openId} settling=${settling} just=${just} phaseSel=${phaseSel} setPhase=${setPhase} justLive=${justLive} addCustom=${addCustom} setTasks=${setTasks} setEdits=${setEdits} />`;
 
     var openTask = null; for (var i = 0; i < tasks.length; i++) if (tasks[i].id === openId) openTask = tasks[i];
+    var pwNow = 392; try { pwNow = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--panelw'), 10) || 392; } catch (e) {}
+    var dock = !!openTask && screen !== 'calendar' && (vw - (compact ? 64 : navW) - pwNow - 66) >= 720;
     var selCount = Object.keys(selected).filter(function (k) { return selected[k]; }).length;
     var where = '';
     if (openTask) {
@@ -506,7 +634,7 @@
 
     return html`<div style="font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch">
       ${sidebar}
-      <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "")} style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px " + (openTask && screen !== "calendar" ? 424 : 34) + "px 120px 34px"}>
+      <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "") + (dock ? " pdock" : "")} style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px 34px 120px 34px"}>
         ${topbar}
         ${body}
         ${openTask ? html`<${SR.TaskDrawer} showHow=${showHow} task=${openTask} clients=${clients} where=${where} subDraft=${subDraft} onSubDraft=${setSubDraft}
@@ -519,8 +647,9 @@
       ${autoOpen ? html`<${SR.AutoModal} rules=${rules} setRules=${setRules} onClose=${function () { setAutoOpen(false); }} tasks=${tasks} events=${events} clients=${clients} />` : null}
       ${settingsOpen ? html`<${SR.SettingsModal} me=${me} theme=${theme} setTheme=${setTheme} soundOn=${soundOn} setSound=${function (v) { SR.setSound(v); setSoundOn(v); }} setTz=${function (z) { SR.setTz(z); setClk(function (c) { return c + 1; }); }} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onProfile=${function () { setSettingsOpen(false); setProfOpen(true); }} onClose=${function () { setSettingsOpen(false); }} />` : null}
       ${profOpen ? html`<${SR.ProfileModal} profile=${SR.ME} onClose=${function () { setProfOpen(false); }} onSave=${function (p) { var old = SR.ME && SR.ME.username; return SR.store.saveProfile(p).then(function (row) { SR.ME = row; if (old && old !== row.username) renameOwner(old, row.username); SR.applyProfiles(Object.keys(SR.PROFILES).map(function (k) { return SR.PROFILES[k]; }).filter(function (x) { return x.user_id !== row.user_id; }).concat([row])); setMeS(row.username); setProfOpen(false); toast('Profile saved'); }); }} />` : null}
+      ${helpOpen ? html`<${SR.ShortcutHelp} onClose=${function () { setHelpOpen(false); }} />` : null}
       ${palOpen ? html`<${SR.Palette} items=${palItems()} onClose=${function () { setPalOpen(false); }} />` : null}
-      ${toastMsg ? html`<div role="status" class="sr-toast">${SR.Icon('check', 15)} ${toastMsg}${toastUndo ? html`<button type="button" class="sr-undo" onClick=${function () { var f = toastUndo.fn; setToastMsg(''); setToastUndo(null); SR._lastUndo = null; f(); }}>Undo</button>` : null}</div>` : null}
+      ${toastMsg ? html`<div role="status" class="sr-toast">${SR.Icon('check', 15)} ${toastMsg}${toastUndo ? html`<button type="button" class="sr-undo" onClick=${function () { var f = toastUndo.fn; setToastMsg(''); setToastUndo(null); f(); }}>Undo</button>` : null}</div>` : null}
     </div>`;
   }
 
@@ -536,7 +665,7 @@
       return SR.store.load().then(function (d) {
         var k = d.kv || {};
         Object.keys(k).forEach(function (n) { if (n.indexOf('seo:') === 0) { try { localStorage.setItem('srseo:' + n.slice(4), JSON.stringify(k[n])); } catch (e) {} } });
-        ['periods', 'orgP', 'orgT', 'metaReal', 'acct'].forEach(function (n) { if (k[n] && SR[n]) { Object.keys(SR[n]).forEach(function (x) { delete SR[n][x]; }); Object.assign(SR[n], k[n]); } });
+        ['periods', 'orgP', 'orgT', 'metaReal', 'acct', 'templates'].forEach(function (n) { if (k[n] && SR[n]) { Object.keys(SR[n]).forEach(function (x) { delete SR[n][x]; }); Object.assign(SR[n], k[n]); } });
         var tasks = d.tasks; if (tasks && k.order) { var ix = {}; k.order.forEach(function (id, i) { ix[id] = i; }); tasks = tasks.slice().sort(function (a, b) { return (ix[a.id] == null ? 1e9 : ix[a.id]) - (ix[b.id] == null ? 1e9 : ix[b.id]); }); }
         if (tasks) { var MH = {}; Object.keys(SR.TEMPLATES || {}).forEach(function (tk) { ((SR.TEMPLATES[tk] || {}).milestones || []).forEach(function (m) { if (m[2]) MH[m[0] + ': ' + m[1]] = m[2]; }); }); tasks = tasks.map(function (t) { return t.milestone && MH[t.name] ? Object.assign({}, t, { how: MH[t.name] }) : t; }); }
         var ev = d.events; if (!ev && SR.store.mode === 'local') { var old = SR.jget('sr_events', null); if (old) ev = old; }
@@ -567,7 +696,7 @@
     if (phase === 'ready') return React.createElement(App);
     var box = function (c, wide) { return html`<div class="sr-boot"><div class="sr-bootc" style=${wide ? 'width:min(420px,92vw)' : ''}><div class="sr-bootlogo">SR</div>${c}</div></div>`; };
     var say = function (m) { setErr(m); setBusy(false); };
-    if (phase === 'boot') return box(html`<p>Loading…</p>`);
+    if (phase === 'boot') return box(html`<p>Loading…</p><div class="sr-skel"><i></i><i></i><i></i></div>`);
     if (phase === 'error') return box(html`<p>Could not load your data.</p><p class="cal-note">${err}</p><button type="button" class="mdl-b pri" onClick=${function () { location.reload(); }}>Try again</button>`);
     if (phase === 'notallowed') return box(html`<h2 style="margin:0 0 8px">Not on the team yet</h2><p class="cal-note">${(SR.store.user && SR.store.user.email) || 'This email'} has not been added to the Sarac Ramsay dashboard. Ask Matt to add it, then sign in again.</p><button type="button" class="mdl-b pri" onClick=${function () { SR.store.signOut(); }}>Sign out</button>`);
     if (phase === 'profile') return box(html`<h2 style="margin:0 0 6px">${SR.store.mode === 'cloud' ? 'Set up your profile' : 'Welcome. Who is using this?'}</h2><p class="cal-note" style="margin-bottom:14px">Pick a username and a photo. Teammates see these, and use your username to ping you.</p>

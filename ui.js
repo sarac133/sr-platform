@@ -39,6 +39,49 @@ window.SR = window.SR || {};
     var t = SR.THEMES[name], r = document.documentElement;
     Object.keys(t).forEach(function (k) { r.style.setProperty('--' + k, t[k]); });
     r.style.setProperty('color-scheme', name);
+    if (SR.applyAccent) SR.applyAccent();
+  };
+  SR.ACCENTS = ['#2F5C99', '#6D4AE0', '#0E8F7E', '#D9622B', '#C2347A', '#3E8E3E'];
+  SR.accentKey = function () { return 'sr_accent_' + (SR.ME && SR.ME.username || 'local'); };
+  SR.getAccent = function () { try { return localStorage.getItem(SR.accentKey()) || ''; } catch (e) { return ''; } };
+  SR.applyAccent = function () { var a = SR.getAccent(), r = document.documentElement; if (!a) return; r.style.setProperty('--accent', a); r.style.setProperty('--primary', a); r.style.setProperty('--accentBg', 'color-mix(in srgb,' + a + ' 14%,var(--card))'); };
+  SR.setAccent = function (a) { try { if (a) localStorage.setItem(SR.accentKey(), a); else localStorage.removeItem(SR.accentKey()); } catch (e) {} SR.applyTheme(SR.getTheme()); };
+  SR.getDensity = function () { try { return localStorage.getItem('sr_density') || 'comfortable'; } catch (e) { return 'comfortable'; } };
+  SR.setDensity = function (d) { try { localStorage.setItem('sr_density', d); } catch (e) {} document.documentElement.setAttribute('data-density', d); };
+  try { SR.setDensity(SR.getDensity()); var pw = localStorage.getItem('sr_panelw'); if (pw) document.documentElement.style.setProperty('--panelw', pw); } catch (e) {}
+  /* rows glide to their new place when a list reorders */
+  SR.useWidth = function (ref) {
+    var st = R.useState(1400);
+    R.useLayoutEffect(function () { var el = ref.current; if (!el) return; var f = function () { st[1](Math.round(el.getBoundingClientRect().width)); }; f(); if (!window.ResizeObserver) return; var ro = new ResizeObserver(f); ro.observe(el); return function () { ro.disconnect(); }; }, []);
+    return st[0];
+  };
+  SR.useFlip = function (ref, sel, attr) {
+    var prev = R.useRef({});
+    R.useLayoutEffect(function () {
+      var root = ref.current; if (!root) return; var next = {}, y = window.scrollY || 0;
+      root.querySelectorAll(sel).forEach(function (el) {
+        var k = el.getAttribute(attr), top = el.getBoundingClientRect().top + y; next[k] = top; var o = prev.current[k];
+        if (o != null && Math.abs(o - top) > 2 && Math.abs(o - top) < 900 && el.animate && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) el.animate([{ transform: 'translateY(' + (o - top) + 'px)' }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
+      });
+      prev.current = next;
+    });
+  };
+  /* drag the right edge of any table header to resize the column; double-click resets it */
+  SR.colResizer = function (doc) {
+    var KEY = 'sr_colw:' + ((doc.defaultView && doc.defaultView.location.pathname) || ''), W = {}, drag = null, lastEnd = 0;
+    try { W = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+    var sig = function (th) { var t = th.closest('table'); if (!t || !t.rows[0]) return ''; return Array.prototype.map.call(t.rows[0].cells, function (c) { return (c.textContent || '').trim().slice(0, 24); }).join('|') + '#' + th.cellIndex; };
+    var setW = function (th, w) { th.style.width = th.style.minWidth = th.style.maxWidth = w ? w + 'px' : ''; th.dataset.rz = w ? String(w) : ''; };
+    var apply = function () { doc.querySelectorAll('table th').forEach(function (th) { var w = W[sig(th)]; if (w && th.dataset.rz !== String(w)) setW(th, w); }); };
+    var near = function (e) { var th = e.target.closest && e.target.closest('th'); if (!th) return null; var d = th.getBoundingClientRect().right - e.clientX; return d <= 6 && d >= -2 ? th : null; };
+    var save = function () { try { localStorage.setItem(KEY, JSON.stringify(W)); } catch (e) {} };
+    doc.addEventListener('mousemove', function (e) { if (drag) { drag.cur = Math.max(40, Math.round(drag.w + e.clientX - drag.x)); setW(drag.th, drag.cur); return; } if (doc.body) doc.body.style.cursor = near(e) ? 'col-resize' : ''; }, true);
+    doc.addEventListener('mousedown', function (e) { var th = near(e); if (!th) return; e.preventDefault(); e.stopPropagation(); drag = { th: th, x: e.clientX, w: th.getBoundingClientRect().width, key: sig(th), cur: 0 }; }, true);
+    doc.addEventListener('mouseup', function () { if (!drag) return; if (drag.cur) { W[drag.key] = drag.cur; save(); } drag = null; lastEnd = Date.now(); if (doc.body) doc.body.style.cursor = ''; }, true);
+    doc.addEventListener('click', function (e) { if (Date.now() - lastEnd < 250 && near(e)) { e.stopPropagation(); e.preventDefault(); } }, true);
+    doc.addEventListener('dblclick', function (e) { var th = near(e); if (!th) return; delete W[sig(th)]; save(); setW(th, 0); }, true);
+    var t0; new MutationObserver(function () { clearTimeout(t0); t0 = setTimeout(apply, 80); }).observe(doc.documentElement, { childList: true, subtree: true });
+    apply();
   };
   /* apply the saved theme right away, before the first paint */
   try { SR.applyTheme(SR.getTheme()); } catch (e) {}
@@ -186,11 +229,11 @@ window.SR = window.SR || {};
       onDragOver=${dnd ? function (e) { if (SR._drag != null && SR._drag !== t.id) { e.preventDefault(); if (!over) setOver(true); } } : null}
       onDragLeave=${dnd ? function () { setOver(false); } : null}
       onDrop=${dnd ? function (e) { e.preventDefault(); e.stopPropagation(); setOver(false); var id = SR._drag; SR._drag = null; if (id != null) SR.dnd.dropOnTask(id, t.id, p.dropDate); } : null}>
-      ${dnd ? html`<span class="grip" draggable="true" title="Drag to reorder or move" aria-hidden="true" onDragStart=${function (e) { SR._drag = t.id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(t.id)); var row = e.currentTarget.closest('.task'); e.dataTransfer.setDragImage(row, 20, 20); row.classList.add('dragging'); } catch (x) {} }} onDragEnd=${function (e) { SR._drag = null; var row = e.currentTarget.closest('.task'); if (row) row.classList.remove('dragging'); }}>⋮⋮</span>` : null}
+      ${dnd ? html`<span class="grip" draggable="true" title="Drag to reorder or move" aria-hidden="true" onDragStart=${function (e) { SR._drag = t.id; var ms = sel && SR.selIds ? SR.selIds() : []; SR._dragMulti = ms.length > 1 && ms.indexOf(t.id) >= 0 ? ms : null; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(t.id)); var row = e.currentTarget.closest('.task'); e.dataTransfer.setDragImage(row, 20, 20); row.classList.add('dragging'); if (SR._dragMulti) document.querySelectorAll('.task.picked').forEach(function (r) { r.classList.add('dragging'); }); } catch (x) {} }} onDragEnd=${function (e) { SR._drag = null; SR._dragMulti = null; document.querySelectorAll('.task.dragging').forEach(function (r) { r.classList.remove('dragging'); }); }}>⋮⋮</span>` : null}
       <button type="button" class=${'cb' + (t.done ? ' done' : '')} onClick=${function () { p.onToggle(t.id); }} aria-pressed=${t.done ? 'true' : 'false'} aria-label=${(t.done ? 'Mark not done: ' : 'Mark done: ') + t.name}><span>${t.done ? '✓' : ''}</span></button>
       <button type="button" class="tx" onClick=${function () { p.onOpen(t.id); }} aria-expanded=${p.active ? 'true' : 'false'}>
         ${p.num ? html`<span class="id">${p.num}</span>` : null}
-        <span class="t"><span><span class="tt">${t.name}</span></span>${meta.length ? html`<span class="m">${meta}</span>` : null}</span>
+        <span class="t"><span><span class="tt" title=${t.name}>${t.name}</span></span>${meta.length ? html`<span class="m">${meta}</span>` : null}</span>
       </button>
       ${t.how && t.how.length ? html`<button type="button" class="pill hw" onClick=${function () { p.onOpen(t.id, true); }} aria-label=${'How to: ' + t.name}>How</button>` : null}
       ${p.showClient || (t.owner && t.owner !== (SR.ME ? SR.ME.username : '')) ? SR.Avatar(t.owner, 22) : null}
@@ -215,6 +258,8 @@ window.SR = window.SR || {};
 
   /* task list (Home) */
   SR.TaskList = function (p) {
+    var rf = React.useRef(null); SR.useFlip(rf, '.task[data-tid]', 'data-tid');
+    var bk = React.useState(false), bulkOn = bk[0], setBulkOn = bk[1];
     var sel = p.selected, just = p.just || {};
     var row = function (t, g) {
       var c = SR.clientById(p.clients, t.clientId);
@@ -241,14 +286,15 @@ window.SR = window.SR || {};
         })}
       </div>`;
     }
-    return html`<div>
+    return html`<div ref=${rf}>
+      <div class="tl-add" style="display:flex;gap:10px;margin-bottom:6px;flex-wrap:wrap;align-items:flex-start">
+        <textarea rows=${bulkOn ? 8 : Math.min(8, Math.max(1, (p.newTask || '').split('\n').length))} placeholder=${bulkOn ? 'Type or paste one task per line. Dashes and numbers at the start are ignored.' : '+ Add a task'} aria-label="Add tasks" value=${p.newTask} onChange=${function (e) { p.onNewTask(e.target.value); }} onKeyDown=${function (e) { if (!bulkOn && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); p.onNewTask(e.target.value); setTimeout(p.onAdd, 0); } }} style="flex:1 1 260px;min-height:40px;resize:vertical;background:var(--input);border:1px dashed var(--border);border-radius:6px;color:var(--text);padding:10px 12px;font-family:inherit;font-size:14px;line-height:1.4"></textarea>
+        <button type="button" onClick=${p.onAdd} style="min-height:40px;padding:0 16px;border-radius:6px;border:0;background:var(--primary);color:var(--onPrimary,#FFF);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">${(p.newTask || '').split('\n').filter(function (l) { return l.trim(); }).length > 1 ? 'Add ' + (p.newTask || '').split('\n').filter(function (l) { return l.trim(); }).length + ' tasks' : 'Add'}</button>
+        <button type="button" class="edbtn tl-bulk" style="min-height:40px" aria-pressed=${bulkOn ? 'true' : 'false'} onClick=${function () { setBulkOn(!bulkOn); }}>${bulkOn ? 'Single task' : 'Bulk upload'}</button>
+        ${bulkOn ? html`<label class="edbtn" style="min-height:40px;display:inline-flex;align-items:center;cursor:pointer">Upload .txt or .csv<input type="file" accept=".txt,.csv,text/plain,text/csv" style="display:none" onChange=${function (e) { var f = e.target.files && e.target.files[0]; if (!f) return; var r = new FileReader(); r.onload = function () { var t = String(r.result || '').split(/\r?\n/).map(function (l) { return l.replace(/^"?([^",]*).*$/, '$1'); }).join('\n'); p.onNewTask(((p.newTask || '') ? p.newTask + '\n' : '') + t); }; r.readAsText(f); e.target.value = ''; }} /></label>` : null}
+      </div>
       ${body}
       ${p.tasks.length ? null : html`<div style="padding:16px 0;font-size:14px;color:var(--muted)">Nothing here.</div>`}
-      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-        <input type="text" placeholder="+ Add a task, then open it to assign and set dates" value=${p.newTask} onChange=${function (e) { p.onNewTask(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter') p.onAdd(); }} style="flex:1 1 260px;min-height:40px;background:var(--input);border:1px dashed var(--border);border-radius:9px;color:var(--text);padding:0 12px;font-family:inherit;font-size:14px" />
-        <button type="button" onClick=${p.onAdd} style="min-height:40px;padding:0 16px;border-radius:9px;border:0;background:var(--primary);color:#FFF;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">Add</button>
-        <button type="button" class="edbtn" style="min-height:40px" onClick=${function (e) { var r = e.currentTarget.getBoundingClientRect(); if (SR.templateMenu) SR.templateMenu(r.left, r.bottom + 4); }}>From a template ▾</button>
-      </div>
     </div>`;
   };
 
@@ -283,7 +329,7 @@ window.SR = window.SR || {};
     var links = SR.taskLinks(t, c);
     var freqHelp = t.repeat ? 'Comes back ' + t.repeat.toLowerCase() + ' once you tick it.' : 'Happens once.';
     return html`<div>
-      <aside aria-label="Task details" class="sr-panel">
+      <aside aria-label="Task details" class="sr-panel"><div class="sr-pgrip" title="Drag to resize, double-click to reset" onDoubleClick=${function () { document.documentElement.style.removeProperty("--panelw"); try { localStorage.removeItem("sr_panelw"); } catch (x) {} }} onMouseDown=${function (e) { e.preventDefault(); var x0 = e.clientX, w0 = e.currentTarget.parentNode.getBoundingClientRect().width; var mv = function (ev) { var w = Math.max(340, Math.min(window.innerWidth - 80, w0 + (x0 - ev.clientX))); document.documentElement.style.setProperty("--panelw", Math.round(w) + "px"); window.dispatchEvent(new Event("resize")); }; var up = function () { document.removeEventListener("mousemove", mv); document.removeEventListener("mouseup", up); try { localStorage.setItem("sr_panelw", document.documentElement.style.getPropertyValue("--panelw")); } catch (x) {} }; document.addEventListener("mousemove", mv); document.addEventListener("mouseup", up); }}></div>
         <div class="sr-phead"><span class="sr-plabel0">TASK</span>
           <div class="sr-hbtns">
             <button type="button" class="sr-del" onClick=${function () { if (confirmDel) { p.onDelete(t.id); } else { setConfirmDel(true); setTimeout(function () { setConfirmDel(false); }, 3000); } }}>${confirmDel ? 'Sure? Click again' : 'Delete'}</button>
@@ -403,13 +449,22 @@ window.SR = window.SR || {};
   };
 
   /* ---------- settings: sound, theme, time zone, Google Calendar, account ---------- */
+  SR.ShortcutHelp = function (p) {
+    R.useEffect(function () { var k = function (e) { if (e.key === 'Escape' || e.key === '?') { e.preventDefault(); p.onClose(); } }; document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, []);
+    var mac = /Mac|iPhone|iPad/.test(navigator.platform || ''), M = mac ? '⌘' : 'Ctrl';
+    var L = [['C', 'New task'], ['J / K', 'Move down / up the task list'], ['X', 'Tick the highlighted task'], ['E or Enter', 'Open the highlighted task'], ['/ or ' + M + ' K', 'Search and commands'], [M + ' Z', 'Undo'], ['G then H', 'Go to Home'], ['G then M', 'Go to My tasks'], ['G then C', 'Go to Calendar'], ['G then S', 'Go to Sales'], ['Esc', 'Close a panel or menu'], ['?', 'This list']];
+    return html`<div class="mdl-bg" onMouseDown=${function (e) { if (e.target === e.currentTarget) p.onClose(); }}><div class="mdl st-mdl" role="dialog" aria-label="Keyboard shortcuts" style="max-width:420px">
+      <div class="mdl-top"><h2>Keyboard shortcuts</h2><button type="button" class="edbtn" onClick=${p.onClose} aria-label="Close">${SR.Icon('close', 14)}</button></div>
+      <div class="mdl-body">${L.map(function (x) { return html`<div key=${x[0]} class="st-row"><div class="st-t"><b>${x[1]}</b></div><div class="st-c"><kbd class="kbk">${x[0]}</kbd></div></div>`; })}</div></div></div>`;
+  };
+
   SR.SettingsModal = function (p) {
     R.useEffect(function () { var k = function (e) { if (e.key === 'Escape') p.onClose(); }; document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, []);
     var cloud = SR.store.mode === 'cloud', zones = []; try { zones = Intl.supportedValuesOf('timeZone'); } catch (x) {} if (zones.indexOf(SR.tz) < 0) zones = [SR.tz].concat(zones);
     var auto = !SR.tzManual;
     var seg = function (on, label, fn) { return html`<button type="button" class=${'st-seg' + (on ? ' on' : '')} aria-pressed=${on ? 'true' : 'false'} onClick=${fn}>${label}</button>`; };
     var row = function (t, d, c) { return html`<div class="st-row"><div class="st-t"><b>${t}</b>${d ? html`<span>${d}</span>` : null}</div><div class="st-c">${c}</div></div>`; };
-    var g = p.gacc;
+    var g = p.gacc; var fu = R.useState(0), force = fu[1];
     return html`<div class="mdl-bg" onMouseDown=${function (e) { if (e.target === e.currentTarget) p.onClose(); }}><div class="mdl st-mdl" role="dialog" aria-label="Settings">
       <div class="mdl-top"><h2>Settings</h2><button type="button" class="edbtn" onClick=${p.onClose} aria-label="Close">${SR.Icon('close', 14)}</button></div>
       <div class="mdl-body">
@@ -417,6 +472,8 @@ window.SR = window.SR || {};
         ${row(p.me || 'You', cloud && SR.store.user ? SR.store.user.email : 'Saved in this browser', html`<span style="display:flex;align-items:center;gap:10px">${SR.Avatar(p.me, 34)}<button type="button" class="edbtn" onClick=${p.onProfile}>Edit profile</button></span>`)}
         <h3>Appearance</h3>
         ${row('Theme', 'Light or dark', html`<span class="st-segs">${seg(p.theme === 'light', 'Light', function () { p.setTheme('light'); })}${seg(p.theme === 'dark', 'Dark', function () { p.setTheme('dark'); })}</span>`)}
+        ${row('Row density', 'How much space task rows take', html`<span class="st-segs">${[['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']].map(function (d) { return seg(SR.getDensity() === d[0], d[1], function () { SR.setDensity(d[0]); force(function (x) { return x + 1; }); }); })}</span>`)}
+        ${row('Accent color', 'Your own color for buttons and highlights, saved for ' + (p.me || 'you'), html`<span style="display:flex;gap:8px;align-items:center">${[''].concat(SR.ACCENTS).map(function (a) { var on = SR.getAccent() === a; return html`<button type="button" key=${a || 'def'} class="st-sw2" aria-label=${a ? 'Accent ' + a : 'Default accent'} aria-pressed=${on ? 'true' : 'false'} title=${a ? a : 'Default'} style=${'background:' + (a || 'conic-gradient(#2F5C99,#DBBF69,#2F5C99)') + ';' + (on ? 'box-shadow:0 0 0 2px var(--card),0 0 0 4px ' + (a || 'var(--text)') : '')} onClick=${function () { SR.setAccent(a); force(function (x) { return x + 1; }); }}></button>`; })}</span>`)}
         ${row('Sound', 'A soft chime when you tick a task', html`<span class="st-segs">${seg(p.soundOn, 'On', function () { p.setSound(true); SR.playTick(); })}${seg(!p.soundOn, 'Off', function () { p.setSound(false); })}</span>`)}
         <h3>Time zone</h3>
         ${row('Set automatically', 'Uses the time zone of this device: ' + SR.detectTz().replace(/_/g, ' '), html`<label class="st-sw"><input type="checkbox" checked=${auto} onChange=${function (e) { p.setTz(e.target.checked ? '' : SR.tz); }} /><i></i></label>`)}
@@ -522,7 +579,11 @@ window.SR = window.SR || {};
 
   SR.EditClient = function (p) {
     var c = p.client, M = c.math || {}, tpl = SR.TEMPLATES[c.type] || {};
-    var s = R.useState({ name: c.name || '', contact: c.contact || '', email: c.email || '', region: c.region || '', owner: c.owner || SR.TEAM[0] || '', color: c.color || '#5B86C5', retainer: c.retainer == null ? '' : c.retainer, setup: c.setup == null ? '' : c.setup, term: c.term || '', start: c.start || '', updates: c.updates || 'Weekly', nextUpdate: c.nextUpdate || '', domain: c.domain || '', promise: c.promise || '' }), d = s[0], setD = s[1];
+    var s = R.useState({ name: c.name || '', contact: c.contact || '', email: c.email || '', region: c.region || '', owner: c.owner || SR.TEAM[0] || '', color: c.color || '#5B86C5', retainer: c.retainer == null ? '' : c.retainer, setup: c.setup == null ? '' : c.setup, term: c.term || '', start: c.start || '', updates: c.updates || 'Weekly', nextUpdate: c.nextUpdate || '', domain: c.domain || '', promise: c.promise || '', logo: c.logo || '' }), d = s[0], setD = s[1];
+    var pickLogo = function (e) {
+      var f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
+      var rd = new FileReader(); rd.onload = function () { var im = new Image(); im.onload = function () { var S = 128, k = Math.min(1, S / Math.max(im.width, im.height)), cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(im.width * k)); cv.height = Math.max(1, Math.round(im.height * k)); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); var url = cv.toDataURL('image/png'); setD(function (o) { return Object.assign({}, o, { logo: url }); }); }; im.src = rd.result; }; rd.readAsDataURL(f);
+    };
     var ms = R.useState(Object.assign({}, M)), m = ms[0], setM = ms[1];
     R.useEffect(function () { var kd = function (e) { if (e.key === 'Escape') p.onClose(); }; document.addEventListener('keydown', kd); return function () { document.removeEventListener('keydown', kd); }; }, []);
     var set = function (k) { return function (e) { var v = e.target.value; setD(function (o) { var n = Object.assign({}, o); n[k] = v; return n; }); }; };
@@ -538,6 +599,9 @@ window.SR = window.SR || {};
           <h3>Client</h3>
           <div class="rform">${inp('name', 'Client name')}${inp('contact', 'Contact')}${inp('email', 'Email', 'email')}${inp('region', 'Region')}${inp('domain', 'Website')}
             <label>Owner<select value=${d.owner} onChange=${set('owner')}>${SR.TEAM.map(function (n) { return html`<option key=${n}>${n}</option>`; })}</select></label></div>
+          <div class="mdl-lab">Logo or image <span style="font-weight:400;opacity:.7">(uses the website icon until you upload one)</span></div>
+          <div class="mdl-logo">${(d.logo || (function () { var dm = String(d.domain || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim(); return dm.indexOf('.') > 0 ? 'https://www.google.com/s2/favicons?sz=128&domain=' + encodeURIComponent(dm) : ''; })()) ? html`<img src=${d.logo || (function () { var dm = String(d.domain || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim(); return dm.indexOf('.') > 0 ? 'https://www.google.com/s2/favicons?sz=128&domain=' + encodeURIComponent(dm) : ''; })()} alt="Logo" />` : html`<span style=${'background:' + d.color}>${String(d.name || '?').charAt(0).toUpperCase()}</span>`}
+            <label class="mdl-b" style="cursor:pointer">${d.logo ? 'Change image' : 'Upload image'}<input type="file" accept="image/*" style="display:none" onChange=${pickLogo} /></label>${d.logo ? html`<button type="button" class="mdl-b" onClick=${function () { setD(function (o) { return Object.assign({}, o, { logo: '' }); }); }}>Remove</button>` : null}</div>
           <div class="mdl-lab">Colour</div>
           <div class="mdl-colors">${COLORS.map(function (k) { return html`<button key=${k} type="button" class=${'mdl-sw' + (d.color === k ? ' on' : '')} style=${'background:' + k} aria-label=${'Colour ' + k} aria-pressed=${d.color === k ? 'true' : 'false'} onClick=${function () { setD(function (o) { return Object.assign({}, o, { color: k }); }); }}></button>`; })}<input type="color" value=${d.color} onChange=${set('color')} aria-label="Custom colour" /></div>
           <h3>Contract</h3>

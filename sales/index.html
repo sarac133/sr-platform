@@ -416,11 +416,6 @@
 
     <!-- RANGE -->
     <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
-      <div style="display: flex; background: var(--s-card); border: 1px solid var(--s-border); border-radius: 8px; padding: 3px; gap: 3px; flex-wrap: wrap;">
-        <sc-for list="{{ emRangeTabs }}" as="t" hint-placeholder-count="4">
-          <button onClick="{{ t.pick }}" style="white-space: nowrap; font-family: inherit; font-size: 12px; font-weight: 600; padding: 7px 14px; border-radius: 6px; cursor: pointer; border: none; background: {{ t.bg }}; color: {{ t.fg }};">{{ t.label }}</button>
-        </sc-for>
-      </div>
       <span style="font-size: 11px; color: var(--s-faint);">{{ emSourceNote }}</span>
     </div>
 
@@ -451,21 +446,49 @@
     </div>
 
     <!-- APOLLO CAMPAIGNS -->
-    <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.42); overflow: hidden; margin-bottom: 18px;">
+    <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.42); overflow: visible; margin-bottom: 18px;">
       <div style="padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <div style="display: flex; align-items: baseline; gap: 12px;">
           <div style="font-size: 17px; font-weight: 700; color: var(--s-blue); letter-spacing: -0.2px;">Apollo Campaigns</div>
           <div style="font-size: 11px; color: var(--s-faint);">Last sync: {{ apolloLastSync }}</div>
         </div>
-        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-          <input type="text" value="{{ apolloSearchFilter }}" onChange="{{ onApolloSearchChange }}" placeholder="Filter campaigns…" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 8px 12px; border-radius: 8px; font-family: inherit; font-size: 12px; width: 160px;" style-focus="border-color: var(--s-blue);">
-          <button onClick="{{ toggleApolloActiveOnly }}" style="padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; border: 1px solid var(--s-border); background: {{ apolloActiveOnlyBg }}; color: {{ apolloActiveOnlyColor }};">{{ apolloActiveOnlyLabel }}</button>
-          <button onClick="{{ toggleApolloStatusFilter }}" style="padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; border: 1px solid var(--s-border); white-space: nowrap; transition: all 0.2s; background: {{ apolloStatusBtnBg }}; color: {{ apolloStatusBtnColor }};">{{ apolloStatusLabel }}</button>
-          <input type="password" value="{{ apolloApiKey }}" onChange="{{ onApolloApiKeyChange }}" placeholder="API key…" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 8px 12px; border-radius: 8px; font-family: inherit; font-size: 12px; width: 140px;" style-focus="border-color: var(--s-blue);">
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; position: relative;">
+          <button onClick="{{ toggleSqPop }}" style="display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 9px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; border: 1px solid var(--s-border); background: transparent; color: var(--s-text2);" style-hover="border-color: var(--s-blue);"><span style="font-size: 13px; line-height: 1;">☰</span>Filters<sc-if value="{{ sqFilterCount }}" hint-placeholder-val="{{ false }}"><span style="min-width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 9px; background: var(--s-blue); color: var(--s-bg); font-size: 10px; font-weight: 700;">{{ sqFilterCount }}</span></sc-if></button>
+          <input type="password" value="{{ apolloApiKey }}" onChange="{{ onApolloApiKeyChange }}" placeholder="API key…" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 8px 12px; border-radius: 9px; font-family: inherit; font-size: 12px; width: 130px;">
           <button onClick="{{ syncApollo }}" style="padding: 8px 18px; background: #2C6396; color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="opacity: 0.9;">↻ Sync</button>
         </div>
       </div>
 
+      <sc-if value="{{ sqPop }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ toggleSqPop }}" style="position: fixed; inset: 0; z-index: 40;"></div>
+        <div style="position: relative; height: 0;">
+          <div style="position: absolute; right: 22px; top: -6px; z-index: 41; width: 480px; max-width: calc(100% - 44px); background: var(--s-card); border: 1px solid var(--s-border); border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,0.5); padding: 20px; display: flex; flex-direction: column; gap: 18px;">
+            <div><div style="font-size: 10px; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: var(--s-faint); margin-bottom: 8px;">Campaign name contains</div>
+              <input type="text" value="{{ apolloSearchFilter }}" onChange="{{ onApolloSearchChange }}" placeholder="Filter campaigns…" style="width: 100%; box-sizing: border-box; background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 9px; font-family: inherit; font-size: 13px;"></div>
+            <div><div style="font-size: 10px; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: var(--s-faint); margin-bottom: 8px;">Status</div><div style="display: flex; gap: 6px; flex-wrap: wrap;">
+          <sc-for list="{{ sqStatusChips }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.pick }}" style="padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; background: {{ c.bg }}; color: {{ c.fg }}; border: 1px solid {{ c.border }};">{{ c.label }}</button>
+          </sc-for>
+            </div></div>
+            <div><div style="font-size: 10px; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase; color: var(--s-faint); margin-bottom: 8px;">Ran</div><div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+          <sc-for list="{{ sqPeriodChips }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ c.pick }}" style="padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; background: {{ c.bg }}; color: {{ c.fg }}; border: 1px solid {{ c.border }};">{{ c.label }}</button>
+          </sc-for>
+              <sc-if value="{{ sqIsCustom }}" hint-placeholder-val="{{ false }}">
+                <input type="date" value="{{ sqFrom }}" onChange="{{ onSqFrom }}" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 5px 8px; border-radius: 7px; font-family: inherit; font-size: 12px; color-scheme: dark;">
+                <span style="font-size: 11px; color: var(--s-faint);">to</span>
+                <input type="date" value="{{ sqTo }}" onChange="{{ onSqTo }}" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 5px 8px; border-radius: 7px; font-family: inherit; font-size: 12px; color-scheme: dark;">
+              </sc-if>
+            </div></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; border-top: 1px solid var(--s-card2); padding-top: 14px;">
+              <button onClick="{{ toggleApolloActiveOnly }}" style="padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; border: 1px solid var(--s-border); background: {{ apolloActiveOnlyBg }}; color: {{ apolloActiveOnlyColor }};">{{ apolloActiveOnlyLabel }}</button>
+              <sc-if value="{{ sqHasHidden }}" hint-placeholder-val="{{ false }}"><button onClick="{{ toggleSqShowHidden }}" style="padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; background: transparent; color: var(--s-muted); border: 1px dashed var(--s-border);">{{ sqHiddenLabel }}</button></sc-if>
+              <button onClick="{{ resetSq }}" style="padding: 7px 12px; background: transparent; border: none; color: var(--s-blue); font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;">Reset</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <div style="padding: 0 22px 12px; font-size: 11px; color: var(--s-faint);">{{ sqSummary }}</div>
       <sc-if value="{{ apolloLoading }}" hint-placeholder-val="{{ false }}">
         <div style="padding: 40px; text-align: center; color: var(--s-blue); font-size: 13px;">Loading sequences from Apollo…</div>
       </sc-if>
@@ -484,22 +507,26 @@
             <thead><tr style="background: var(--s-card3);">
               <th style="padding: 11px 22px; text-align: left; color: var(--s-muted); font-weight: 600; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;">Sequence</th>
               <th style="padding: 11px 12px; text-align: center; color: var(--s-muted); font-weight: 600; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;">Status</th>
+              <th style="padding: 11px 12px; text-align: center; color: var(--s-muted); font-weight: 600; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;">Ran</th>
               <th style="padding: 11px 12px; text-align: center; color: var(--s-muted); font-weight: 600; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;">Sent</th>
               <th style="padding: 11px 12px; text-align: center; color: var(--s-muted); font-weight: 600; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;">Replies</th>
               <th style="padding: 11px 12px; text-align: center; color: var(--s-green); font-weight: 600; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;">Reply %</th>
               <th style="padding: 11px 12px; text-align: center; color: var(--s-muted); font-weight: 600; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;">Bounces</th>
-              <th style="padding: 11px 22px; text-align: center; color: var(--s-red); font-weight: 600; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;">Bounce %</th>
+              <th style="padding: 11px 12px; text-align: center; color: var(--s-red); font-weight: 600; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;">Bounce %</th>
+              <th style="padding: 11px 22px;"></th>
             </tr></thead>
             <tbody>
               <sc-for list="{{ filteredApolloSequences }}" as="seq" hint-placeholder-count="3">
-                <tr style="border-bottom: 1px solid var(--s-card2);" style-hover="background: var(--s-card3);">
+                <tr style="border-bottom: 1px solid var(--s-card2); opacity: {{ seq.rowOpacity }};" style-hover="background: var(--s-card3);">
                   <td style="padding: 13px 22px; font-weight: 700; color: var(--s-text);">{{ seq.name }}</td>
-                  <td style="padding: 13px 12px; text-align: center;"><span style="font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 10px; background: {{ seq.statusBg }}; color: {{ seq.statusColor }};">{{ seq.status }}</span></td>
+                  <td style="padding: 13px 12px; text-align: center;"><span style="font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 10px; background: {{ seq.statusBg }}; color: {{ seq.statusColor }};">{{ seq.kindLabel }}</span></td>
+                  <td style="padding: 13px 12px; text-align: center; color: var(--s-muted); font-size: 12px; white-space: nowrap;">{{ seq.ranText }}</td>
                   <td style="padding: 13px 12px; text-align: center; color: var(--s-text); font-weight: 600;">{{ seq.emailsSent }}</td>
                   <td style="padding: 13px 12px; text-align: center; color: var(--s-text);">{{ seq.replies }}</td>
                   <td style="padding: 13px 12px; text-align: center; color: var(--s-green); font-weight: 700;">{{ seq.replyRate }}%</td>
                   <td style="padding: 13px 12px; text-align: center; color: var(--s-text);">{{ seq.bounces }}</td>
-                  <td style="padding: 13px 22px; text-align: center; color: var(--s-red); font-weight: 700;">{{ seq.bounceRate }}%</td>
+                  <td style="padding: 13px 12px; text-align: center; color: var(--s-red); font-weight: 700;">{{ seq.bounceRate }}%</td>
+                  <td style="padding: 13px 22px; text-align: right;"><button onClick="{{ seq.toggleHide }}" title="Hidden campaigns are left out of the numbers and the sync" style="padding: 4px 10px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-blue); color: var(--s-blue);">{{ seq.hideLabel }}</button></td>
                 </tr>
               </sc-for>
             </tbody>
@@ -521,13 +548,14 @@
           <div style="font-size: 12px; color: var(--s-muted);">Synced from Apollo. Book them straight into the Pipeline, or send them to the Call Out Box to follow up.</div>
           <div style="display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap;">
             <button onClick="{{ syncApolloContacts }}" style="padding: 7px 14px; background: #2C6396; color: #ffffff; border: none; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;">↻ Sync replies</button>
+            <button onClick="{{ syncApolloContactsFull }}" title="Re-pull every campaign, even the ones that have not changed" style="padding: 7px 10px; background: transparent; color: var(--s-muted); border: 1px solid var(--s-border); border-radius: 7px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;">Full sync</button>
             <span style="font-size: 11px; color: var(--s-faint);">Synced {{ apolloContactsLastSync }}</span>
             <span style="font-size: 11px; color: var(--s-blue);">{{ apolloContactsProgress }}</span>
           </div>
         </div>
         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
           <sc-for list="{{ eiTabs }}" as="t" hint-placeholder-count="4">
-            <button onClick="{{ t.pick }}" style="display: flex; gap: 7px; align-items: center; padding: 7px 12px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; background: {{ t.bg }}; color: {{ t.fg }}; border: 1px solid {{ t.border }};">
+            <button onClick="{{ t.pick }}" onDragOver="{{ t.over }}" onDrop="{{ t.drop }}" style="display: flex; gap: 7px; align-items: center; padding: 7px 12px; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; background: {{ t.bg }}; color: {{ t.fg }}; border: 1px solid {{ t.border }};">
               <span>{{ t.label }}</span><span style="font-weight: 700;">{{ t.count }}</span>
             </button>
           </sc-for>
@@ -537,7 +565,7 @@
         <div>
           <div>
             <sc-for list="{{ eiRows }}" as="r" hint-placeholder-count="3">
-              <div style="display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 22px; border-top: 1px solid var(--s-card2);" style-hover="background: #1A222C;">
+              <div draggable="true" onDragStart="{{ r.dragStart }}" title="Drag onto a tab above to move" style="display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 22px; border-top: 1px solid var(--s-card2);" style-hover="background: #1A222C;">
                 <div style="min-width: 0; flex: 1 1 200px;">
                   <div style="font-size: 13px; font-weight: 700; color: var(--s-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.name }}</div>
                   <div style="font-size: 11px; color: var(--s-faint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.sub }}</div>
@@ -549,8 +577,9 @@
                 <div style="flex: 2 1 240px; min-width: 0; font-size: 12px; color: var(--s-text2); line-height: 1.45; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">{{ r.reply }}</div>
                 <div style="flex: 1 1 auto; display: flex; gap: 6px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
                   <sc-if value="{{ r.booking }}" hint-placeholder-val="{{ false }}">
-                    <span style="font-size: 11px; color: var(--s-muted);">Call date</span>
+                    <span style="font-size: 11px; color: var(--s-muted);">Call date + time</span>
                     <input type="date" value="{{ r.bookDate }}" onChange="{{ r.onBookDate }}" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 5px 8px; border-radius: 6px; font-family: inherit; font-size: 12px; color-scheme: dark;">
+                    <input type="time" value="{{ r.bookTime }}" onChange="{{ r.onBookTime }}" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 5px 8px; border-radius: 6px; font-family: inherit; font-size: 12px; color-scheme: dark;">
                     <button onClick="{{ r.confirmBook }}" style="padding: 6px 12px; background: var(--s-green); border: none; color: var(--s-bg); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; opacity: {{ r.confirmOpacity }};">Book</button>
                     <button onClick="{{ r.cancelBook }}" style="padding: 6px 8px; background: transparent; border: none; color: var(--s-faint); font-size: 11px; cursor: pointer; font-family: inherit;">Cancel</button>
                   </sc-if>
@@ -560,10 +589,10 @@
                       <button onClick="{{ r.follow }}" style="padding: 6px 10px; background: rgba(169,143,224,0.12); border: 1px solid rgba(169,143,224,0.35); color: #A98FE0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">Follow up → Call Out</button>
                       <button onClick="{{ r.notInt }}" style="padding: 6px 10px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-red); color: var(--s-red);">Not interested</button>
                     </sc-if>
-                    <sc-if value="{{ r.isFollow }}" hint-placeholder-val="{{ false }}">
-                      <button onClick="{{ r.startBook }}" style="padding: 6px 10px; background: rgba(62,207,135,0.12); border: 1px solid rgba(62,207,135,0.35); color: var(--s-green); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">Booked → Pipeline</button>
-                    </sc-if>
                     <sc-if value="{{ r.isCrm }}" hint-placeholder-val="{{ false }}">
+                      <sc-if value="{{ r.canBook }}" hint-placeholder-val="{{ true }}"><button onClick="{{ r.startBook }}" style="padding: 6px 10px; background: rgba(62,207,135,0.12); border: 1px solid rgba(62,207,135,0.35); color: var(--s-green); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">Booked → Pipeline</button></sc-if>
+                      <sc-if value="{{ r.canFollow }}" hint-placeholder-val="{{ true }}"><button onClick="{{ r.toFollow }}" style="padding: 6px 10px; background: rgba(169,143,224,0.12); border: 1px solid rgba(169,143,224,0.35); color: #A98FE0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">→ Call Out Box</button></sc-if>
+                      <sc-if value="{{ r.canNotInt }}" hint-placeholder-val="{{ true }}"><button onClick="{{ r.toNotInt }}" title="Moves to Recycle, back in 2 months" style="padding: 6px 10px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-red); color: var(--s-red);">→ Not interested</button></sc-if>
                       <button onClick="{{ r.open }}" style="padding: 6px 10px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--s-blue); color: var(--s-blue);">Open</button>
                     </sc-if>
                   </sc-if>
@@ -1189,6 +1218,7 @@
         <sc-if value="{{ pipelineUnassignedCount }}" hint-placeholder-val="{{ false }}">
           <div style="font-size: 10px; color: var(--s-faint); white-space: nowrap;">{{ pipelineUnassignedCount }} unassigned</div>
         </sc-if>
+        <button onClick="{{ ncOpenModal }}" style="padding: 7px 14px; background: var(--s-blue); color: var(--s-bg); border: none; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">+ New card</button>
       </div>
       <div style="display: flex; gap: 20px; align-items: baseline;">
         <div style="text-align: center;"><div style="font-size: 24px; font-weight: 700; color: var(--s-green);">{{ totalPipelineValue }}</div><div style="font-size: 10px; color: var(--s-muted);">active</div></div>
@@ -1239,7 +1269,7 @@
           </div>
           <div style="padding: 8px; flex: 1; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; min-height: 60px;">
             <sc-for list="{{ col.items }}" as="item" hint-placeholder-count="0">
-              <div draggable="true" onDragStart="{{ item.onDragStart }}" onDragEnd="{{ item.onDragEnd }}" style="opacity: {{ item.dragOpacity }}; position: relative; background: var(--s-card2); border: 1px solid var(--s-border); border-radius: 6px; padding: 10px 12px; border-left: 3px solid {{ col.color }}; cursor: grab;">
+              <div draggable="true" onDragStart="{{ item.onDragStart }}" onDragEnd="{{ item.onDragEnd }}" onContextMenu="{{ item.ctx }}" style="opacity: {{ item.dragOpacity }}; position: relative; background: var(--s-card2); border: 1px solid var(--s-border); border-radius: 6px; padding: 10px 12px; border-left: 3px solid {{ col.color }}; cursor: grab;">
                 <div style="display: flex; justify-content: space-between; align-items: start; gap: 6px;">
                   <div>
                     <div style="font-size: 12px; font-weight: 600; color: var(--s-text);">{{ item.name }}</div>
@@ -1364,6 +1394,7 @@
               </div>
             </sc-for>
           </div>
+          <sc-if value="{{ col.showAddForm }}" hint-placeholder-val="{{ false }}">
           <div style="padding: 8px; border-top: 1px solid var(--s-card2);">
             <sc-if value="{{ col.showAddForm }}" hint-placeholder-val="{{ false }}">
               <div style="display: grid; gap: 4px;">
@@ -1377,10 +1408,8 @@
                 </div>
               </div>
             </sc-if>
-            <sc-if value="{{ col.hideAddForm }}" hint-placeholder-val="{{ true }}">
-              <button onClick="{{ col.addItem }}" style="width: 100%; padding: 6px; background: none; border: 1px dashed var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--s-blue); color: var(--s-blue);">+ Add Prospect</button>
-            </sc-if>
           </div>
+          </sc-if>
         </div>
       </sc-for>
     </div>
@@ -1390,6 +1419,7 @@
 <!-- ===== CRM TAB ===== -->
 <sc-if value="{{ isCRM }}" hint-placeholder-val="{{ false }}">
   <div style="animation: fadeIn 0.3s ease;">
+    <sc-if value="{{ crmClassic }}" hint-placeholder-val="{{ false }}">
     <!-- TOOLBAR -->
     <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap;">
       <input type="text" value="{{ crmSearch }}" onChange="{{ onCrmSearchChange }}" placeholder="Search name, company, email..." style="background: var(--s-card); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 14px; border-radius: 8px; font-family: inherit; font-size: 13px; width: 260px;" style-focus="border-color: var(--s-blue);">
@@ -1404,6 +1434,7 @@
       </sc-for>
       <button onClick="{{ showCrmAddRegion }}" style="padding: 7px 11px; background: transparent; border: 1px dashed var(--s-border); color: var(--s-faint); border-radius: 8px; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-blue); color: var(--s-blue);">+ Region</button>
     </div>
+    </sc-if>
     <sc-if value="{{ crmAddRegionMode }}" hint-placeholder-val="{{ false }}">
       <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 12px;">
         <input type="text" value="{{ crmAddRegionName }}" onChange="{{ onCrmRegionNameChange }}" placeholder="Region name..." style="background: var(--s-card); border: 1px solid #5A93C9; color: var(--s-text); padding: 8px 12px; border-radius: 8px; font-family: inherit; font-size: 13px; width: 200px;">
@@ -1418,6 +1449,7 @@
         <button onClick="{{ cancelCsvImport }}" style="padding: 5px 12px; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit;">Cancel</button>
       </div>
     </sc-if>
+    <sc-if value="{{ crmClassic }}" hint-placeholder-val="{{ false }}">
     <!-- GROUP FILTER TABS -->
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 18px;">
     <div style="display: flex; gap: 4px; padding: 4px; background: var(--s-card); border: 1px solid var(--s-card2); border-radius: 10px; width: fit-content;">
@@ -1430,6 +1462,202 @@
     </div>
       
     </div>
+    </sc-if>
+    <!-- CRM LAYOUT B: rail, grouped rows, docked lead panel -->
+    <sc-if value="{{ crmNew }}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; gap: 18px; align-items: flex-start;">
+        <aside style="width: 204px; flex: none; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 12px;">
+          <input type="text" value="{{ crmSearch }}" onChange="{{ onCrmSearchChange }}" placeholder="Search name, company, email..." style="background: var(--s-card); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 8px; font-family: inherit; font-size: 13px; width: 100%; box-sizing: border-box;" style-focus="border-color: var(--s-blue);">
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="font-size: 10px; font-weight: 700; color: var(--s-faint); text-transform: uppercase; letter-spacing: 0.8px; padding: 0 4px 4px;">Region</div>
+            <sc-for list="{{ crmRegionTabs }}" as="rt" hint-placeholder-count="4">
+              <div style="display: flex; align-items: center; gap: 2px;">
+                <button onClick="{{ rt.select }}" style="flex: 1; text-align: left; padding: 8px 12px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; border: 1px solid transparent; background: {{ rt.bgColor }}; color: {{ rt.textColor }};">{{ rt.name }}</button>
+                <sc-if value="{{ rt.showRemove }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ rt.remove }}" title="Delete this region" style="width: 22px; height: 22px; background: none; border: none; border-radius: 5px; color: var(--s-faint); cursor: pointer; font-size: 11px; padding: 0; opacity: 0.4;" style-hover="color: var(--s-red); opacity: 1;">✕</button>
+                </sc-if>
+              </div>
+            </sc-for>
+            <button onClick="{{ showCrmAddRegion }}" style="text-align: left; padding: 7px 12px; background: transparent; border: 1px dashed var(--s-border); color: var(--s-faint); border-radius: 7px; font-size: 12px; cursor: pointer; font-family: inherit; margin-top: 3px;" style-hover="border-color: var(--s-blue); color: var(--s-blue);">+ Region</button>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <div style="font-size: 10px; font-weight: 700; color: var(--s-faint); text-transform: uppercase; letter-spacing: 0.8px; padding: 0 4px 4px;">Lists</div>
+            <sc-for list="{{ crmRailLists }}" as="rl" hint-placeholder-count="5">
+              <button onClick="{{ rl.select }}" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; border: 1px solid transparent; border-left: 3px solid {{ rl.tone }}; background: {{ rl.bg }}; color: {{ rl.color }}; text-align: left;">
+                <span>{{ rl.label }}</span><span style="font-size: 12px; font-weight: 700; opacity: 0.85;">{{ rl.count }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--s-muted);"><span>Open pipeline</span><b style="color: var(--s-green);">{{ crmRailPipelineValue }}</b></div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--s-muted);"><span>Recycle</span><b style="color: var(--s-red);">{{ crmRailRecycleValue }}</b></div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--s-muted);"><span>Nurture</span><b style="color: var(--s-orange);">{{ crmRailNurtureValue }}</b></div>
+          </div>
+          <button onClick="{{ setCrmClassic }}" style="text-align: left; background: none; border: none; color: var(--s-faint); font-family: inherit; font-size: 12px; cursor: pointer; padding: 0 4px;" style-hover="color: var(--s-blue);">Use the classic table view</button>
+        </aside>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+          <sc-for list="{{ crmBGroups }}" as="g" hint-placeholder-count="2">
+            <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 10px; overflow: hidden;">
+              <div style="padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <div style="width: 4px; height: 18px; border-radius: 2px; background: {{ g.color }};"></div>
+                <span style="font-size: 15px; font-weight: 700; color: var(--s-text);">{{ g.label }}</span>
+                <sc-if value="{{ g.showRegion }}" hint-placeholder-val="{{ false }}"><span style="font-size: 11px; font-weight: 600; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px; background: var(--s-card2); padding: 2px 8px; border-radius: 5px;">{{ g.regionName }}</span></sc-if>
+                <sc-if value="{{ g.isPipeline }}" hint-placeholder-val="{{ false }}">
+                  <select value="{{ g.monthValue }}" onChange="{{ g.onMonthChange }}" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-blue); padding: 3px 7px; border-radius: 6px; font-family: inherit; font-size: 11px; font-weight: 600;">
+                    <option value="all">All months</option>
+                    <sc-for list="{{ g.monthOptions }}" as="mo" hint-placeholder-count="13"><option value="{{ mo.key }}">{{ mo.label }}</option></sc-for>
+                  </select>
+                </sc-if>
+                <span style="font-size: 12px; color: var(--s-faint);">{{ g.count }}</span>
+                <span style="font-size: 12px; color: var(--s-green); font-weight: 600;">{{ g.totalValue }}</span>
+                <span style="flex: 1;"></span>
+                <sc-if value="{{ g.canAdd }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ g.importCsv }}" style="padding: 6px 12px; background: transparent; border: 1px solid var(--s-border); color: var(--s-faint); border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-blue); color: var(--s-blue);">Import CSV</button>
+                  <button onClick="{{ g.addLead }}" style="padding: 6px 12px; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-blue);">+ Add lead</button>
+                </sc-if>
+              </div>
+              <div style="overflow-x: auto;">
+                <div style="min-width: 560px;">
+                  <div style="display: grid; grid-template-columns: minmax(124px, 1.4fr) minmax(118px, 1.2fr) minmax(92px, 1fr) 58px 88px 26px; gap: 10px; padding: 8px 16px 8px 19px; background: var(--s-card3); font-size: 10px; font-weight: 600; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-faint);">
+                    <span>Lead</span><span>Contact</span><span>Status</span><span style="text-align: right;">Value</span><span>{{ g.dateHead }}</span><span></span>
+                  </div>
+                  <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+                    <div onClick="{{ r.open }}" style="display: grid; grid-template-columns: minmax(124px, 1.4fr) minmax(118px, 1.2fr) minmax(92px, 1fr) 58px 88px 26px; gap: 10px; align-items: center; padding: 10px 16px 10px 16px; border-top: 1px solid var(--s-card2); border-left: 3px solid {{ r.selBorder }}; background: {{ r.tint }}; cursor: pointer;" style-hover="background: var(--s-card2);">
+                      <div style="min-width: 0;">
+                        <div style="font-size: 13px; font-weight: 700; color: var(--s-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.name }}</div>
+                        <div style="font-size: 12px; color: var(--s-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.company }}</div>
+                        <div style="font-size: 11px; color: var(--s-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.ownerLine }}</div>
+                      </div>
+                      <div style="min-width: 0;">
+                        <div style="font-size: 12px; color: var(--s-blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.email }}</div>
+                        <div style="font-size: 12px; color: var(--s-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.phone }}</div>
+                      </div>
+                      <div style="min-width: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                        <span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 5px; background: var(--s-card2); color: {{ r.statusColor }}; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis;">{{ r.statusA }}</span>
+                        <div style="display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--s-faint); max-width: 100%;"><span style="font-weight: 600; color: {{ r.srcColor }};">{{ r.srcLabel }}</span><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ r.statusB }}</span></div>
+                      </div>
+                      <div style="text-align: right; font-size: 13px; font-weight: 700; color: var(--s-green);">{{ r.valueText }}</div>
+                      <div style="font-size: 12px; white-space: nowrap;">
+                        <div style="color: {{ r.dateAColor }};">{{ r.dateA }}</div>
+                        <div style="color: {{ r.dateBColor }};">{{ r.dateB }}</div>
+                      </div>
+                      <button onClick="{{ r.heart }}" title="Nurture" style="background: none; border: none; font-size: 17px; cursor: pointer; color: {{ r.heartColor }}; font-family: inherit; padding: 0;">♥</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <sc-if value="{{ g.isEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding: 26px; text-align: center; color: var(--s-faint); font-size: 13px; border-top: 1px solid var(--s-card2);">{{ g.emptyText }}</div></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{ crmBEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding: 40px; text-align: center; color: var(--s-faint); font-size: 13px; background: var(--s-card); border: 1px solid var(--s-border); border-radius: 10px;">Nothing matches this search.</div></sc-if>
+        </div>
+        <sc-if value="{{ showLeadDock }}" hint-placeholder-val="{{ false }}">
+          <div style="width: 350px; flex: none; position: sticky; top: 12px;">
+    <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 10px; width: 100%; box-sizing: border-box; max-height: calc(100vh - 24px); overflow-y: auto; padding: 0;" onClick="{{ stopPropagation }}">
+      <!-- Header -->
+      <div style="padding: 16px 18px; border-bottom: 1px solid var(--s-border); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <input type="text" value="{{ leadDetail.name }}" onChange="{{ leadDetail.onNameChange }}" style="font-size: 18px; font-weight: 700; color: var(--s-text); background: transparent; border: 1px solid transparent; padding: 2px 6px; border-radius: 4px; font-family: inherit;" style-hover="border-color: var(--s-border);" style-focus="border-color: var(--s-blue); background: var(--s-card2);">
+          <div style="font-size: 12px; color: var(--s-muted); margin-top: 4px; padding-left: 6px;">{{ leadDetail.regionName }} · {{ leadDetail.groupLabel }}</div>
+        </div>
+        <button onClick="{{ closeLeadDetail }}" style="background: none; border: none; color: var(--s-muted); cursor: pointer; font-size: 20px;" style-hover="color: var(--s-text);">✕</button>
+      </div>
+      <!-- Move / delete -->
+      <div style="padding: 12px 18px; display: flex; gap: 8px; align-items: flex-end; border-bottom: 1px solid var(--s-card2);">
+        <div style="flex: 1;"><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Move to</label><select value="" onChange="{{ leadDetail.onMoveGroup }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"><option value="">Choose a list...</option><sc-for list="{{ leadDetail.moveTargets }}" as="mt" hint-placeholder-count="3"><option value="{{ mt.targetGroup }}">{{ mt.label }}</option></sc-for></select></div>
+        <button onClick="{{ leadDetail.removeLead }}" style="padding: 8px 12px; background: transparent; border: 1px solid var(--s-border); color: var(--s-faint); border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--s-red); color: var(--s-red);">Delete</button>
+      </div>
+      <!-- Contact (same for every stage) -->
+      <div style="padding: 14px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 1px solid var(--s-card2);">
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Company</label><input type="text" value="{{ leadDetail.company }}" onChange="{{ leadDetail.onCompanyChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Account owner</label><select value="{{ leadDetail.person }}" onChange="{{ leadDetail.onPersonChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"><option value="Josh">Josh</option><option value="Matt">Matt</option></select></div>
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Email</label><input type="text" value="{{ leadDetail.email }}" onChange="{{ leadDetail.onEmailChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-blue); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Phone</label><input type="text" value="{{ leadDetail.phone }}" onChange="{{ leadDetail.onPhoneChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Location</label><select value="{{ leadDetail.regionId }}" onChange="{{ leadDetail.onRegionChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"><sc-for list="{{ leadDetail.regionOptions }}" as="ro" hint-placeholder-count="3"><option value="{{ ro.id }}">{{ ro.name }}</option></sc-for></select></div>
+      </div>
+      <!-- Pipeline: same fields as the pipeline card -->
+      <sc-if value="{{ isPipelineDetail }}" hint-placeholder-val="{{ false }}">
+        <div style="padding: 14px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 1px solid var(--s-card2);">
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Value ($)</label><input type="number" value="{{ leadDetail.value }}" onChange="{{ leadDetail.onValueChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-green); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Pipeline stage</label><select value="{{ leadDetailCard.stageValue }}" onChange="{{ leadDetailCard.onStageChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-blue); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; font-weight: 600;"><option value="Disc Call Booked">Disc Call Booked</option><option value="Cancelled / Re-book">Cancelled / Re-book</option><option value="Sales Call Being Booked">Sales Being Booked</option><option value="Sales Call Booked">Sales Call Booked</option><option value="In Negotiation">In Negotiation</option><option value="Closed Won">Closed Won</option><option value="Closed Lost">Closed Lost</option></select></div>
+          <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">{{ leadDetailCard.dateLabel }}</label><input type="date" value="{{ leadDetailCard.dateValue }}" onChange="{{ leadDetailCard.onDateChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Booked through</label><select value="{{ leadDetailCard.channelValue }}" onChange="{{ leadDetailCard.onChannelChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: {{ leadDetailCard.chanColor }}; padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; font-weight: 600;"><option value="email">✉ Email</option><option value="cold">☎ Cold call</option></select></div>
+          <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Disc call booked on</label><input type="date" value="{{ leadDetailCard.discBookedValue }}" onChange="{{ leadDetailCard.onDiscBookedChange }}" title="The day the call was booked, not the call date" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+                        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Sales call booked on</label><input type="date" value="{{ leadDetailCard.salesBookedValue }}" onChange="{{ leadDetailCard.onSalesBookedChange }}" title="The day the call was booked, not the call date" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+          <sc-if value="{{ leadDetailCard.isCancelled }}" hint-placeholder-val="{{ false }}">
+            <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Re-book for</label><input type="date" value="{{ leadDetailCard.rebookValue }}" onChange="{{ leadDetailCard.onRebookChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+          </sc-if>
+          <sc-if value="{{ leadDetailCard.isClosed }}" hint-placeholder-val="{{ false }}">
+            <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Close reason</label><input type="text" value="{{ leadDetailCard.closeReason }}" onChange="{{ leadDetailCard.onCloseReasonChange }}" placeholder="Why won or lost..." style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: #BDA262; padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+          </sc-if>
+        </div>
+        <div style="padding: 14px 24px; border-bottom: 1px solid var(--s-card2);">
+          <label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Attendance log</label>
+          <div style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+            <button onClick="{{ leadDetailCard.logDiscCancel }}" style="flex: 1; min-width: 110px; padding: 8px 10px; background: rgba(216,192,106,0.08); border: 1px solid rgba(216,192,106,0.3); color: #D8C06A; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;" style-hover="border-color: #D8C06A;">+ Disc cancelled</button>
+            <button onClick="{{ leadDetailCard.logDiscNoShow }}" style="flex: 1; min-width: 110px; padding: 8px 10px; background: rgba(224,138,90,0.08); border: 1px solid rgba(224,138,90,0.3); color: var(--s-orange); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--s-orange);">+ Disc no-show</button>
+            <button onClick="{{ leadDetailCard.logSalesCancel }}" style="flex: 1; min-width: 110px; padding: 8px 10px; background: rgba(210,102,47,0.1); border: 1px solid rgba(210,102,47,0.34); color: #D2662F; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;" style-hover="border-color: #D2662F;">+ Sales cancelled</button>
+            <button onClick="{{ leadDetailCard.logSalesNoShow }}" style="flex: 1; min-width: 110px; padding: 8px 10px; background: rgba(245,118,109,0.08); border: 1px solid rgba(245,118,109,0.3); color: var(--s-red); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--s-red);">+ Sales no-show</button>
+          </div>
+          <sc-if value="{{ leadDetailCard.hasAttendanceLog }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top: 10px; border: 1px solid var(--s-border); border-radius: 6px; overflow: hidden;">
+              <sc-for list="{{ leadDetailCard.attendanceLog }}" as="ev" hint-placeholder-count="2">
+                <div style="display: grid; grid-template-columns: 56px 1fr 104px 96px 20px; gap: 7px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--s-card2); background: var(--s-card2);">
+                  <span style="font-size: 9px; font-weight: 700; letter-spacing: 0.6px; text-align: center; padding: 2px 0; border-radius: 3px; color: {{ ev.stageColor }}; background: {{ ev.stageBg }};">{{ ev.stageLabel }}</span>
+                  <span style="font-size: 12px; font-weight: 600; color: {{ ev.outcomeColor }};">{{ ev.outcomeLabel }}</span>
+                  <input type="date" value="{{ ev.date }}" onChange="{{ ev.onDateChange }}" style="background: var(--s-card); border: 1px solid var(--s-border); color: var(--s-muted); padding: 4px 6px; border-radius: 5px; font-family: inherit; font-size: 11px; width: 100%; box-sizing: border-box;">
+                  <button onClick="{{ ev.toggleRebooked }}" style="padding: 4px 6px; border-radius: 5px; font-family: inherit; font-size: 9px; font-weight: 700; cursor: pointer; white-space: nowrap; color: {{ ev.rebookedColor }}; border: 1px solid {{ ev.rebookedBorder }}; background: {{ ev.rebookedBg }};">{{ ev.rebookedLabel }}</button>
+                  <button onClick="{{ ev.remove }}" style="background: none; border: none; color: var(--s-border); cursor: pointer; font-size: 12px; padding: 0;" style-hover="color: var(--s-red);">✕</button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+      <!-- Leads / recycle: just what's needed to keep chasing -->
+      <sc-if value="{{ notPipelineDetail }}" hint-placeholder-val="{{ true }}">
+        <div style="padding: 14px 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; border-bottom: 1px solid var(--s-card2);">
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Response</label><select value="{{ leadDetail.response }}" onChange="{{ leadDetail.onResponseChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"><option value="">—</option><option value="Showed interest">Showed interest</option><option value="Asked for more info">Asked for more info</option><option value="Not interested">Not interested</option><option value="Bad timing">Bad timing</option></select></div>
+          <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Attempts</label><div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+            <button onClick="{{ leadDetail.decAttempts }}" style="width: 32px; height: 32px; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 14px;">−</button>
+            <span style="flex: 1; text-align: center; font-size: 14px; font-weight: 700; color: var(--s-text);">{{ leadDetail.attemptsN }}</span>
+            <button onClick="{{ leadDetail.incAttempts }}" style="width: 32px; height: 32px; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 14px;">+</button>
+            <button onClick="{{ leadDetail.toggleNurture }}" title="Nurture" style="height: 32px; padding: 0 10px; background: {{ leadDetail.nurtureBg }}; border: 1px solid {{ leadDetail.nurtureBorder }}; color: {{ leadDetail.nurtureColor }}; border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 700; white-space: nowrap;">♥ Nurture</button>
+          </div></div>
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Last contact</label><input type="date" value="{{ leadDetail.lastContactDate }}" onChange="{{ leadDetail.onLastContactChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+        <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Next contact</label><input type="date" value="{{ leadDetail.nextContactValue }}" onChange="{{ leadDetail.onNextContactChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+        </div>
+      </sc-if>
+      <!-- Notes -->
+      <div style="padding: 12px 18px; border-bottom: 1px solid var(--s-card2);">
+        <label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase;">Notes</label>
+        <textarea value="{{ leadDetail.notes }}" onChange="{{ leadDetail.onNotesChange }}" placeholder="General notes about this lead..." rows="2" style="width: 100%; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 8px 10px; border-radius: 6px; font-family: inherit; font-size: 12px; margin-top: 4px; box-sizing: border-box; resize: vertical;"></textarea>
+      </div>
+      <!-- Activity Thread -->
+      <div style="padding: 14px 18px;">
+        <div style="font-size: 12px; font-weight: 600; color: var(--s-blue); margin-bottom: 12px;">Activity Thread</div>
+        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+          <input type="text" value="{{ crmNewNote }}" onChange="{{ onNewNoteChange }}" placeholder="Add a note or update..." style="flex: 1; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 8px 12px; border-radius: 6px; font-family: inherit; font-size: 12px;" style-focus="border-color: var(--s-blue);">
+          <button onClick="{{ submitNote }}" style="padding: 8px 16px; background: #2C6396; color: #ffffff; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;">Post</button>
+        </div>
+        <sc-if value="{{ leadDetail.hasActivity }}" hint-placeholder-val="{{ false }}">
+          <div style="display: grid; gap: 8px;">
+            <sc-for list="{{ leadDetail.activity }}" as="act" hint-placeholder-count="2">
+              <div style="background: var(--s-card2); border-radius: 6px; padding: 10px 12px; border-left: 3px solid #5A93C9;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                  <span style="font-size: 10px; color: var(--s-blue); font-weight: 600;">{{ act.date }} · {{ act.time }}</span>
+                </div>
+                <div style="font-size: 12px; color: var(--s-text);">{{ act.text }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
     <sc-if value="{{ crmIsProspects }}" hint-placeholder-val="{{ false }}">
       <!-- CALL LIST HEADER -->
       <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.42); overflow: hidden; margin-top: 18px; margin-bottom: 16px;">
@@ -1583,7 +1811,7 @@
     </sc-if>
 
     <!-- NURTURE VIEW -->
-    <sc-if value="{{ crmIsNurture }}" hint-placeholder-val="{{ false }}">
+    <sc-if value="{{ crmClassicNurture }}" hint-placeholder-val="{{ false }}">
       <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.42); overflow: hidden; margin-top: 18px; margin-bottom: 16px;">
         <div style="padding: 14px 20px; display: flex; align-items: center; gap: 10px;">
           <div style="width: 4px; height: 18px; border-radius: 2px; background: var(--s-orange);"></div>
@@ -1626,6 +1854,7 @@
       </div>
     </sc-if>
 
+    <sc-if value="{{ crmClassic }}" hint-placeholder-val="{{ false }}">
     <!-- CRM SECTIONS -->
     <sc-for list="{{ crmSections }}" as="sec" hint-placeholder-count="2">
       <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.42); overflow: hidden; margin-bottom: 16px;">
@@ -1766,6 +1995,7 @@
         </div>
       </div>
     </sc-for>
+    </sc-if>
     <!-- CSV MAPPING MODAL -->
     <sc-if value="{{ hasCsvImport }}" hint-placeholder-val="{{ false }}">
       <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.72); z-index: 240; display: flex; align-items: center; justify-content: center; padding: 24px;">
@@ -1877,6 +2107,44 @@
   </div>
 </sc-if>
 
+<!-- NEW PIPELINE CARD (popup) -->
+<sc-if value="{{ ncOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ ncClose }}" style="position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 255; display: flex; align-items: center; justify-content: center; padding: 16px;">
+    <div onClick="{{ stopProp }}" style="width: 100%; max-width: 520px; max-height: 92vh; overflow: auto; background: var(--s-card); border: 1px solid var(--s-border); border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+      <div>
+        <div style="font-size: 17px; font-weight: 700; color: var(--s-text);">New pipeline card</div>
+        <div style="font-size: 12px; color: var(--s-muted); margin-top: 3px;">Lands in Disc Call Booked. Name and the call date and time are needed.</div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div><label style="font-size: 10px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-muted); display: block; margin-bottom: 5px;">Name *</label><input type="text" value="{{ ncName }}" onInput="{{ onNcName }}" placeholder="Full name" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 7px; font-family: inherit; font-size: 13px; color-scheme: dark; width: 100%; box-sizing: border-box;"></div>
+        <div><label style="font-size: 10px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-muted); display: block; margin-bottom: 5px;">Company</label><input type="text" value="{{ ncCompany }}" onInput="{{ onNcCompany }}" placeholder="Company" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 7px; font-family: inherit; font-size: 13px; color-scheme: dark; width: 100%; box-sizing: border-box;"></div>
+        <div><label style="font-size: 10px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-muted); display: block; margin-bottom: 5px;">Email</label><input type="email" value="{{ ncEmail }}" onInput="{{ onNcEmail }}" placeholder="name@company.com" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 7px; font-family: inherit; font-size: 13px; color-scheme: dark; width: 100%; box-sizing: border-box;"></div>
+        <div><label style="font-size: 10px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-muted); display: block; margin-bottom: 5px;">Phone</label><input type="text" value="{{ ncPhone }}" onInput="{{ onNcPhone }}" placeholder="+44 ..." style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 7px; font-family: inherit; font-size: 13px; color-scheme: dark; width: 100%; box-sizing: border-box;"></div>
+        <div><label style="font-size: 10px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-muted); display: block; margin-bottom: 5px;">When was the call booked</label><input type="date" value="{{ ncBookedOn }}" onChange="{{ onNcBookedOn }}" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 7px; font-family: inherit; font-size: 13px; color-scheme: dark; width: 100%; box-sizing: border-box;"></div>
+        <div><label style="font-size: 10px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-muted); display: block; margin-bottom: 5px;">How was it booked</label>
+          <select value="{{ ncVia }}" onChange="{{ onNcVia }}" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 7px; font-family: inherit; font-size: 13px; color-scheme: dark; width: 100%; box-sizing: border-box;">
+            <option value="Cold call">Cold call</option><option value="Email">Email</option><option value="Referral">Referral</option><option value="Networking">Networking</option><option value="Other">Other</option>
+          </select></div>
+        <div><label style="font-size: 10px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-muted); display: block; margin-bottom: 5px;">Call date *</label><input type="date" value="{{ ncDate }}" onChange="{{ onNcDate }}" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 7px; font-family: inherit; font-size: 13px; color-scheme: dark; width: 100%; box-sizing: border-box;"></div>
+        <div><label style="font-size: 10px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-muted); display: block; margin-bottom: 5px;">Call time *</label><input type="time" value="{{ ncTime }}" onChange="{{ onNcTime }}" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 7px; font-family: inherit; font-size: 13px; color-scheme: dark; width: 100%; box-sizing: border-box;"></div>
+      </div>
+      <sc-if value="{{ ncManyRegions }}" hint-placeholder-val="{{ false }}">
+        <div><label style="font-size: 10px; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; color: var(--s-muted); display: block; margin-bottom: 5px;">Region</label>
+          <select value="{{ ncRegion }}" onChange="{{ onNcRegion }}" style="background: var(--s-card3); border: 1px solid var(--s-border); color: var(--s-text); padding: 9px 12px; border-radius: 7px; font-family: inherit; font-size: 13px; color-scheme: dark; width: 100%; box-sizing: border-box;">
+            <sc-for list="{{ ncRegions }}" as="r" hint-placeholder-count="2"><option value="{{ r.id }}">{{ r.name }}</option></sc-for>
+          </select></div>
+      </sc-if>
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+        <span style="font-size: 11px; color: var(--s-faint);">{{ dpTz }}</span>
+        <div style="display: flex; gap: 8px;">
+          <button onClick="{{ ncClose }}" style="padding: 9px 14px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 7px; font-size: 12px; cursor: pointer; font-family: inherit;">Cancel</button>
+          <button onClick="{{ ncSave }}" style="padding: 9px 18px; background: var(--s-blue); border: none; color: var(--s-bg); border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; opacity: {{ ncOpacity }};">Add card</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
 <!-- CALL DATE PROMPT (global) -->
 <sc-if value="{{ hasDatePrompt }}" hint-placeholder-val="{{ false }}">
   <div onClick="{{ dpLater }}" style="position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 260; display: flex; align-items: center; justify-content: center; padding: 16px;">
@@ -1904,7 +2172,7 @@
 </sc-if>
 
 <!-- LEAD DETAIL POPUP (global, opens from any tab) -->
-<sc-if value="{{ hasLeadDetail }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ showLeadModal }}" hint-placeholder-val="{{ false }}">
   <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.72); z-index: 200; display: flex; align-items: center; justify-content: center;" onClick="{{ closeLeadDetail }}">
     <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.42); width: 600px; max-height: 80vh; overflow-y: auto; padding: 0;" onClick="{{ stopPropagation }}">
       <!-- Header -->
@@ -2308,6 +2576,44 @@ class Component extends DCLogic {
     }
   }
 
+  _isoAdd(iso, n) { const d = new Date(iso + 'T00:00'); d.setDate(d.getDate() + n); return this._cbIso(d); }
+  _monthsAhead(n) { const d = new Date(); d.setMonth(d.getMonth() + n); return this._cbIso(d); }
+  // First and last day a campaign sent (from the day-by-day numbers when we have them, else Apollo's dates)
+  _seqRange(s, sq) {
+    const today = this._todayIso();
+    const dk = Object.keys((s.apolloDaily || {})[sq.id] || {}).sort();
+    let a = dk[0] || '', b = dk[dk.length - 1] || '';
+    if (!a) { a = sq.createdAt || ''; b = sq.status === 'Active' ? today : (sq.lastUsedAt || a); }
+    else if (sq.status === 'Active') b = today;
+    return a ? { a, b: b || a } : null;
+  }
+  // sending = running now, finished = stopped and nothing sent for 14 days, paused = the rest
+  _seqKind(s, sq) {
+    if (sq.status === 'Active') return 'sending';
+    const r = this._seqRange(s, sq);
+    const last = (r && r.b) || sq.lastUsedAt || '';
+    return (last && last < this._isoAdd(this._todayIso(), -14)) ? 'finished' : 'paused';
+  }
+  _seqWindow(s) {
+    const p = s.sqPeriod || 'any', t = this._todayIso();
+    const dow = (new Date(t + 'T00:00').getDay() + 6) % 7, mon = this._isoAdd(t, -dow);
+    if (p === 'thisweek') return [mon, this._isoAdd(mon, 6)];
+    if (p === 'lastweek') return [this._isoAdd(mon, -7), this._isoAdd(mon, -1)];
+    if (p === '4weeks') return [this._isoAdd(t, -27), t];
+    if (p === 'month') return [t.slice(0, 8) + '01', t.slice(0, 8) + '31'];
+    if (p === 'custom') return [s.sqFrom || '0000-01-01', s.sqTo || '9999-12-31'];
+    return null;
+  }
+  // Status + period + hidden filter shared by the table, the KPIs and the sync
+  _seqPass(s, sq, showHidden) {
+    if (!showHidden && (s.apolloHidden || {})[sq.id]) return false;
+    const k = s.sqStatus || 'all';
+    if (k !== 'all' && this._seqKind(s, sq) !== k) return false;
+    const w = this._seqWindow(s);
+    if (w) { const r = this._seqRange(s, sq); if (r && (r.b < w[0] || r.a > w[1])) return false; }
+    return true;
+  }
+
   // The one source of truth for "which campaigns count": name filter + Active only.
   activeApolloSeqs(s) {
     const search = (s.apolloSearchFilter || 'Sarac Ramsay').toLowerCase();
@@ -2316,7 +2622,8 @@ class Component extends DCLogic {
       const n = (sq.name || '').toLowerCase();
       if (n.includes('atrium')) return false;
       if (search && !n.includes(search)) return false;
-      if (onlyActive && sq.status !== 'Active') return false;
+      if (onlyActive && (s.sqStatus || 'all') === 'all' && sq.status !== 'Active') return false;
+      if (!this._seqPass(s, sq)) return false;
       return true;
     });
   }
@@ -2748,7 +3055,7 @@ class Component extends DCLogic {
   }
 
   // ===== Email replies inbox (Email tab) =====
-  _eiMove(c, group, date) {
+  _eiMove(c, group, date, time) {
     const today = this._todayIso();
     this.setState(prev => {
       const res = this._applyMoves(prev, [c], group);
@@ -2757,12 +3064,41 @@ class Component extends DCLogic {
       Object.values(res.crmData).forEach(rd => (rd[group] || []).forEach(l => {
         if (!match(l)) return;
         l.replyText = l.replyText || c.replyText || '';
-        if (group === 'pipeline') Object.assign(l, { pipelineDate: date, pipelineMonth: date.slice(0, 7), emailBookedDate: today, nextStep: 'Attend booked call', nextStepDate: '' });
+        if (group === 'pipeline') Object.assign(l, { pipelineDate: date, pipelineTime: time || '', pipelineMonth: date.slice(0, 7), emailBookedDate: today, nextStep: 'Attend booked call', nextStepDate: '' });
         if (group === 'leads') Object.assign(l, { nextStepDate: l.nextStepDate || today, leadStatus: 'Needs FUP', nextStep: 'Follow up call' });
-        if (group === 'recycle') Object.assign(l, { recycleReason: 'Not interested (email reply)', recycleDate: today, leadStatus: '' });
+        if (group === 'recycle') Object.assign(l, { recycleReason: 'Not interested (email reply)', recycleDate: today, nextContactDate: this._monthsAhead(2), leadStatus: '' });
       }));
       return { ...res, eiBook: null };
     });
+  }
+
+  // Move a lead that is already in the CRM between In Call Out Box / Booked / Not interested
+  _eiRelocate(x, to, date, time) {
+    const today = this._todayIso();
+    this.setState(st => {
+      const data = JSON.parse(JSON.stringify(st.crmData || {}));
+      const rd = data[x.rid]; if (!rd) return {};
+      const i = (rd[x.group] || []).findIndex(l => l.id === x.l.id); if (i < 0) return {};
+      const [lead] = rd[x.group].splice(i, 1);
+      if (to === 'pipeline') Object.assign(lead, { pipelineStage: 'Disc Call Booked', dealStage: 'Disc Call Booked', pipelineDate: date || today, pipelineTime: time || '', pipelineMonth: (date || today).slice(0, 7), bookedVia: lead.bookedVia || 'Email', emailBookedDate: today, leadStatus: '', nextStep: 'Attend booked call', nextStepDate: '', recycleReason: '', recycleDate: '', nextContactDate: '', recycledFrom: '' });
+      if (to === 'leads') Object.assign(lead, { pipelineStage: '', dealStage: '', pipelineDate: '', pipelineTime: '', pipelineMonth: '', leadStatus: 'Needs FUP', nextStep: 'Follow up call', nextStepDate: today, recycleReason: '', recycleDate: '', nextContactDate: '', recycledFrom: '' });
+      if (to === 'recycle') Object.assign(lead, { recycleReason: 'Not interested (email reply)', recycleDate: today, nextContactDate: this._monthsAhead(2), leadStatus: '', nextStepDate: '' });
+      rd[to] = [...(rd[to] || []), lead];
+      return { crmData: data, eiBook: null };
+    });
+  }
+
+  // Replies that clearly say no go straight to Recycle with a follow-up date 2 months out
+  _autoRecycleNo(prev, merged) {
+    const NO = /\b(not interested|no longer interested|not a fit|no thanks|no thank you|unsubscribe|remove me|take me off|stop (emailing|contacting))\b/i;
+    const list = Object.values(merged).filter(c => (c.replied || c.apolloStatus === 'Replied') && !c.positive && NO.test(c.replyText || ''));
+    if (!list.length) return null;
+    const res = this._applyMoves({ ...prev, apolloContactsData: merged }, list, 'recycle');
+    const today = this._todayIso(), next = this._monthsAhead(2), ems = new Set(list.map(c => (c.email || '').toLowerCase().trim()).filter(Boolean));
+    Object.values(res.crmData).forEach(rd => (rd.recycle || []).forEach(l => {
+      if (ems.has((l.email || '').toLowerCase().trim()) && !l.recycleDate) Object.assign(l, { recycleReason: 'Not interested (email reply)', recycleDate: today, nextContactDate: next, leadStatus: '' });
+    }));
+    return { res, n: list.length };
   }
 
   buildEmailInbox(s) {
@@ -2790,12 +3126,12 @@ class Component extends DCLogic {
     const bookUi = (key, onConfirm) => {
       const booking = !!(B && B.key === key);
       return {
-        booking, notBooking: !booking, bookDate: booking ? (B.date || '') : '',
-        onBookDate: (e) => setB({ date: e.target.value }),
-        startBook: () => this.setState({ eiBook: { key, date: '' } }),
+        booking, notBooking: !booking, bookDate: booking ? (B.date || '') : '', bookTime: booking ? (B.time || '') : '',
+        onBookDate: (e) => setB({ date: e.target.value }), onBookTime: (e) => setB({ time: e.target.value }),
+        startBook: () => this.setState({ eiBook: { key, date: '', time: '' } }),
         cancelBook: () => this.setState({ eiBook: null }),
-        confirmBook: () => { if (B && B.key === key && B.date) onConfirm(B.date); },
-        confirmOpacity: booking && B.date ? 1 : 0.4,
+        confirmBook: () => { if (B && B.key === key && B.date && B.time) onConfirm(B.date, B.time); },
+        confirmOpacity: booking && B.date && B.time ? 1 : 0.4,
       };
     };
     let rows;
@@ -2806,30 +3142,36 @@ class Component extends DCLogic {
         reply: c.replyText || (c.positive ? 'Marked interested in Apollo' : 'Replied to the sequence'),
         isNew: true, isFollow: false, isCrm: false,
         follow: () => this._eiMove(c, 'leads'), notInt: () => this._eiMove(c, 'recycle'),
-        ...bookUi('c:' + c.id, (d) => this._eiMove(c, 'pipeline', d)),
+        ...bookUi('c:' + c.id, (d, t) => this._eiMove(c, 'pipeline', d, t)),
       }));
     } else {
       rows = crm[tab].map(x => {
         const l = x.l;
         const when = tab === 'follow' ? (l.nextStepDate ? 'Follow up ' + fmt(l.nextStepDate) : 'No follow-up date')
-          : tab === 'booked' ? (l.pipelineDate ? 'Call ' + fmt(l.pipelineDate) : '')
-          : (l.recycleReason || 'Not interested');
+          : tab === 'booked' ? (l.pipelineDate ? 'Call ' + fmt(l.pipelineDate) + (l.pipelineTime ? ' ' + l.pipelineTime : '') : '')
+          : (l.recycleReason || 'Not interested') + (l.nextContactDate ? ' · back ' + fmt(l.nextContactDate) : '');
         const last = (l.activity || [])[0];
         return {
           name: l.name || '(no name)', sub: l.company || l.email || '', campaign: (l.campaign || '').split(', ')[0] || '—', when,
           reply: l.replyText || (last ? last.text : '') || l.notes || '',
-          isNew: false, isFollow: tab === 'follow', isCrm: true,
+          isNew: false, isFollow: false, isCrm: true,
           hasStage: tab === 'booked', stageLabel: x.group === 'recycle' ? (l.pipelineStage || 'Closed Lost') : (l.pipelineStage || l.dealStage || 'Disc Call Booked'),
           stageColor: STC[x.group === 'recycle' ? (l.pipelineStage || 'Closed Lost') : (l.pipelineStage || l.dealStage || 'Disc Call Booked')] || 'var(--s-muted)',
+          canBook: tab !== 'booked', canFollow: tab !== 'follow', canNotInt: tab !== 'notint',
+          toFollow: () => this._eiRelocate(x, 'leads'), toNotInt: () => this._eiRelocate(x, 'recycle'),
           open: () => this.setState({ crmLeadDetail: { regionId: x.rid, group: x.group, leadIdx: x.idx }, crmNewNote: '' }),
-          ...bookUi('l:' + l.id, (d) => this.emailLeadBooked(x.rid, l.id, d)),
+          ...bookUi('l:' + l.id, (d, t) => this._eiRelocate(x, 'pipeline', d, t)),
         };
       });
     }
+    const dragTo = (r, k) => { if (k === tab) return; if (k === 'booked') return r.startBook(); if (k === 'follow') return tab === 'new' ? r.follow() : r.toFollow(); if (k === 'notint') return tab === 'new' ? r.notInt() : r.toNotInt(); };
+    rows = rows.map(r => ({ ...r, dragStart: (e) => { window.__eiDrag = (k) => dragTo(r, k); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'ei'); } catch (x) {} } }));
     const counts = { new: newOnes.length, follow: crm.follow.length, booked: crm.booked.length, notint: crm.notint.length };
     const eiTabs = [['new', 'New'], ['follow', 'In Call Out Box'], ['booked', 'Booked'], ['notint', 'Not interested']].map(([k, l]) => ({
       label: l, count: counts[k], bg: tab === k ? 'var(--s-blue)' : 'transparent', fg: tab === k ? 'var(--s-bg)' : 'var(--s-text2)', border: tab === k ? 'var(--s-blue)' : 'var(--s-border)',
       pick: () => this.setState({ eiTab: k, eiBook: null }),
+      over: (e) => { if (window.__eiDrag && k !== tab) e.preventDefault(); },
+      drop: (e) => { e.preventDefault(); const f = window.__eiDrag; window.__eiDrag = null; if (f) f(k); },
     }));
     const empty = { new: 'No new replies. Press ↻ Sync replies to pull the latest from Apollo.', follow: 'Nobody from email is in the Call Out Box.', booked: 'No calls booked from email yet.', notint: 'Nothing here.' }[tab];
     return { eiTabs, eiRows: rows, eiHasRows: rows.length > 0, eiEmpty: rows.length === 0, eiEmptyText: empty, eiNewCount: counts.new };
@@ -3376,6 +3718,26 @@ class Component extends DCLogic {
       poTitle: rows.length + (rows.length === 1 ? ' call needs an outcome' : ' calls need an outcome'),
       poOpen: s.poOpen !== false, poChev: s.poOpen !== false ? 'Hide ▴' : 'Show ▾',
       poToggle: () => this.setState(st => ({ poOpen: st.poOpen === false })),
+      ...(() => {
+        const N = s.ncModal, regs = s.crmRegions || [];
+        const setN = (p) => this.setState(st => ({ ncModal: { ...(st.ncModal || {}), ...p } }));
+        const ok = !!(N && (N.name || '').trim() && N.date && N.time);
+        const defReg = (regs.find(r => r.id === s.crmActiveRegion) || regs[0] || { id: 'dubai' }).id;
+        return {
+          ncOpen: !!N,
+          ncOpenModal: () => this.setState({ ncModal: { name: '', company: '', email: '', phone: '', bookedOn: this._todayIso(), via: 'Cold call', date: '', time: '', rid: defReg } }),
+          ncClose: () => this.setState({ ncModal: null }),
+          ncName: N ? N.name : '', ncCompany: N ? N.company : '', ncEmail: N ? N.email : '', ncPhone: N ? N.phone : '',
+          ncBookedOn: N ? N.bookedOn : '', ncVia: N ? N.via : 'Cold call', ncDate: N ? N.date : '', ncTime: N ? N.time : '', ncRegion: N ? N.rid : defReg,
+          onNcName: (e) => setN({ name: e.target.value }), onNcCompany: (e) => setN({ company: e.target.value }),
+          onNcEmail: (e) => setN({ email: e.target.value }), onNcPhone: (e) => setN({ phone: e.target.value }),
+          onNcBookedOn: (e) => setN({ bookedOn: e.target.value }), onNcVia: (e) => setN({ via: e.target.value }),
+          onNcDate: (e) => setN({ date: e.target.value }), onNcTime: (e) => setN({ time: e.target.value }), onNcRegion: (e) => setN({ rid: e.target.value }),
+          ncManyRegions: regs.length > 1, ncRegions: regs.map(r => ({ id: r.id, name: r.name })),
+          ncOpacity: ok ? 1 : 0.4,
+          ncSave: () => { if (ok) this._addNewCard(N); },
+        };
+      })(),
       hasDatePrompt: !!P,
       dpTitle: P ? (P.resched ? 'New date for the ' : 'When is the ') + (P.stage === 'Sales Call Booked' ? 'sales call?' : 'discovery call?') : '',
       dpSub: P ? P.name + (P.resched ? ' · rescheduled, not a no-show' : ' · moving to ' + P.stage) : '',
@@ -3412,6 +3774,7 @@ class Component extends DCLogic {
       if (search && !nameLC.includes(search)) return false;
       if (statusF === 'active' && sq.status !== 'Active') return false;
       if (statusF === 'paused' && sq.status !== 'Paused') return false;
+      if (!this._seqPass(s, sq)) return false;
       return true;
     });
   }
@@ -3454,7 +3817,7 @@ class Component extends DCLogic {
   }
 
   buildEmailMonth(s) {
-    const range = s.emRange || 'month';
+    const range = s.emRange || 'all';
     const now = new Date();
     const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -3579,12 +3942,18 @@ class Component extends DCLogic {
       return null;
     }
     try {
-      const res = await fetch('/.netlify/functions/apollo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, data, apiKey })
-      });
-      const text = await res.text();
+      let res, text;
+      // Apollo rate-limits (429). Wait and retry instead of dropping the page.
+      for (let attempt = 0; attempt < 4; attempt++) {
+        res = await fetch('/.netlify/functions/apollo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, data, apiKey })
+        });
+        text = await res.text();
+        if (res.status !== 429 || attempt === 3) break;
+        await new Promise(r => setTimeout(r, 1200 * (attempt + 1)));
+      }
       let json = null;
       try { json = JSON.parse(text); } catch(_) {}
       if (!res.ok) {
@@ -3719,7 +4088,7 @@ class Component extends DCLogic {
     });
   }
 
-  async loadApolloContacts() {
+  async loadApolloContacts(full) {
     if (!this.state.apolloApiKey) { this.setState({ apolloContactsError: 'Add your Apollo API key first.' }); return; }
     this.setState({ apolloContactsLoading: true, apolloContactsError: '', apolloContactsProgress: 'Starting…' });
     const seqs = this.activeApolloSeqs(this.state);
@@ -3729,6 +4098,16 @@ class Component extends DCLogic {
     }
 
     const existing = this.state.apolloContactsData || {};
+    // Quick sync: campaigns that are not sending and have the same totals as last time are skipped.
+    const sigOf = (q) => [q.emailsSent, q.replies, q.bounces, q.status].join('|');
+    const oldSig = this.state.apolloSeqSig || {};
+    const hasData = Object.keys(existing).length > 0;
+    const todo = full ? seqs : seqs.filter(q => q.status === 'Active' || !hasData || oldSig[q.id] !== sigOf(q));
+    const skippedSeqs = seqs.length - todo.length;
+    if (!todo.length) {
+      this.setState({ apolloContactsLoading: false, apolloContactsProgress: `Nothing changed. All ${seqs.length} campaigns are up to date. Use Full sync to force a re-pull.`, apolloContactsLastSync: new Date().toISOString() });
+      return;
+    }
     // Index existing records by email as well as id, so manual columns survive
     // even when Apollo hands back a different contact id for the same person.
     const byEmail = {};
@@ -3747,9 +4126,11 @@ class Component extends DCLogic {
     const sr = await this.fetchApollo('contactStages', {});
     (sr?.contact_stages || []).forEach(x => { stageMap[x.id] = x.name || x.display_name || ''; });
 
-    for (const seq of seqs) {
+    let doneSeqs = 0;
+    const note = () => this.setState({ apolloContactsProgress: `Syncing ${todo.length} campaign${todo.length === 1 ? '' : 's'} · ${doneSeqs} done · ${count} contacts loaded` + (skippedSeqs ? ` · ${skippedSeqs} unchanged skipped` : '') });
+    const doSeq = async (seq) => {
       for (let page = 1; page <= 60; page++) {
-        this.setState({ apolloContactsProgress: `${seq.name} · page ${page} · ${count} loaded` });
+        note();
         let res;
         try {
           res = await this.fetchApollo('contacts', { emailer_campaign_ids: [seq.id], per_page: 100, page });
@@ -3818,7 +4199,7 @@ class Component extends DCLogic {
       }
       // Per-contact email activity (sent / opens / replies / bounces) for this sequence
       for (let mp = 1; mp <= 40; mp++) {
-        this.setState({ apolloContactsProgress: `${seq.name} · email activity page ${mp}` });
+        note();
         const mr = await this.fetchApollo('messages', { emailer_campaign_ids: [seq.id], per_page: 100, page: mp });
         const msgs = mr?.emailer_messages || [];
         if (!msgs.length) break;
@@ -3861,7 +4242,17 @@ class Component extends DCLogic {
         });
         if (msgs.length < 100) break;
       }
-    }
+    };
+    // Run 4 campaigns at the same time instead of one by one
+    let qi = 0;
+    const worker = async () => {
+      while (qi < todo.length) {
+        const q = todo[qi++];
+        try { await doSeq(q); } catch (e) { console.warn('Campaign sync failed', q && q.name, e); }
+        doneSeqs++; note();
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
 
     Object.values(merged).forEach(r => {
       if (!r._fresh) return;
@@ -3903,16 +4294,21 @@ class Component extends DCLogic {
         const e = (merged[id].email || '').toLowerCase().trim();
         if (e && crmNow.has(e)) delete merged[id];
       });
+      const auto = this._autoRecycleNo(prev, merged);
+      const base = auto ? { crmData: auto.res.crmData, emailBookings: auto.res.emailBookings } : {};
+      if (auto) Object.keys(merged).forEach(id => { if (!auto.res.apolloContactsData[id]) delete merged[id]; });
       const repliedCount = Object.values(merged).filter(r => r.replied || r.positive).length;
       return {
+      ...base,
       apolloContactsData: merged,
       movedProspects: {},
       clFilterApollo: repliedCount ? 'Replied' : (prev.clFilterApollo || 'all'),
       clFilterCampaign: 'all',
       apolloMonthly: Object.keys(monthly).length ? { ...(prev.apolloMonthly || {}), ...monthly } : (prev.apolloMonthly || {}),
       apolloDaily: Object.keys(daily).length ? { ...(prev.apolloDaily || {}), ...daily } : (prev.apolloDaily || {}),
+      apolloSeqSig: { ...(prev.apolloSeqSig || {}), ...Object.fromEntries(todo.map(q => [q.id, sigOf(q)])) },
       apolloContactsLoading: false,
-      apolloContactsProgress: `Sync done · ${repliedCount} repl${repliedCount === 1 ? 'y' : 'ies'} from live campaigns not yet in Leads or Pipeline.`,
+      apolloContactsProgress: `Sync done · ${repliedCount} repl${repliedCount === 1 ? 'y' : 'ies'} from live campaigns not yet in Leads or Pipeline.` + (auto ? ` ${auto.n} "not interested" moved to Recycle (back in 2 months).` : '') + (skippedSeqs ? ` ${skippedSeqs} unchanged campaign${skippedSeqs === 1 ? '' : 's'} skipped.` : ''),
       apolloContactsLastSync: new Date().toISOString(),
       };
     });
@@ -4009,6 +4405,7 @@ class Component extends DCLogic {
       if (!(em && inCrm.has(em))) {
         if (!crmData[regionId]) crmData[regionId] = { leads: [], pipeline: [], prospects: [], recycle: [] };
         crmData[regionId][group] = [...(crmData[regionId][group] || []), lead];
+        if (isPipe) this._lastPipeAdd = { rid: regionId, id: lead.id, name: lead.name };
         if (em) inCrm.add(em);
       }
       delete apollo[c.id];
@@ -4040,10 +4437,12 @@ class Component extends DCLogic {
   moveProspectToGroup(contactId, group) {
     const c = (this.state.apolloContactsData || {})[contactId];
     if (!c) return;
+    this._lastPipeAdd = null;
     this.setState(prev => ({
       ...this._applyMoves(prev, [c], group),
       apolloContactsProgress: `${c.name || 'Contact'} moved to ${group === 'pipeline' ? 'Pipeline and logged as a booked call' : 'Leads'}.`,
     }));
+    if (group === 'pipeline') setTimeout(() => { const a = this._lastPipeAdd; if (a) this.setState({ datePrompt: { rid: a.rid, leadId: a.id, stage: 'Disc Call Booked', name: a.name, date: '', time: '' } }); }, 0);
   }
 
   _moveProspectToGroupOld(contactId, group) {
@@ -4495,6 +4894,8 @@ class Component extends DCLogic {
         opens: c.unique_opened || 0,
         replies: c.unique_replied || 0,
         bounces: c.unique_bounced || 0,
+        createdAt: String(c.created_at || '').slice(0, 10),
+        lastUsedAt: String(c.last_used_at || c.updated_at || '').slice(0, 10),
         openRate: c.unique_delivered > 0 ? ((c.unique_opened / c.unique_delivered) * 100).toFixed(1) : '0.0',
         replyRate: c.unique_delivered > 0 ? ((c.unique_replied / c.unique_delivered) * 100).toFixed(1) : '0.0',
         bounceRate: c.unique_delivered > 0 ? ((c.unique_bounced / c.unique_delivered) * 100).toFixed(1) : '0.0',
@@ -5020,6 +5421,8 @@ class Component extends DCLogic {
       delete toSave.crmFilterVia;
       delete toSave.eiBook;
       delete toSave.datePrompt;
+      delete toSave.ncModal;
+      delete toSave.sqPop;
       delete toSave.revPrompt;
       delete toSave.revLive;
       delete toSave.revOut;
@@ -5423,6 +5826,11 @@ class Component extends DCLogic {
             this._menuAnchor = { top: r.top, bottom: r.bottom, left: r.left, right: r.right };
             this.setState(st => ({ pipelineMenu: st.pipelineMenu === key ? null : key }));
           },
+          ctx: (e) => {
+            e.preventDefault();
+            this._menuAnchor = { top: e.clientY, bottom: e.clientY + 2, left: e.clientX, right: e.clientX + 2 };
+            this.setState({ pipelineMenu: item._regionId + ':' + item._idx });
+          },
           stageMenu: pipelineStages.filter(s2 => s2.key !== st.key).map(s2 => ({
             label: s2.label, color: s2.color,
             pick: () => { this.crmUpdateLead(item._regionId, 'pipeline', item._idx, 'pipelineStage', s2.key); this.setState({ pipelineMenu: null }); }
@@ -5780,12 +6188,12 @@ class Component extends DCLogic {
         const search = (s.apolloSearchFilter || 'Sarac Ramsay').toLowerCase();
         const statusF = s.apolloStatusFilter || 'all';
         const all = (s.apolloSequences || []);
+        const hiddenMap = s.apolloHidden || {};
         const filtered = all.filter(sq => {
           const nameLC = (sq.name || '').toLowerCase();
           if (nameLC.includes('atrium')) return false;
           if (search && !nameLC.includes(search)) return false;
-          if (statusF === 'active' && sq.status !== 'Active') return false;
-          if (statusF === 'paused' && sq.status !== 'Paused') return false;
+          if (!this._seqPass(s, sq, !!s.sqShowHidden)) return false;
           return true;
         }).map(sq => {
           // Per-month figures once a contact sync has captured them; lifetime totals otherwise
@@ -5794,20 +6202,45 @@ class Component extends DCLogic {
           const useM = this._hasApolloMonthly(s);
           const m = useM ? ((mon || {})[emKey] || { sent: 0, replies: 0, bounces: 0 }) : null;
           const sent = m ? m.sent : (sq.emailsSent || 0), rep = m ? m.replies : (sq.replies || 0), bnc = m ? m.bounces : (sq.bounces || 0);
+          const kind = this._seqKind(s, sq), rng = this._seqRange(s, sq), hid = !!hiddenMap[sq.id];
+          const fdm = (d) => d ? new Date(d + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
           return {
             ...sq,
-            emailsSent: sent, replies: rep, bounces: bnc,
+            emailsSent: sent, replies: rep, bounces: bnc, hidden: hid,
             replyRate: sent > 0 ? (rep / sent * 100).toFixed(1) : '0.0',
             bounceRate: sent > 0 ? (bnc / sent * 100).toFixed(1) : '0.0',
-            statusBg: sq.status === 'Active' ? 'rgba(63,185,80,0.13)' : 'rgba(139,148,158,0.13)',
-            statusColor: sq.status === 'Active' ? 'var(--s-green)' : 'var(--s-muted)',
+            kindLabel: { sending: 'Sending', paused: 'Paused', finished: 'Finished' }[kind],
+            statusBg: kind === 'sending' ? 'rgba(63,185,80,0.13)' : kind === 'finished' ? 'rgba(140,187,232,0.13)' : 'rgba(139,148,158,0.13)',
+            statusColor: kind === 'sending' ? 'var(--s-green)' : kind === 'finished' ? 'var(--s-blue)' : 'var(--s-muted)',
+            ranText: rng ? (rng.a === rng.b ? fdm(rng.a) : fdm(rng.a) + ' to ' + (kind === 'sending' ? 'now' : fdm(rng.b))) : '—',
+            rowOpacity: hid ? 0.45 : 1,
+            hideLabel: hid ? 'Show' : 'Hide',
+            toggleHide: () => this.setState(st => ({ apolloHidden: { ...(st.apolloHidden || {}), [sq.id]: !(st.apolloHidden || {})[sq.id] } })),
           };
         });
-        const fSent = filtered.reduce((sum, sq) => sum + (sq.emailsSent || 0), 0);
-        const fOpens = filtered.reduce((sum, sq) => sum + (sq.opens || 0), 0);
-        const fReplies = filtered.reduce((sum, sq) => sum + (sq.replies || 0), 0);
-        const fBounces = filtered.reduce((sum, sq) => sum + (sq.bounces || 0), 0);
+        const counted = filtered.filter(x => !x.hidden);
+        const fSent = counted.reduce((sum, sq) => sum + (sq.emailsSent || 0), 0);
+        const fOpens = counted.reduce((sum, sq) => sum + (sq.opens || 0), 0);
+        const fReplies = counted.reduce((sum, sq) => sum + (sq.replies || 0), 0);
+        const fBounces = counted.reduce((sum, sq) => sum + (sq.bounces || 0), 0);
+        const hidCount = all.filter(sq => hiddenMap[sq.id]).length;
+        const mkChip = (cur, key, label, set) => ({ label, bg: cur === key ? 'var(--s-blue)' : 'transparent', fg: cur === key ? 'var(--s-bg)' : 'var(--s-text2)', border: cur === key ? 'var(--s-blue)' : 'var(--s-border)', pick: () => set(key) });
+        const curK = s.sqStatus || 'all', curP = s.sqPeriod || 'any';
+        const kcount = (k) => all.filter(sq => !(sq.name || '').toLowerCase().includes('atrium') && (!search || (sq.name || '').toLowerCase().includes(search)) && !hiddenMap[sq.id] && this._seqKind(s, sq) === k).length;
+        Object.assign(this, { _sqUi: {
+          sqStatusChips: [['all', 'All'], ['sending', 'Sending now (' + kcount('sending') + ')'], ['paused', 'Paused (' + kcount('paused') + ')'], ['finished', 'Finished (' + kcount('finished') + ')']].map(([k, l]) => mkChip(curK, k, l, (v) => this.setState({ sqStatus: v }))),
+          sqPeriodChips: [['any', 'Any time'], ['thisweek', 'This week'], ['lastweek', 'Last week'], ['4weeks', 'Last 4 weeks'], ['month', 'This month'], ['custom', 'Pick dates']].map(([k, l]) => mkChip(curP, k, l, (v) => this.setState({ sqPeriod: v }))),
+          sqIsCustom: curP === 'custom', sqFrom: s.sqFrom || '', sqTo: s.sqTo || '',
+          onSqFrom: (e) => this.setState({ sqFrom: e.target.value }), onSqTo: (e) => this.setState({ sqTo: e.target.value }),
+          sqPop: !!s.sqPop, toggleSqPop: () => this.setState(st => ({ sqPop: !st.sqPop })),
+          sqFilterCount: (curK !== 'all' ? 1 : 0) + (curP !== 'any' ? 1 : 0) + (s.apolloActiveOnly === false ? 1 : 0) + (((s.apolloSearchFilter || 'Sarac Ramsay') !== 'Sarac Ramsay') ? 1 : 0),
+          resetSq: () => this.setState({ sqStatus: 'all', sqPeriod: 'any', sqFrom: '', sqTo: '', apolloActiveOnly: true, apolloSearchFilter: 'Sarac Ramsay' }),
+          sqHasHidden: hidCount > 0, sqHiddenLabel: s.sqShowHidden ? 'Hide the ' + hidCount + ' hidden' : 'Show ' + hidCount + ' hidden',
+          toggleSqShowHidden: () => this.setState(st => ({ sqShowHidden: !st.sqShowHidden })),
+          sqSummary: counted.length + ' campaign' + (counted.length === 1 ? '' : 's') + ' counted in the numbers and the reply sync' + ((curK !== 'all' || curP !== 'any') ? ' · filters on' : '') + (curK !== 'all' && s.apolloActiveOnly !== false ? ' · status filter overrides "active only"' : ''),
+        } });
         return {
+          ...this._sqUi,
           filteredApolloSequences: filtered,
           hasApolloSequences: filtered.length > 0,
           noApolloSequences: filtered.length === 0,
@@ -5826,6 +6259,7 @@ class Component extends DCLogic {
       apolloLastSync: s.apolloLastSync ? new Date(s.apolloLastSync).toLocaleString() : 'Never',
       syncApollo: () => { this.loadApolloSequences(); },
       syncApolloContacts: () => this.loadApolloContacts(),
+      syncApolloContactsFull: () => this.loadApolloContacts(true),
       // Pull → CRM
       pullApolloContacts: () => this.pullApolloContacts(),
       addPulledToCRM: () => this.addPulledToCRM(),
@@ -5989,6 +6423,13 @@ class Component extends DCLogic {
       crmNurtureColor: s.crmActiveGroup === 'nurture' ? 'var(--s-card)' : 'var(--s-orange)',
       setCrmGroupNurture: () => this.setState({ crmActiveGroup: 'nurture' }),
       nurtureRows: this.buildNurtureRows(s),
+      crmClassic: !!s.crmClassic, crmNew: !s.crmClassic,
+      _navPost: (() => { const v = !!(s.crmLeadDetail && s.activeTab === 'crm' && !s.crmClassic); if (window.__navLast !== v) { window.__navLast = v; try { if (window.parent !== window) window.parent.postMessage({ sr: 'nav', compact: v }, '*'); } catch (e) {} } return 0; })(),
+      crmClassicNurture: !!s.crmClassic && s.crmActiveGroup === 'nurture',
+      showLeadDock: !!s.crmLeadDetail && s.activeTab === 'crm' && !s.crmClassic,
+      showLeadModal: !!s.crmLeadDetail && !(s.activeTab === 'crm' && !s.crmClassic),
+      setCrmClassic: () => this.setState(st => ({ crmClassic: !st.crmClassic })),
+      ...this.buildCrmB(s),
       nurtureCount: this.buildNurtureRows(s).length,
       noNurtureRows: this.buildNurtureRows(s).length === 0,
       notCrmAddRegionMode: !(s.crmAddRegionMode || false),
@@ -6293,6 +6734,25 @@ class Component extends DCLogic {
     }));
   }
 
+  _addNewCard(N) {
+    const email = (N.email || '').trim(), via = N.via || 'Cold call', today = this._todayIso();
+    const isEmail = via === 'Email';
+    this.setState(st => {
+      const data = JSON.parse(JSON.stringify(st.crmData || {}));
+      const rid = (data[N.rid] || (st.crmRegions || []).some(r => r.id === N.rid)) ? N.rid : ((st.crmRegions || [])[0] || { id: 'dubai' }).id;
+      if (!data[rid]) data[rid] = { leads: [], pipeline: [], prospects: [], recycle: [] };
+      data[rid].pipeline = [...(data[rid].pipeline || []), {
+        id: 'pk' + Date.now(), name: N.name.trim(), company: (N.company || '').trim(), phone: (N.phone || '').trim(), email, value: 0,
+        dealStage: 'Disc Call Booked', pipelineStage: 'Disc Call Booked', response: '', leadStatus: '', nextStep: 'Attend booked call', nextStepDate: '',
+        leadStage: '', recycleDate: '', person: 'Josh', notes: '', activity: [],
+        bookedVia: via, source: isEmail ? 'Email' : '', channel: isEmail ? 'email' : 'cold', bookedOn: N.bookedOn || today, emailBookedDate: isEmail ? (N.bookedOn || today) : '',
+        pipelineDate: N.date, pipelineTime: N.time, pipelineMonth: N.date.slice(0, 7), discDate: N.date, discMonth: N.date.slice(0, 7),
+        firstResponseDate: '', firstFollowUpDate: '', closeReason: '', lastContactDate: '', nextContactDate: '', recycleReason: '',
+      }];
+      return { crmData: data, ncModal: null, pipelineMonth: 'all' };
+    });
+  }
+
   addPipelineFromKanban(stage) {
     const name = (this.state.pipelineAddName || '').trim();
     if (!name) return;
@@ -6317,6 +6777,9 @@ class Component extends DCLogic {
       });
       return { crmData: data, pipelineAddStage: null, pipelineAddName: '', pipelineAddCompany: '', pipelineAddValue: '' };
     });
+    if (stage === 'Disc Call Booked' || stage === 'Sales Call Booked') {
+      setTimeout(() => { const l = ((this.state.crmData || {})[firstRegion.id]?.pipeline || []).filter(x => x.name === name).pop(); if (l) this.setState({ datePrompt: { rid: firstRegion.id, leadId: l.id, stage, name, date: '', time: '' } }); }, 0);
+    }
   }
 
   confirmAddPipeline(stage) {
@@ -6823,6 +7286,86 @@ class Component extends DCLogic {
     });
   }
 
+  // CRM layout B: one rail (regions + lists), grouped rows, docked lead panel.
+  // Reads the same data and the same dedupe rules as the classic table, writes through the same handlers.
+  buildCrmB(s) {
+    const grp = s.crmActiveGroup || 'all';
+    const det = s.crmLeadDetail;
+    const today = new Date().toISOString().split('T')[0];
+    const fmt = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+    const money = (n) => '$' + (n || 0).toLocaleString();
+    const allSecs = this.buildCrmSections({ ...s, crmActiveGroup: 'all' });
+    const sum = { leads: 0, pipeline: 0, recycle: 0 }, val = { leads: 0, pipeline: 0, recycle: 0 };
+    allSecs.forEach(sec => { sum[sec.group] += sec.count; sec.leads.forEach(l => { val[sec.group] += (l.value || 0); }); });
+    const nur = this.buildNurtureRows(s);
+    const nurVal = nur.reduce((a, n) => a + (n.valueNum || 0), 0);
+    const sel = (rid, g, i) => !!(det && det.regionId === rid && det.group === g && det.leadIdx === i);
+    const tones = { all: 'var(--s-muted)', leads: 'var(--s-green)', pipeline: '#5A93C9', recycle: 'var(--s-red)', nurture: 'var(--s-orange)' };
+    const railDefs = [['all', 'All lists', sum.leads + sum.pipeline + sum.recycle + nur.length], ['leads', 'Leads', sum.leads], ['pipeline', 'Pipeline', sum.pipeline], ['recycle', 'Recycle', sum.recycle], ['nurture', 'Nurture', nur.length]];
+    const crmRailLists = railDefs.map(([k, label, count]) => ({
+      key: k, label, count, tone: tones[k],
+      bg: grp === k ? 'var(--s-card3)' : 'transparent', color: grp === k ? 'var(--s-text)' : 'var(--s-muted)',
+      select: () => this.setState({ crmActiveGroup: k }),
+    }));
+    const groups = [];
+    if (grp !== 'nurture') {
+      const secs = grp === 'all' ? allSecs : this.buildCrmSections(s);
+      secs.forEach(sec => {
+        const g = sec.group;
+        groups.push({
+          key: sec.key, label: sec.groupLabel, color: sec.groupColor, showRegion: (s.crmActiveRegion || 'all') === 'all', regionName: sec.regionName,
+          isPipeline: g === 'pipeline', monthValue: sec.monthValue, monthOptions: sec.monthOptions, onMonthChange: sec.onMonthChange,
+          count: sec.count, totalValue: sec.totalValue, canAdd: true, importCsv: sec.importCsv, addLead: sec.addLead,
+          dateHead: g === 'pipeline' ? 'Booked' : 'Last / next',
+          isEmpty: sec.count === 0, emptyText: 'No one here yet in ' + sec.regionName + '.',
+          rows: sec.leads.map(l => {
+            const isP = g === 'pipeline', isR = g === 'recycle';
+            const nextD = isR ? l.nextContactDate : l.nextStepDate;
+            return {
+              key: sec.key + '_' + l._idx, open: l.openDetail, heart: (e) => { if (e && e.stopPropagation) e.stopPropagation(); l.toggleNurture(); },
+              name: l.name || 'Unnamed lead', company: l.company || '', email: l.email || '', phone: l.phone || '',
+              ownerLine: [l.person, sec.regionName].filter(Boolean).join(' · '),
+              srcLabel: (l.chanLabel || '').replace(/^\S+\s/, ''), srcColor: l.chanColor,
+              statusA: isP ? (l.pipelineStageLabel || 'No stage') : isR ? (l.recycleReason || 'No reason yet') : (l.leadStatus || l.response || 'New lead'),
+              statusColor: isP ? l.pipelineStageColor : isR ? 'var(--s-red)' : (l.leadStatusColor || 'var(--s-text2)'),
+              statusB: isP ? (l.rebookDate ? 'Re-book ' + fmt(l.rebookDate) : '') : (isR ? '' : (l.attempts || 0) + ' attempt' + ((l.attempts || 0) === 1 ? '' : 's')),
+              valueText: l.value ? money(l.value) : '',
+              dateA: isP ? (l.pipelineDate ? fmt(l.pipelineDate) : 'Not booked') : 'Last ' + (fmt(l.lastContactDate) || '-'),
+              dateAColor: isP && !l.pipelineDate ? 'var(--s-faint)' : 'var(--s-text2)',
+              dateB: isP ? '' : 'Next ' + (fmt(nextD) || '-'),
+              dateBColor: nextD && nextD < today ? 'var(--s-red)' : nextD === today ? 'var(--s-gold)' : 'var(--s-muted)',
+              heartColor: l.nurtureIconColor,
+              tint: sel(sec.regionId, g, l._idx) ? 'var(--s-card3)' : 'transparent', selBorder: sel(sec.regionId, g, l._idx) ? 'var(--s-blue)' : 'transparent',
+            };
+          }),
+        });
+      });
+    }
+    if (grp === 'all' || grp === 'nurture') {
+      groups.push({
+        key: 'nurture', label: 'Nurture', color: 'var(--s-orange)', showRegion: false, regionName: '', isPipeline: false, monthValue: '', monthOptions: [],
+        onMonthChange: () => {}, count: nur.length, totalValue: money(nurVal), canAdd: false, importCsv: () => {}, addLead: () => {},
+        dateHead: 'From / next touch', isEmpty: nur.length === 0, emptyText: 'No one flagged for Nurture yet. Use the heart on a lead to add someone.',
+        rows: nur.map(n => ({
+          key: n.key, open: n.openDetail, heart: (e) => { if (e && e.stopPropagation) e.stopPropagation(); n.unflag(); },
+          name: n.name || 'Unnamed lead', company: n.company, email: n.email, phone: n.phone,
+          ownerLine: [n.person, n.regionName].filter(Boolean).join(' · '),
+          srcLabel: (n.chanLabel || '').replace(/^\S+\s/, ''), srcColor: n.chanColor,
+          statusA: n.warmth || 'Warmth not set', statusColor: n.warmthColor, statusB: n.reason || '',
+          valueText: n.valueNum ? money(n.valueNum) : '',
+          dateA: 'From ' + n.sourceLabel, dateAColor: 'var(--s-text2)',
+          dateB: 'Next ' + (fmt(n.nextTouch) || '-'), dateBColor: n.nextTouch && n.nextTouch < today ? 'var(--s-red)' : n.nextTouch === today ? 'var(--s-gold)' : 'var(--s-muted)',
+          heartColor: 'var(--s-orange)',
+          tint: sel(n._rid, n._g, n._idx) ? 'var(--s-card3)' : 'transparent', selBorder: sel(n._rid, n._g, n._idx) ? 'var(--s-blue)' : 'transparent',
+        })),
+      });
+    }
+    return {
+      crmRailLists, crmBGroups: groups, crmBEmpty: groups.length === 0,
+      crmRailPipelineValue: money(val.pipeline), crmRailRecycleValue: money(val.recycle), crmRailNurtureValue: money(nurVal),
+    };
+  }
+
   buildNurtureRows(s) {
     const groups = ['leads', 'pipeline', 'recycle'];
     const groupLabels = { leads: 'Leads', pipeline: 'Pipeline', recycle: 'Recycle' };
@@ -6839,6 +7382,7 @@ class Component extends DCLogic {
           const mk = (field) => (e) => this.crmUpdateLead(region.id, group, idx, field, e.target.value);
           rows.push({
             key: region.id + '_' + group + '_' + idx,
+            _rid: region.id, _g: group, _idx: idx, regionName: region.name, person: lead.person || '', valueNum: lead.value || 0, ...this._chanTag(lead),
             name: lead.name || '', company: lead.company || '', email: lead.email || '', phone: lead.phone || '',
             onNameChange: mk('name'), onCompanyChange: mk('company'), onEmailChange: mk('email'), onPhoneChange: mk('phone'),
             sourceLabel: groupLabels[group], sourceColor: groupColors[group],
@@ -6930,11 +7474,11 @@ class Component extends DCLogic {
     const CB = 'e.g. in a meeting, travelling, waiting on business partner';
     const asap = obj === 'sales' ? '1w' : null;
     const notInt = {
-      disc: o('Not interested', 'Moves to Recycle', 'toRecycle', 'nr', '', { def: '3m', rl: 'Reason', req: 'n' }),
-      rebook: o('Not interested', 'Copy to Recycle · counts as Lost · Discovery', 'rebookLost', 'nr', '', { def: '3m', rl: 'Reason', req: 'n' }),
+      disc: o('Not interested', 'Moves to Recycle', 'toRecycle', 'nr', '', { def: '2m', rl: 'Reason', req: 'n' }),
+      rebook: o('Not interested', 'Copy to Recycle · counts as Lost · Discovery', 'rebookLost', 'nr', '', { def: '2m', rl: 'Reason', req: 'n' }),
       sales: o('Not interested', 'Stage → Closed Lost', 'lost', 'r', '', { rl: 'Reason' }),
       prop: o('Deal lost', 'Stage → Closed Lost', 'lost', 'r', '', { rl: 'Reason' }),
-      recy: o('Not interested', 'Stays in Recycle', 'recycleStay', 'nr', '', { def: '3m', rl: 'Reason', req: 'n' }),
+      recy: o('Not interested', 'Stays in Recycle', 'recycleStay', 'nr', '', { def: '2m', rl: 'Reason', req: 'n' }),
       confirm: o('Not interested any more', 'Stage → Closed Lost', 'lost', 'r', '', { rl: 'Reason' }),
     }[obj];
     const callback = o('Spoke — call back', 'Stays where they are · Attempts +1', 'stay', 'rne', 'DPO', { rl: 'Reason', ph: obj === 'prop' ? 'e.g. still thinking, travelling, needs to speak with business partner' : CB, def: asap, req: 'n' });
@@ -7039,7 +7583,7 @@ class Component extends DCLogic {
       lead.lastContactDate = today;
       lead.activity = [{ date: today, time, text: noteText }].concat(lead.activity || []);
       if (L.reason) lead.lastCallReason = L.reason;
-      const setMeeting = () => { lead.pipelineDate = meetingDate; lead.pipelineMonth = meetingDate.slice(0, 7); lead.nextStepDate = ''; };
+      const setMeeting = () => { lead.pipelineTime = (L.meeting || '').length > 10 ? L.meeting.slice(11, 16) : (lead.pipelineTime || ''); lead.pipelineDate = meetingDate; lead.pipelineMonth = meetingDate.slice(0, 7); lead.nextStepDate = ''; };
       switch (opt.act) {
         case 'stay': lead[e.nextField] = L.next; break;
         case 'wrong':
@@ -7124,7 +7668,7 @@ class Component extends DCLogic {
     const prio = { sales: 0, prop: 1, rebook: 2, confirm: 3, disc: 4, recy: 5 };
     const L = s.cbLog;
     const setL = (patch) => this.setState(st => ({ cbLog: Object.assign({}, st.cbLog || {}, patch) }));
-    const defNext = (def) => def === '1w' ? this._cbIso(this._cbAddWorking(1)) : def === '3m' ? (() => { const d = new Date(); d.setMonth(d.getMonth() + 3); return this._cbIso(d); })() : '';
+    const defNext = (def) => def === '1w' ? this._cbIso(this._cbAddWorking(1)) : (def === '3m' || def === '2m') ? this._monthsAhead(2) : '';
     const plus = (fn) => { const d = new Date(); fn(d); return d; };
     const chipDefs = [['Next working day', this._cbAddWorking(1)], ['In 2 working days', this._cbAddWorking(2)], ['In 1 week', plus(d => d.setDate(d.getDate() + 7))], ['In 1 month', plus(d => d.setMonth(d.getMonth() + 1))], ['In 3 months', plus(d => d.setMonth(d.getMonth() + 3))]];
     const tl = { D: 'dial', P: 'pick-up', O: 'owner', B: 'booked' };
@@ -7280,6 +7824,15 @@ class Component extends DCLogic {
       if (!data[toRegion]) data[toRegion] = { leads: [], pipeline: [], prospects: [], recycle: [] };
       if (!data[toRegion][toGroup]) data[toRegion][toGroup] = [];
       data[toRegion][toGroup].push(lead);
+      // Anything landing in the Pipeline as a booked call needs its call date and time
+      if (toGroup === 'pipeline' && fromGroup !== 'pipeline') {
+        const stg = lead.pipelineStage || lead.dealStage || '';
+        if (!stg) { lead.pipelineStage = 'Disc Call Booked'; lead.dealStage = 'Disc Call Booked'; }
+        const nowStg = lead.pipelineStage || lead.dealStage;
+        if ((nowStg === 'Disc Call Booked' || nowStg === 'Sales Call Booked') && !lead.pipelineDate) {
+          setTimeout(() => this.setState({ datePrompt: { rid: toRegion, leadId: lead.id, stage: nowStg, name: lead.name || '', date: '', time: '' } }), 0);
+        }
+      }
       return { crmData: data };
     });
   }
@@ -7503,6 +8056,14 @@ class Component extends DCLogic {
       regionId: d.regionId,
       regionOptions: (s.crmRegions || []).map(r => ({ id: r.id, name: r.name })),
       onRegionChange: (e) => this.crmReassignRegion(d.regionId, d.group, d.leadIdx, e.target.value),
+      moveTargets: this._leadMoveTargets(s, d.regionId, d.group),
+      onMoveGroup: (e) => {
+        const target = e.target.value; if (!target) return;
+        const [toRegion, toGroup] = target.split('|');
+        this.crmMoveLead(d.regionId, d.group, d.leadIdx, toRegion, toGroup);
+        this.setState({ crmLeadDetail: null });
+      },
+      removeLead: () => { this.crmRemoveLead(d.regionId, d.group, d.leadIdx); this.setState({ crmLeadDetail: null }); },
     };
   }
 
@@ -8626,7 +9187,7 @@ class Component extends DCLogic {
               onEmailChange: mk('email'), onValueChange: mkNum('value'), onDealStageChange: mk('dealStage'),
               onResponseChange: mk('response'), onLeadStatusChange: mk('leadStatus'),
               attempts: lead.attempts || 0,
-              ownerLine: [lead.owner, region.name].filter(Boolean).join(' · '),
+              ownerLine: [lead.person || lead.owner, region.name].filter(Boolean).join(' · '),
               incrementAttempts: () => this.crmUpdateLead(region.id, group, idx, 'attempts', (lead.attempts || 0) + 1),
               decrementAttempts: () => this.crmUpdateLead(region.id, group, idx, 'attempts', Math.max(0, (lead.attempts || 0) - 1)),
               toggleNurture: () => this.crmUpdateLead(region.id, group, idx, 'nurture', !lead.nurture),
@@ -8746,6 +9307,26 @@ class Component extends DCLogic {
   }
 }
 
+</script>
+<script>
+(function (doc) {
+    var KEY = 'sr_colw:' + ((doc.defaultView && doc.defaultView.location.pathname) || ''), W = {}, drag = null, lastEnd = 0;
+    try { W = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+    var sig = function (th) { var t = th.closest('table'); if (!t || !t.rows[0]) return ''; return Array.prototype.map.call(t.rows[0].cells, function (c) { return (c.textContent || '').trim().slice(0, 24); }).join('|') + '#' + th.cellIndex; };
+    var setW = function (th, w) { th.style.width = th.style.minWidth = th.style.maxWidth = w ? w + 'px' : ''; th.dataset.rz = w ? String(w) : ''; };
+    var apply = function () { doc.querySelectorAll('table th').forEach(function (th) { var w = W[sig(th)]; if (w && th.dataset.rz !== String(w)) setW(th, w); }); };
+    var near = function (e) { var th = e.target.closest && e.target.closest('th'); if (!th) return null; var d = th.getBoundingClientRect().right - e.clientX; return d <= 6 && d >= -2 ? th : null; };
+    var save = function () { try { localStorage.setItem(KEY, JSON.stringify(W)); } catch (e) {} };
+    doc.addEventListener('mousemove', function (e) { if (drag) { drag.cur = Math.max(40, Math.round(drag.w + e.clientX - drag.x)); setW(drag.th, drag.cur); return; } if (doc.body) doc.body.style.cursor = near(e) ? 'col-resize' : ''; }, true);
+    doc.addEventListener('mousedown', function (e) { var th = near(e); if (!th) return; e.preventDefault(); e.stopPropagation(); drag = { th: th, x: e.clientX, w: th.getBoundingClientRect().width, key: sig(th), cur: 0 }; }, true);
+    doc.addEventListener('mouseup', function () { if (!drag) return; if (drag.cur) { W[drag.key] = drag.cur; save(); } drag = null; lastEnd = Date.now(); if (doc.body) doc.body.style.cursor = ''; }, true);
+    doc.addEventListener('click', function (e) { if (Date.now() - lastEnd < 250 && near(e)) { e.stopPropagation(); e.preventDefault(); } }, true);
+    doc.addEventListener('dblclick', function (e) { var th = near(e); if (!th) return; delete W[sig(th)]; save(); setW(th, 0); }, true);
+    var t0; new MutationObserver(function () { clearTimeout(t0); t0 = setTimeout(apply, 80); }).observe(doc.documentElement, { childList: true, subtree: true });
+    apply();
+  }
+)(document);
+document.addEventListener('dragend', function () { window.__eiDrag = null; }, true);
 </script>
 </body>
 </html>
