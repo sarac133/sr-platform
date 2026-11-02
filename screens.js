@@ -46,7 +46,7 @@ window.SR = window.SR || {};
         </div>
         ${view === 'people' ? html`<${SR.Workload} tasks=${filtered} clients=${p.clients} onOpen=${p.onOpen} openId=${p.openId} />` : html`<${SR.TaskList} tasks=${filtered} clients=${p.clients} showClient=${true} selected=${p.sel} flat=${view !== 'date'} dnd=${true}
           onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} onClearSel=${p.onClearSel} onBulk=${p.onBulk}
-          newTask=${p.newTask} onNewTask=${p.onNewTask} onAdd=${p.onAdd} settling=${p.settling} just=${p.just} openId=${p.openId} />`}
+          newTask=${p.newTask} onNewTask=${p.onNewTask} onAdd=${p.onAdd} qFront=${p.qFront} onQFront=${p.onQFront} qOwner=${p.qOwner} onQOwner=${p.onQOwner} autoOwner=${p.autoOwner} qNeed=${p.qNeed} settling=${p.settling} just=${p.just} openId=${p.openId} />`}
       </section>
     </div>`;
   };
@@ -77,6 +77,7 @@ window.SR = window.SR || {};
     var openCount = open.filter(function (t) { return !t.done; }).length;
     return html`<div ref=${mrf} style="display:flex;flex-direction:column;gap:6px">
       <div><div style="font-size:13px;color:var(--muted)">Assigned to ${me}</div>${H1('My tasks')}</div>
+      <${SR.QuickAdd} value=${p.newTask} onChange=${p.onNewTask} onAdd=${p.onAdd} front=${p.qFront} onFront=${p.onQFront} owner=${p.qOwner} onOwner=${p.onQOwner} autoOwner=${me} need=${p.qNeed} clients=${p.clients} placeholder="+ Add a task for yourself, or paste a list" />
       <section style=${card + ';padding:20px 22px'}>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
           <div style="font-size:14px;color:var(--muted)">${openCount} open across ${new Set(open.map(function (t) { return t.clientId; })).size} clients</div>

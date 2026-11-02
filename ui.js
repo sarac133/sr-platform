@@ -101,7 +101,94 @@ window.SR = window.SR || {};
   };
   SR.money = function (v) { return '$' + Math.round(v).toLocaleString('en-US'); };
   SR.n0 = function (v) { return Math.round(v).toLocaleString('en-US'); };
-  SR.clientById = function (clients, id) { for (var i = 0; i < clients.length; i++) if (clients[i].id === id) return clients[i]; return { id: 'agency', name: 'Agency', color: '#8F99AA' }; };
+  /* battlefronts: the built-in fronts plus every client */
+  SR.FRONTS = { agency: { id: 'agency', name: 'Agency / Admin', color: '#8F99AA', kind: 'agency' }, sales: { id: 'sales', name: 'Sales', color: '#E0A33A', kind: 'sales' }, marketing: { id: 'marketing', name: 'Marketing', color: '#B07CE0', kind: 'marketing' } };
+  SR.clientById = function (clients, id) { for (var i = 0; i < clients.length; i++) if (clients[i].id === id) return clients[i]; if (id === '' || id == null) return { id: '', name: 'No battlefront yet', color: '#B0B6C2' }; return SR.FRONTS[id] || { id: 'agency', name: 'Agency', color: '#8F99AA' }; };
+  SR.isLate = function (t, today) { return !t.done && ((t.deadline && t.deadline < today) || (t.date && t.date < today) || (t.rolled || 0) >= 2); };
+  SR.fronts = function (clients) { return Object.keys(SR.FRONTS).map(function (k) { return SR.FRONTS[k]; }).concat(clients); };
+  SR.frontAlias = { admin: 'agency', ops: 'agency', operations: 'agency', agency: 'agency', internal: 'agency', hq: 'agency', sr: 'agency', sales: 'sales', outreach: 'sales', pipeline: 'sales', calls: 'sales', 'cold calling': 'sales', marketing: 'marketing', website: 'marketing', content: 'marketing', brand: 'marketing', social: 'marketing' };
+  var nrm = function (x) { return String(x || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); };
+  SR.matchFront = function (word, clients) {
+    var w = nrm(word); if (!w) return null; if (SR.frontAlias[w]) return SR.frontAlias[w];
+    for (var i = 0; i < clients.length; i++) { var c = clients[i], n = nrm(c.name), d = nrm(String(c.domain || '').split('.')[0]); if (n === w || d === w || (w.length >= 3 && (n.indexOf(w) === 0 || (n.length >= 3 && w.indexOf(n) === 0)))) return c.id; }
+    return null;
+  };
+  /* clean pasted task lists: checkboxes, bullets, numbering, "Admin - " prefixes, headings, @owner */
+  SR.parseTaskLines = function (text, clients, tasks) {
+    var CHK = /^\s*(?:[-*+•▪◦]\s*)?(?:\[\s*([xX✓✔]?)\s*\]|([☐□▢⬜])|([☑✅✔☒✓]))\s*/;
+    var BUL = /^\s*(?:[-*+•▪◦–—]|\d{1,3}[.)])\s+/;
+    var rows = [], group = null;
+    String(text || '').replace(/\r/g, '').split('\n').forEach(function (raw) {
+      var s = raw.replace(/\t/g, ' ').trim(); if (!s) return;
+      var hm = !CHK.test(s) && (/^#{1,6}\s+(.+?)\s*#*$/.exec(s) || /^\*\*([^*]{2,40})\*\*:?$/.exec(s) || /^([A-Za-z][A-Za-z0-9&' ]{1,30}):$/.exec(s));
+      if (hm) { group = SR.matchFront(hm[1], clients); return; }
+      var done = false, m = CHK.exec(s);
+      if (m) { done = !!(m[1] || m[3]); s = s.slice(m[0].length); } else s = s.replace(BUL, '');
+      m = CHK.exec(s); if (m) { done = done || !!(m[1] || m[3]); s = s.slice(m[0].length); }
+      s = s.replace(/^\*\*(.+?)\*\*/, '$1').replace(/~~(.+?)~~/g, '$1').replace(/^(?:todo|task)\s*[:\-]\s*/i, '').trim();
+      if (s) rows.push({ s: s, done: done, group: group });
+    });
+    var PFX = /^([A-Za-z0-9&'\/ ]{2,30}?)(?:\s[-–—]\s|:\s|\s\|\s)\s*(.+)$/, counts = {};
+    rows.forEach(function (r) { var m = PFX.exec(r.s); r.pfx = m ? m[1].trim() : ''; r.rest = m ? m[2].trim() : r.s; if (r.pfx) counts[nrm(r.pfx)] = (counts[nrm(r.pfx)] || 0) + 1; });
+    var seen = {}, existing = {};
+    (tasks || []).forEach(function (t) { if (!t.done) existing[t.clientId + '|' + nrm(t.name)] = 1; });
+    return rows.map(function (r, i) {
+      var front = r.pfx ? SR.matchFront(r.pfx, clients) : null, name = r.s, tag = '', from = '';
+      if (front) { name = r.rest; from = 'prefix'; } else if (r.pfx && counts[nrm(r.pfx)] >= 2 && r.pfx.split(' ').length <= 2) { name = r.rest; tag = r.pfx; }
+      if (!front && r.group) { front = r.group; from = 'heading'; }
+      var owner = '';
+      name = name.replace(/(^|\s)@([A-Za-z]+)\b/g, function (all, sp, n) { var t = (SR.TEAM || []).filter(function (x) { return x.toLowerCase() === n.toLowerCase(); })[0]; if (t) { owner = t; return sp; } return all; }).replace(/\s{2,}/g, ' ').replace(/^[\s\-–—:]+/, '').trim();
+      name = name.charAt(0).toUpperCase() + name.slice(1);
+      var key = nrm(name), dupe = !!seen[key] || (front && !!existing[front + '|' + key]); seen[key] = 1;
+      return { i: i, name: name, front: front, from: from, owner: owner, done: r.done, tag: tag, dupe: dupe, include: !!name && !r.done && !dupe };
+    }).filter(function (x) { return x.name; });
+  };
+
+  SR.fx = function () {}; SR.gameDone = function () {};
+  /* one-line composer: type or paste, press Enter. Battlefront and owner stick. */
+  SR.QuickAdd = function (p) {
+    var fr = SR.fronts(p.clients), team = SR.TEAM || [], val = p.value || '', has = !!val.trim(), fi = React.useRef(null), dr = React.useState(false), over = dr[0], setOver = dr[1];
+    var readFile = function (f) { if (!f) return; var r = new FileReader(); r.onload = function () { var csv = /\.csv$/i.test(f.name), t = String(r.result || '').split(/\r?\n/).map(function (l) { if (!csv) return l; var m = /^\s*"((?:[^"]|"")*)"/.exec(l); return m ? m[1].replace(/""/g, '"') : l.split(',')[0]; }).join('\n'); p.onChange((val ? val + '\n' : '') + t); }; r.readAsText(f); };
+    return html`<div class=${'qa2' + (p.need ? ' need' : '') + (over ? ' over' : '')} onDragOver=${function (e) { if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0) { e.preventDefault(); setOver(true); } }} onDragLeave=${function () { setOver(false); }} onDrop=${function (e) { setOver(false); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) { e.preventDefault(); readFile(f); } }}>
+      <div class="qa2-row"><span class="qa2-plus" aria-hidden="true">+</span>
+        <textarea rows=${Math.min(7, Math.max(1, val.split('\n').length))} placeholder=${over ? 'Drop the file here' : 'Add a task, or paste a list'} aria-label="Add tasks" value=${val} onChange=${function (e) { p.onChange(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); p.onChange(e.target.value); setTimeout(p.onAdd, 0); } }}></textarea>
+        ${has ? null : html`<button type="button" class="qa2-up" onClick=${function () { fi.current && fi.current.click(); }} title="Upload a .txt or .csv list">Upload</button>`}
+        <input ref=${fi} type="file" accept=".txt,.csv,text/plain,text/csv" style="display:none" onChange=${function (e) { readFile(e.target.files && e.target.files[0]); e.target.value = ''; }} /></div>
+    </div>`;
+  };
+  /* review popup: choose the battlefront and owner before anything is posted */
+  SR.AddReview = function (p) {
+    var st = R.useState(p.items), rows = st[0], setRows = st[1];
+    var ds = R.useState('today'), dmode = ds[0], setDmode = ds[1];
+    var dp = R.useState(''), dpick = dp[0], setDpick = dp[1];
+    R.useEffect(function () { var k = function (e) { if (e.key === 'Escape') p.onClose(); }; document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, []);
+    var fr = SR.fronts(p.clients), team = SR.TEAM || [];
+    var upd = function (i, o) { setRows(function (rs) { return rs.map(function (r) { return r.i === i ? Object.assign({}, r, o) : r; }); }); };
+    var all = function (o) { setRows(function (rs) { return rs.map(function (r) { return Object.assign({}, r, o); }); }); };
+    var inc = rows.filter(function (r) { return r.include; }), missing = inc.filter(function (r) { return !r.front; }).length;
+    var date = dmode === 'today' ? SR.TODAY : dmode === 'tomorrow' ? SR.addDays(SR.TODAY, 1) : dmode === 'pick' ? dpick : '';
+    var opt = function (v, l) { return html`<option key=${v} value=${v}>${l}</option>`; };
+    return html`<div class="mdl-bg" onMouseDown=${function (e) { if (e.target === e.currentTarget) p.onClose(); }}><div class="mdl ar-mdl" role="dialog" aria-label="Review tasks">
+      <div class="mdl-top"><h2>Review ${rows.length} task${rows.length === 1 ? '' : 's'}</h2><button type="button" class="edbtn" onClick=${p.onClose} aria-label="Close">${SR.Icon('close', 14)}</button></div>
+      <div class="ar-all">
+        <label>Battlefront for all<select class="cal-in" value="" onChange=${function (e) { if (e.target.value) all({ front: e.target.value }); }}>${opt('', 'Keep detected')}${fr.map(function (f) { return opt(f.id, f.name); })}</select></label>
+        <label>Owner for all<select class="cal-in" value="" onChange=${function (e) { if (e.target.value !== '') all({ owner: e.target.value === '__none' ? '' : e.target.value }); }}>${opt('', 'Keep as is')}${team.map(function (n) { return opt(n, n); })}${opt('__none', 'Unassigned')}</select></label>
+        <label>Date<span style="display:flex;gap:6px"><select class="cal-in" value=${dmode} onChange=${function (e) { setDmode(e.target.value); }}>${opt('today', 'Today')}${opt('tomorrow', 'Tomorrow')}${opt('none', 'No date')}${opt('pick', 'Pick a date')}</select>${dmode === 'pick' ? html`<input type="date" class="cal-in" value=${dpick} onChange=${function (e) { setDpick(e.target.value); }} />` : null}</span></label>
+      </div>
+      <div class="ar-list">${rows.map(function (r) {
+        return html`<div key=${r.i} class=${'ar-row' + (r.include ? '' : ' off') + (r.include && !r.front ? ' need' : '')}>
+          <input type="checkbox" checked=${r.include} aria-label="Include" onChange=${function (e) { upd(r.i, { include: e.target.checked }); }} />
+          <div class="ar-main"><input class="cal-in ar-name" type="text" value=${r.name} aria-label="Task name" onChange=${function (e) { upd(r.i, { name: e.target.value }); }} />
+            <div class="ar-tags">${r.done ? html`<span class="ar-b">already ticked in your paste</span>` : null}${r.dupe ? html`<span class="ar-b warn">looks like a duplicate</span>` : null}${r.from === 'prefix' ? html`<span class="ar-b">front from prefix</span>` : null}${r.from === 'heading' ? html`<span class="ar-b">front from heading</span>` : null}${r.tag ? html`<span class="ar-b">label: ${r.tag}</span>` : null}</div></div>
+          <select class="cal-in ar-sel" aria-label="Battlefront" value=${r.front || ''} onChange=${function (e) { upd(r.i, { front: e.target.value || null }); }}>${opt('', 'Choose a front…')}${fr.map(function (f) { return opt(f.id, f.name); })}</select>
+          <select class="cal-in ar-sel" aria-label="Owner" value=${r.owner || ''} onChange=${function (e) { upd(r.i, { owner: e.target.value }); }}>${opt('', 'Unassigned')}${team.map(function (n) { return opt(n, n); })}</select>
+        </div>`; })}</div>
+      <div class="ar-foot"><span class="ar-note">${missing ? missing + ' still need a battlefront' : inc.length + ' ready to post'}</span>
+        <button type="button" class="edbtn" onClick=${p.onClose}>Cancel</button>
+        <button type="button" class="ar-go" disabled=${!inc.length || !!missing} onClick=${function () { p.onPost(inc, date); }}>Post ${inc.length} task${inc.length === 1 ? '' : 's'}</button></div>
+    </div></div>`;
+  };
+
 
   /* quick links for a task, picked from its wording */
   SR.taskLinks = function (t, c) {
@@ -221,6 +308,7 @@ window.SR = window.SR || {};
     if (bk.length && !t.done) meta.push(html`<span key="b" class="chip" style="color:var(--red);font-weight:600" title=${'Waiting for: ' + bk[0].name}>Blocked · ${bk.length}</span>`);
     if (t.comments && t.comments.length) meta.push(html`<span key="cm" class="chip">${t.comments.length} comment${t.comments.length > 1 ? 's' : ''}</span>`);
     if (t.subs && t.subs.length) meta.push(html`<span key="s" class="chip">${t.subs.filter(function (s) { return s.done; }).length}/${t.subs.length} subitems</span>`);
+    if (t.rolled && !t.done) meta.push(html`<span key="r" class="chip" title=${'Carried over from ' + SR.fmtDeadline(t.was || t.date)} style="color:var(--muted)">\u21BB ${t.rolled}d</span>`);
     if (t.deadline && (p.showClient || late)) meta.push(html`<span key="d" class="chip" style=${'font-weight:600;color:' + (late ? 'var(--red)' : (t.deadline === SR.TODAY || t.deadline === SR.addDays(SR.TODAY, 1) ? 'var(--gold)' : 'var(--muted)'))}>Deadline ${SR.fmtDeadline(t.deadline)}</span>`);
     var cls = 'task' + (t.done ? ' fin' : '') + (p.active ? ' sel' : '') + (p.just ? ' just' : '') + (sel ? ' picked' : '');
     var dnd = p.dnd && SR.dnd, ov = R.useState(false), over = ov[0], setOver = ov[1];
@@ -287,12 +375,7 @@ window.SR = window.SR || {};
       </div>`;
     }
     return html`<div ref=${rf}>
-      <div class="tl-add" style="display:flex;gap:10px;margin-bottom:6px;flex-wrap:wrap;align-items:flex-start">
-        <textarea rows=${bulkOn ? 8 : Math.min(8, Math.max(1, (p.newTask || '').split('\n').length))} placeholder=${bulkOn ? 'Type or paste one task per line. Dashes and numbers at the start are ignored.' : '+ Add a task'} aria-label="Add tasks" value=${p.newTask} onChange=${function (e) { p.onNewTask(e.target.value); }} onKeyDown=${function (e) { if (!bulkOn && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); p.onNewTask(e.target.value); setTimeout(p.onAdd, 0); } }} style="flex:1 1 260px;min-height:40px;resize:vertical;background:var(--input);border:1px dashed var(--border);border-radius:6px;color:var(--text);padding:10px 12px;font-family:inherit;font-size:14px;line-height:1.4"></textarea>
-        <button type="button" onClick=${p.onAdd} style="min-height:40px;padding:0 16px;border-radius:6px;border:0;background:var(--primary);color:var(--onPrimary,#FFF);font-family:inherit;font-size:14px;font-weight:600;cursor:pointer">${(p.newTask || '').split('\n').filter(function (l) { return l.trim(); }).length > 1 ? 'Add ' + (p.newTask || '').split('\n').filter(function (l) { return l.trim(); }).length + ' tasks' : 'Add'}</button>
-        <button type="button" class="edbtn tl-bulk" style="min-height:40px" aria-pressed=${bulkOn ? 'true' : 'false'} onClick=${function () { setBulkOn(!bulkOn); }}>${bulkOn ? 'Single task' : 'Bulk upload'}</button>
-        ${bulkOn ? html`<label class="edbtn" style="min-height:40px;display:inline-flex;align-items:center;cursor:pointer">Upload .txt or .csv<input type="file" accept=".txt,.csv,text/plain,text/csv" style="display:none" onChange=${function (e) { var f = e.target.files && e.target.files[0]; if (!f) return; var r = new FileReader(); r.onload = function () { var t = String(r.result || '').split(/\r?\n/).map(function (l) { return l.replace(/^"?([^",]*).*$/, '$1'); }).join('\n'); p.onNewTask(((p.newTask || '') ? p.newTask + '\n' : '') + t); }; r.readAsText(f); e.target.value = ''; }} /></label>` : null}
-      </div>
+      <${SR.QuickAdd} value=${p.newTask} onChange=${p.onNewTask} onAdd=${p.onAdd} front=${p.qFront} onFront=${p.onQFront} owner=${p.qOwner} onOwner=${p.onQOwner} autoOwner=${p.autoOwner} lockFront=${p.lockFront} need=${p.qNeed} clients=${p.clients} />
       ${body}
       ${p.tasks.length ? null : html`<div style="padding:16px 0;font-size:14px;color:var(--muted)">Nothing here.</div>`}
     </div>`;
@@ -347,7 +430,7 @@ window.SR = window.SR || {};
             ${links.length ? html`<div class="sr-lab" style="margin-top:6px">Quick links</div><div class="links">${links.map(function (l) { return html`<a key=${l[1]} href=${l[1]} target="_blank" rel="noopener"><span>${l[0]}</span><span aria-hidden="true">↗</span></a>`; })}</div>` : null}</div>` : null}
 
           <div class="sr-section">${lab('Client')}
-            <select value=${t.clientId} onChange=${function (e) { p.onPatch(t.id, { clientId: e.target.value }); }} class="sr-field" aria-label="Client"><option value="agency">Sarac Ramsay (no client)</option>${p.clients.map(function (cl) { return html`<option key=${cl.id} value=${cl.id}>${cl.name}</option>`; })}</select></div>
+            <select value=${t.clientId} onChange=${function (e) { p.onPatch(t.id, { clientId: e.target.value }); }} class="sr-field" aria-label="Client">${t.clientId ? null : html`<option value="">Choose a battlefront…</option>`}${SR.fronts(p.clients).map(function (cl) { return html`<option key=${cl.id} value=${cl.id}>${cl.name}</option>`; })}</select></div>
 
           <div class="sr-section">${lab('Assigned to')}
             <div class="sr-owners">${SR.TEAM.map(function (o) { return html`<button key=${o} type="button" class=${'sr-owner' + (t.owner === o ? ' on' : '')} onClick=${function () { p.onPatch(t.id, { owner: t.owner === o ? '' : o }); }}>${o}</button>`; })}</div>

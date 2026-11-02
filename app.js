@@ -1,4 +1,4 @@
-/* Sarac Ramsay — Client Dashboard · root app (state, router, sidebar) */
+/* Sarac Ramsay Eclipse · root app (state, router, sidebar) */
 (function (SR) {
   var html = SR.html, useState = React.useState, useEffect = React.useEffect;
 
@@ -15,6 +15,10 @@
     var co = useState(function () { try { return localStorage.getItem('sr_navclients') !== '0'; } catch (e) { return true; } }); var clientsOpen = co[0], setClientsOpenS = co[1];
     var dr = useState(null), dropAt = dr[0], setDropAt = dr[1];
     var nwS = useState(function () { try { return Math.max(200, Math.min(420, parseInt(localStorage.getItem('sr_navw'), 10) || 232)); } catch (e) { return 232; } }), navW = nwS[0], setNavW = nwS[1];
+    var qeS = useState([]), queue = qeS[0], setQueue = qeS[1];
+    var qfS = useState(function () { try { return localStorage.getItem('sr_qfront') || ''; } catch (e) { return ''; } }), qFront = qfS[0], setQFrontRaw = qfS[1];
+    var qoS = useState(''), qOwner = qoS[0], setQOwner = qoS[1], qnS = useState(false), qNeed = qnS[0], setQNeed = qnS[1];
+    var setQFront = function (v) { setQFrontRaw(v); setQNeed(false); try { localStorage.setItem('sr_qfront', v); } catch (e) {} };
     var hpS = useState(false), helpOpen = hpS[0], setHelpOpen = hpS[1];
     var vwS = useState(window.innerWidth), vw = vwS[0], setVw = vwS[1];
     useEffect(function () { var f = function () { setVw(window.innerWidth); }; window.addEventListener('resize', f); return function () { window.removeEventListener('resize', f); }; }, []);
@@ -82,8 +86,20 @@
     useEffect(function () { SR.store.saveKV('rules', rules); }, [rules]);
     useEffect(function () { SR.store.saveKV('clients', clients); }, [clients]);
     useEffect(function () { SR.store.saveKV('seq', seq); }, [seq]);
-    SR.templates = SR.templates || {};
-    var RES = [['periods', 'periods'], ['orgP', 'orgP'], ['orgT', 'orgT'], ['metaReal', 'metaReal'], ['acct', 'acct'], ['templates', 'templates']];
+    SR.templates = SR.templates || {}; SR.warmap = SR.warmap || {};
+    var RES = [['periods', 'periods'], ['orgP', 'orgP'], ['orgT', 'orgT'], ['metaReal', 'metaReal'], ['acct', 'acct'], ['templates', 'templates'], ['warmap', 'warmap'], ['game', 'game']];
+    /* overdue tasks carry over to today on their own */
+    useEffect(function () {
+      var go = function () {
+        var T = SR.TODAY, late = tasks.filter(function (t) { return !t.done && t.date && t.date < T && !(t.slots && t.slots.length); });
+        if (!late.length || localStorage.getItem('sr_roll') === 'off') return;
+        var ids = {}; late.forEach(function (t) { ids[t.id] = 1; });
+        undoable(late.length + ' overdue task' + (late.length === 1 ? '' : 's') + ' moved to today', function () {
+          setTasks(function (ts) { return ts.map(function (t) { if (!ids[t.id]) return t; var d = Math.max(1, Math.round((new Date(T) - new Date(t.date)) / 864e5)); return Object.assign({}, t, { was: t.was || t.date, rolled: (t.rolled || 0) + d, date: T }); }); });
+        });
+      };
+      var tm = setTimeout(go, 600); return function () { clearTimeout(tm); };
+    }, []);
     useEffect(function () { var iv = setInterval(function () { RES.forEach(function (k) { if (SR[k[0]]) SR.store.saveKV(k[1], SR[k[0]]); }); }, 1500); return function () { clearInterval(iv); }; }, []);
     SR.remote = {
       coll: function (name, row) {
@@ -244,12 +260,19 @@
     var bulkComplete = function () { Object.keys(selected).filter(function (k) { return selected[k]; }).map(Number).forEach(function (id) { toggle(id); }); clearSel(); };
     var addCustom = function (list) { var id = seq; var out = list.map(function (t) { return Object.assign({ id: id++, owner: me, date: SR.TODAY, done: false, subs: [], note: '' }, t); }); setTasks(function (ts) { return ts.concat(out); }); setSeq(id); toast(out.length + (out.length > 1 ? ' tasks added' : ' task added')); };
     var addTask = function () {
-      var lines = newTask.split('\n').map(function (l) { return l.replace(/^\s*(?:[-*\u2022]|\d+[.)])\s*/, '').trim(); }).filter(Boolean); if (!lines.length) return;
-      var cid = screen === 'client' ? activeClient : 'agency', ow = SR.TEAM.indexOf(who) >= 0 ? who : me;
-      var made = lines.map(function (nm, i) { return { id: seq + i, clientId: cid, name: nm, owner: ow, date: SR.TODAY, subs: [], note: '' }; });
-      setTasks(tasks.concat(made)); setSeq(seq + made.length); setNewTask('');
-      if (made.length === 1) setOpenId(made[0].id); else toast(made.length + ' tasks added');
+      var all = SR.parseTaskLines(newTask, clients, tasks); if (!all.length) return;
+      var dOwner = screen === 'mytasks' ? me : (SR.TEAM.indexOf(who) >= 0 ? who : me);
+      var items = all.filter(function (x) { return x.include; });
+      if (!items.length) { toast('Nothing new: ' + all.length + ' skipped (already ticked or duplicates)'); return; }
+      var dFront = screen === 'client' ? activeClient : '';
+      var made = items.map(function (it, i) { return { id: seq + i, clientId: it.front || dFront, name: it.name, owner: it.owner || dOwner, date: SR.TODAY, subs: [], note: '' }; });
+      undoable(made.length + ' task' + (made.length === 1 ? '' : 's') + ' added', function () { setTasks(tasks.concat(made)); setSeq(seq + made.length); });
+      setNewTask('');
+      var need = made.filter(function (t) { return !t.clientId; }).map(function (t) { return t.id; });
+      if (made.length === 1) { setQueue([]); setOpenId(made[0].id); }
+      else if (need.length) { setQueue(need); setOpenId(need[0]); }
     };
+    var qStep = function (d) { var i = queue.indexOf(openId), n = i + d; if (n < 0) return; if (n >= queue.length) { setQueue([]); setOpenId(null); return; } setOpenId(queue[n]); };
     var toggleSub = function (id, i) { patch(id, function (t) { var subs = t.subs.map(function (s, j) { return j === i ? Object.assign({}, s, { done: !s.done }) : s; }); return { subs: subs, done: subs.length && subs.every(function (s) { return s.done; }) ? true : t.done }; }); };
     var addSub = function (id) { if (!subDraft.trim()) return; patch(id, function (t) { return { subs: (t.subs || []).concat([{ name: subDraft.trim(), done: false }]) }; }); setSubDraft(''); };
 
@@ -511,7 +534,7 @@
         if (!typ0 && !e.metaKey && !e.ctrlKey && !e.altKey && !document.querySelector('.mdl-bg, .sr-pal') && SR.kb) {
           var rows = function () { return Array.prototype.slice.call(document.querySelectorAll('.task[data-tid]')); };
           var cur = function () { var r = rows(); for (var i = 0; i < r.length; i++) if (r[i].getAttribute('data-kb') === '1') return i; return -1; };
-          var go = { h: 'home', m: 'mytasks', c: 'calendar', s: 'sales' };
+          var go = { b: 'war', h: 'home', m: 'mytasks', c: 'calendar', s: 'sales' };
           if (SR._g && Date.now() - SR._g < 1200 && go[k]) { e.preventDefault(); SR._g = 0; SR.kb.go(go[k]); return; }
           if (k === 'g') { SR._g = Date.now(); return; }
           if (k === '?') { e.preventDefault(); SR.kb.help(); return; }
@@ -543,16 +566,16 @@
     /* sidebar */
     var navItem = function (on) { return 'min-height:38px;display:flex;align-items:center;gap:10px;padding:0 12px;border:0;border-radius:8px;font-family:inherit;font-size:14px;text-align:left;cursor:pointer;' + (on ? 'background:rgba(255,255,255,0.12);color:#FFF;font-weight:600' : 'background:transparent;color:#C9D2E0'); };
     var compact = navMin || (navAuto && screen === 'sales');
-    var NAVI = { home: 'grid', clients: 'users', calendar: 'calendar', results: 'chart', sales: 'funnel', mytasks: 'check' };
+    var NAVI = { war: 'target', home: 'grid', clients: 'users', calendar: 'calendar', results: 'chart', sales: 'funnel', mytasks: 'check' };
     var logoOf = function (c) { if (c.logo) return c.logo; var d = String(c.domain || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim(); return d && d.indexOf('.') > 0 ? 'https://www.google.com/s2/favicons?sz=128&domain=' + encodeURIComponent(d) : ''; };
     var ini = function (n) { return String(n || '?').split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase(); };
     var toggleBtn = html`<button type="button" class="navtog" aria-label=${compact ? 'Expand the menu' : 'Tuck the menu in'} title=${compact ? 'Expand the menu' : 'Tuck the menu in'} onClick=${function () { if (navMin) setNavMin(false); else if (compact) { setNavAuto(false); setNavMin(false); } else setNavMin(true); }}>${compact ? '»' : '«'}</button>`;
     var favs = clients.filter(function (c) { return c.fav; });
     var myDue = tasks.filter(function (t) { return !t.done && t.owner === me && t.date && t.date <= SR.TODAY; }).length;
     var navBtn = function (k) {
-      var label = { home: 'Home', sales: 'Sales', mytasks: 'My tasks', clients: 'Clients', results: 'Results', calendar: 'Calendar' }[k];
+      var label = { war: 'Battlefronts', home: 'Home', sales: 'Sales', mytasks: 'My tasks', clients: 'Clients', results: 'Results', calendar: 'Calendar' }[k];
       var on = screen === k || (k === 'clients' && false);
-      var tdp = (k === 'mytasks' || k === 'home' || k === 'calendar') ? {
+      var tdp = (k === 'mytasks' || k === 'home' || k === 'calendar' || k === 'war') ? {
         onDragOver: function (e) { if (SR._drag == null) return; e.preventDefault(); e.currentTarget.classList.add('tdrop'); if (k !== 'mytasks' && screen !== k && (!SR._spr || SR._spr.k !== k)) { if (SR._spr) clearTimeout(SR._spr.t); SR._spr = { k: k, t: setTimeout(function () { setScreen(k); setOpenId(null); SR._spr = null; }, 650) }; } },
         onDragLeave: function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._spr && SR._spr.k === k) { clearTimeout(SR._spr.t); SR._spr = null; } },
         onDrop: function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._spr) { clearTimeout(SR._spr.t); SR._spr = null; } if (SR._drag == null) return; e.preventDefault(); var id = SR._drag; SR._drag = null; if (k === 'mytasks') SR.dnd.dropOnMine(id); }
@@ -581,9 +604,9 @@
         <button type="button" class=${'sr-navdel' + (askd ? ' ask' : '')} aria-label=${'Delete ' + c.name} title="Delete client" onClick=${function () { if (askd) deleteClient(c.id); else { setDelId(c.id); setTimeout(function () { setDelId(function (x) { return x === c.id ? null : x; }); }, 3000); } }}>${askd ? 'Delete?' : SR.Icon('close', 13)}</button></div>`;
     };
     var sidebar = html`<nav aria-label="Main" ref=${navRef} class=${'sr-nav' + (compact ? ' mini' : '')} style=${(compact ? 'flex:0 0 64px;width:64px;max-width:64px;padding:20px 8px;' : 'flex:0 0 ' + navW + 'px;width:' + navW + 'px;max-width:' + navW + 'px;padding:20px 14px;') + 'background:var(--nav);color:#E8ECF2;box-sizing:border-box;display:flex;flex-direction:column;gap:20px;transition:flex-basis .18s ease,width .18s ease;overflow:hidden'}>
-      <div style=${'display:flex;align-items:center;gap:8px;' + (compact ? 'flex-direction:column;padding:0' : 'padding:0 2px')}><div style="width:36px;height:36px;border-radius:7px;background:#000;color:#FFF;font-family:'DM Sans',system-ui,sans-serif;font-size:16px;display:flex;align-items:center;justify-content:center;flex:none">SR</div>${compact ? null : html`<div style="font-family:'DM Sans',system-ui,sans-serif;font-size:16px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden">Sarac Ramsay</div>`}${toggleBtn}</div>
+      <div style=${'display:flex;align-items:center;gap:8px;' + (compact ? 'flex-direction:column;padding:0' : 'padding:0 2px')}><div style="width:36px;height:36px;border-radius:7px;background:#000;color:#FFF;font-family:'DM Sans',system-ui,sans-serif;font-size:16px;display:flex;align-items:center;justify-content:center;flex:none">SR</div>${compact ? null : html`<div style="font-family:'DM Sans',system-ui,sans-serif;font-size:16px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;line-height:1.05">Eclipse<div style="font-size:9.5px;font-weight:600;letter-spacing:.14em;opacity:.6;margin-top:2px">SARAC RAMSAY</div></div>`}${toggleBtn}</div>
       <div style="display:flex;flex-direction:column;gap:2px">
-        ${['home', 'sales', 'mytasks'].map(navBtn)}
+        ${['home', 'war', 'sales', 'mytasks'].map(navBtn)}
         ${favs.length ? html`<div style="display:flex;flex-direction:column;gap:1px;margin-top:10px">${compact ? html`<div style="height:1px;background:rgba(255,255,255,0.1);margin:2px 8px 6px"></div>` : html`<div class="sr-navhd">Favorites</div>`}${favs.map(function (c) { return clientRow(c, 'f'); })}</div>` : null}
         <div style=${'display:flex;flex-direction:column;gap:2px;' + (favs.length ? 'margin-top:8px' : '')}>
           <div style="display:flex;align-items:center;gap:2px">${navBtn('clients')}${compact ? null : html`<button type="button" class="sr-chev" aria-label=${clientsOpen ? 'Hide clients' : 'Show clients'} aria-expanded=${clientsOpen} title=${clientsOpen ? 'Hide clients' : 'Show clients'} onClick=${function () { setClientsOpen(!clientsOpen); }}><span style=${'display:inline-block;transition:transform .18s ease;transform:rotate(' + (clientsOpen ? '90' : '0') + 'deg)'}>»</span></button>`}</div>
@@ -597,7 +620,7 @@
       ${compact ? null : html`<div class="sr-nresize" title="Drag to resize, double-click to reset" onDoubleClick=${function () { setNavW(232); try { localStorage.setItem('sr_navw', '232'); } catch (x) {} }} onMouseDown=${function (e) { e.preventDefault(); var x0 = e.clientX, w0 = navW, last = w0; document.body.style.cursor = 'ew-resize'; var mv = function (ev) { last = Math.max(200, Math.min(420, w0 + ev.clientX - x0)); setNavW(last); }; var up = function () { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.style.cursor = ''; try { localStorage.setItem('sr_navw', String(last)); } catch (x) {} }; document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up); }}></div>`}
     </nav>`;
 
-    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', onboard: 'New client', sales: 'Sales', calendar: 'Calendar', mytasks: 'My tasks' }[screen];
+    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', onboard: 'New client', sales: 'Sales', calendar: 'Calendar', mytasks: 'My tasks', war: 'Battlefronts' }[screen];
     var topbar = html`<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px">
       <div style="font-size:13px;color:var(--muted)">${crumb}</div>
       <div style="display:flex;align-items:center;gap:8px">
@@ -609,15 +632,16 @@
     </div>`;
 
     SR.kb = { toggle: toggle, open: openFn, go: function (sc) { setScreen(sc); setOpenId(null); }, help: function () { setHelpOpen(function (o) { return !o; }); }, search: function () { setPalOpen(true); }, newTask: function () { setScreen('home'); setOpenId(null); setTimeout(function () { var t = document.querySelector('textarea[aria-label="Add tasks"]'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); } }, 60); } };
-    var taskProps = { tasks: tasks, clients: clients, sel: selected, onToggle: toggle, onOpen: openFn, onSelect: onSelect, onClearSel: clearSel, onBulk: bulk, newTask: newTask, onNewTask: setNewTask, onAdd: addTask, settling: settling, just: just, openId: openId };
+    var taskProps = { tasks: tasks, clients: clients, sel: selected, onToggle: toggle, onOpen: openFn, onSelect: onSelect, onClearSel: clearSel, onBulk: bulk, newTask: newTask, onNewTask: setNewTask, onAdd: addTask, qFront: screen === 'client' ? activeClient : qFront, onQFront: setQFront, lockFront: screen === 'client', qOwner: qOwner, onQOwner: setQOwner, autoOwner: screen === 'mytasks' ? me : (SR.TEAM.indexOf(who) >= 0 ? who : me), qNeed: qNeed, settling: settling, just: just, openId: openId };
 
     var body;
     if (screen === 'home') body = html`<${SR.Home} ...${taskProps} who=${who} setWho=${setWho} />`;
+    else if (screen === 'war') body = html`<${SR.Battlefronts} tasks=${tasks} clients=${clients} me=${me} onQuick=${function (fid, nm) { var t = { id: seq, clientId: fid, name: nm, owner: me, date: SR.TODAY, subs: [], note: '' }; undoable('Task added', function () { setTasks(tasks.concat([t])); setSeq(seq + 1); }); }} onOpenClient=${openClient} onGo=${function (sc) { setScreen(sc); setOpenId(null); }} />`;
     else if (screen === 'mytasks') body = html`<${SR.MyTasks} ...${taskProps} me=${me} />`;
     else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1030h')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1030o')}></iframe>`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;
     else body = html`<${SR.ClientPage} proj=${projSel[activeClient]} setProj=${function (t) { setProjSel(function (o) { var n = Object.assign({}, o); n[activeClient] = t; return n; }); }} addProject=${addProject} setGoal=${setGoal} client=${SR.clientById(clients, activeClient)} tasks=${tasks} tab=${clientTab} setTab=${setClientTab} exp=${exp} toggleExp=${function (id, v) { setExp(function (e) { var n = Object.assign({}, e); n[id] = v; return n; }); }} rm=${rm} setRm=${setRm} ac=${ac} setAc=${setAc} onToggle=${toggle} onOpen=${openFn} goResults=${goResults} goLive=${goLive} sel=${selected} onSelect=${onSelect} openId=${openId} settling=${settling} just=${just} phaseSel=${phaseSel} setPhase=${setPhase} justLive=${justLive} addCustom=${addCustom} setTasks=${setTasks} setEdits=${setEdits} />`;
 
@@ -647,6 +671,7 @@
       ${autoOpen ? html`<${SR.AutoModal} rules=${rules} setRules=${setRules} onClose=${function () { setAutoOpen(false); }} tasks=${tasks} events=${events} clients=${clients} />` : null}
       ${settingsOpen ? html`<${SR.SettingsModal} me=${me} theme=${theme} setTheme=${setTheme} soundOn=${soundOn} setSound=${function (v) { SR.setSound(v); setSoundOn(v); }} setTz=${function (z) { SR.setTz(z); setClk(function (c) { return c + 1; }); }} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onProfile=${function () { setSettingsOpen(false); setProfOpen(true); }} onClose=${function () { setSettingsOpen(false); }} />` : null}
       ${profOpen ? html`<${SR.ProfileModal} profile=${SR.ME} onClose=${function () { setProfOpen(false); }} onSave=${function (p) { var old = SR.ME && SR.ME.username; return SR.store.saveProfile(p).then(function (row) { SR.ME = row; if (old && old !== row.username) renameOwner(old, row.username); SR.applyProfiles(Object.keys(SR.PROFILES).map(function (k) { return SR.PROFILES[k]; }).filter(function (x) { return x.user_id !== row.user_id; }).concat([row])); setMeS(row.username); setProfOpen(false); toast('Profile saved'); }); }} />` : null}
+      ${queue.length && queue.indexOf(openId) >= 0 ? html`<div class="qbar" role="status"><span>Set up task <b>${queue.indexOf(openId) + 1}</b> of ${queue.length}</span><button type="button" onClick=${function () { qStep(-1); }} disabled=${queue.indexOf(openId) === 0}>Back</button><button type="button" class="go" onClick=${function () { qStep(1); }}>${queue.indexOf(openId) === queue.length - 1 ? 'Done' : 'Next'}</button><button type="button" aria-label="Stop" onClick=${function () { setQueue([]); }}>×</button></div>` : null}
       ${helpOpen ? html`<${SR.ShortcutHelp} onClose=${function () { setHelpOpen(false); }} />` : null}
       ${palOpen ? html`<${SR.Palette} items=${palItems()} onClose=${function () { setPalOpen(false); }} />` : null}
       ${toastMsg ? html`<div role="status" class="sr-toast">${SR.Icon('check', 15)} ${toastMsg}${toastUndo ? html`<button type="button" class="sr-undo" onClick=${function () { var f = toastUndo.fn; setToastMsg(''); setToastUndo(null); f(); }}>Undo</button>` : null}</div>` : null}
@@ -665,7 +690,7 @@
       return SR.store.load().then(function (d) {
         var k = d.kv || {};
         Object.keys(k).forEach(function (n) { if (n.indexOf('seo:') === 0) { try { localStorage.setItem('srseo:' + n.slice(4), JSON.stringify(k[n])); } catch (e) {} } });
-        ['periods', 'orgP', 'orgT', 'metaReal', 'acct', 'templates'].forEach(function (n) { if (k[n] && SR[n]) { Object.keys(SR[n]).forEach(function (x) { delete SR[n][x]; }); Object.assign(SR[n], k[n]); } });
+        ['periods', 'orgP', 'orgT', 'metaReal', 'acct', 'templates', 'warmap', 'game'].forEach(function (n) { if (k[n] && SR[n]) { Object.keys(SR[n]).forEach(function (x) { delete SR[n][x]; }); Object.assign(SR[n], k[n]); } });
         var tasks = d.tasks; if (tasks && k.order) { var ix = {}; k.order.forEach(function (id, i) { ix[id] = i; }); tasks = tasks.slice().sort(function (a, b) { return (ix[a.id] == null ? 1e9 : ix[a.id]) - (ix[b.id] == null ? 1e9 : ix[b.id]); }); }
         if (tasks) { var MH = {}; Object.keys(SR.TEMPLATES || {}).forEach(function (tk) { ((SR.TEMPLATES[tk] || {}).milestones || []).forEach(function (m) { if (m[2]) MH[m[0] + ': ' + m[1]] = m[2]; }); }); tasks = tasks.map(function (t) { return t.milestone && MH[t.name] ? Object.assign({}, t, { how: MH[t.name] }) : t; }); }
         var ev = d.events; if (!ev && SR.store.mode === 'local') { var old = SR.jget('sr_events', null); if (old) ev = old; }
