@@ -215,6 +215,12 @@ window.SR = window.SR || {};
   /* ---- generate the task list for a client from its template ---- */
   SR.isLive = function (c, pt) { return pt === c.type ? !!c.live : !!(c.liveP && c.liveP[pt]); };
   SR.PROJ_TYPES = ['gads', 'meta', 'seo'];
+  /* custom projects: ids start with cp_ . Their name and color live in SR.uiprefs.customProj, the template is a plain task list. */
+  SR.CP_COLORS = ['#2383E2', '#0F7B6C', '#D9730D', '#9065B0', '#C14C8A', '#CB912F', '#D44C47', '#448361'];
+  SR.isCustom = function (t) { return typeof t === 'string' && t.indexOf('cp_') === 0; };
+  SR.TEMPLATES = new Proxy(SR.TEMPLATES, { get: function (t, k) {
+    if (typeof k === 'string' && k.indexOf('cp_') === 0) { var d0 = ((SR.uiprefs || {}).customProj || {})[k] || {}; return { label: d0.label || 'Project', kind: 'custom', days: 0, color: d0.color || '#2383E2', phases: [], maintenance: [], milestones: [], custom: true }; }
+    return t[k]; }, has: function (t, k) { return k in t || (typeof k === 'string' && k.indexOf('cp_') === 0); } });
   SR.genTasks = function (client, startId) {
     var tp = SR.TEMPLATES[client.type]; var out = []; var id = startId;
     var startStr = client.start || SR.TODAY;

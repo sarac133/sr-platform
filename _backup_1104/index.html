@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Sarac Ramsay Eclipse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet" />
+<script>try{if(localStorage.getItem('sr_theme')==='dark'){var d=document.documentElement;d.style.background='#0B1626';d.style.colorScheme='dark';}}catch(e){}</script>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%277%27 fill=%27%23000%27/%3E%3Ctext x=%2716%27 y=%2722%27 text-anchor=%27middle%27 font-family=%27Georgia,serif%27 font-weight=%27700%27 font-size=%2717%27 fill=%27%23fff%27%3ESR%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css?v=1104a" />
+</head>
+<body>
+<div id="root"></div>
+<!-- React + htm from a CDN (pinned). No build step; edit the .js files and refresh. -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js" crossorigin></script>
+<!-- Supabase (storage, login, live updates). Fill in SR_CONFIG below; leave it empty to run on this browser only. -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+/* The anon key is public by design. Safety comes from the row level security rules in supabase/schema.sql. */
+window.SR_CONFIG = { SUPABASE_URL: 'https://nufzfyifftrgypphrnlo.supabase.co', SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im51ZnpmeWlmZnRyZ3lwcGhybmxvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMjA4NzMsImV4cCI6MjEwODU5Njg3M30.zMx1Q1eGOXD7rjll6DU2l6qrafid3f-9AVUpUzzjOV8' };
+</script>
+<script>
+/* Allow style="a:b;c:d" strings in htm templates (React wants objects). */
+(function () {
+  function toObj(s) {
+    if (typeof s !== 'string') return s;
+    var o = {}; s.split(';').forEach(function (d) {
+      var i = d.indexOf(':'); if (i < 0) return;
+      var k = d.slice(0, i).trim(), v = d.slice(i + 1).trim(); if (!k) return;
+      var cc = k.indexOf('--') === 0 ? k : k.replace(/-([a-z])/g, function (_, c) { return c.toUpperCase(); });
+      o[cc] = v;
+    });
+    return o;
+  }
+  var orig = React.createElement;
+  React.createElement = function (type, props) {
+    if (props && typeof props.style === 'string') { props = Object.assign({}, props, { style: toObj(props.style) }); }
+    return orig.apply(this, [type, props].concat([].slice.call(arguments, 2)));
+  };
+  window.SR = { html: htm.bind(React.createElement) };
+})();
+</script>
+<script src="data.js?v=1104a"></script>
+<script src="ui.js?v=1104a"></script>
+<script src="screens.js?v=1104a"></script>
+<script src="screens2.js?v=1104a"></script>
+<script src="app.js?v=1104a"></script>
+</body>
+</html>

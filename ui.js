@@ -44,7 +44,7 @@ window.SR = window.SR || {};
   SR.ACCENTS = ['#2F5C99', '#6D4AE0', '#0E8F7E', '#D9622B', '#C2347A', '#3E8E3E'];
   SR.accentKey = function () { return 'sr_accent_' + (SR.ME && SR.ME.username || 'local'); };
   SR.getAccent = function () { try { return localStorage.getItem(SR.accentKey()) || ''; } catch (e) { return ''; } };
-  SR.applyAccent = function () { var a = SR.getAccent(), r = document.documentElement; if (!a) return; r.style.setProperty('--accent', a); r.style.setProperty('--primary', a); r.style.setProperty('--accentBg', 'color-mix(in srgb,' + a + ' 14%,var(--card))'); };
+  SR.applyAccent = function () { var a = SR.getAccent(), r = document.documentElement; if (!a) { r.style.removeProperty('--uacc'); r.style.removeProperty('--uaccBg'); return; } r.style.setProperty('--accent', a); r.style.setProperty('--primary', a); r.style.setProperty('--uacc', a); r.style.setProperty('--uaccBg', 'color-mix(in srgb,' + a + ' 14%,var(--card))'); r.style.setProperty('--accentBg', 'color-mix(in srgb,' + a + ' 14%,var(--card))'); };
   SR.setAccent = function (a) { try { if (a) localStorage.setItem(SR.accentKey(), a); else localStorage.removeItem(SR.accentKey()); } catch (e) {} SR.applyTheme(SR.getTheme()); };
   SR.getDensity = function () { try { return localStorage.getItem('sr_density') || 'comfortable'; } catch (e) { return 'comfortable'; } };
   SR.setDensity = function (d) { try { localStorage.setItem('sr_density', d); } catch (e) {} document.documentElement.setAttribute('data-density', d); };
@@ -152,7 +152,6 @@ window.SR = window.SR || {};
     return html`<div class=${'qa2' + (p.need ? ' need' : '') + (over ? ' over' : '')} onDragOver=${function (e) { if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0) { e.preventDefault(); setOver(true); } }} onDragLeave=${function () { setOver(false); }} onDrop=${function (e) { setOver(false); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) { e.preventDefault(); readFile(f); } }}>
       <div class="qa2-row"><span class="qa2-plus" aria-hidden="true">+</span>
         <textarea rows=${Math.min(7, Math.max(1, val.split('\n').length))} placeholder=${over ? 'Drop the file here' : 'Add a task, or paste a list'} aria-label="Add tasks" value=${val} onChange=${function (e) { p.onChange(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); p.onChange(e.target.value); setTimeout(p.onAdd, 0); } }}></textarea>
-        ${has ? null : html`<button type="button" class="qa2-up" onClick=${function () { fi.current && fi.current.click(); }} title="Upload a .txt or .csv list">Upload</button>`}
         <input ref=${fi} type="file" accept=".txt,.csv,text/plain,text/csv" style="display:none" onChange=${function (e) { readFile(e.target.files && e.target.files[0]); e.target.value = ''; }} /></div>
     </div>`;
   };
@@ -189,6 +188,253 @@ window.SR = window.SR || {};
     </div></div>`;
   };
 
+
+  /* ---- editable text, Notion style: click a title or description to change it ---- */
+  SR.uiprefs = SR.uiprefs || {};
+  SR.uiprefs.texts = SR.uiprefs.texts || {}; SR.uiprefs.labels = SR.uiprefs.labels || {}; SR.uiprefs.icons = SR.uiprefs.icons || {}; SR.uiprefs.order = SR.uiprefs.order || [];
+  /* Eclipse mark: a dark moon crossing a blue sun, leaving a thin crescent */
+  SR.Logo = function (size, tile) {
+    var s = size || 22; return html`<svg width=${s} height=${s} viewBox="0 0 32 32" role="img" aria-label="Eclipse" style="flex:none;display:block"><rect width="32" height="32" rx="8" fill=${tile || '#191919'}/><circle cx="16" cy="16" r="9.5" fill="#2383E2"/><circle cx="16" cy="16" r="9.5" fill="none" stroke="#9CCBF5" stroke-width=".7" opacity=".7"/><circle cx="19.2" cy="13.6" r="8.6" fill=${tile || '#191919'}/></svg>`;
+  };
+
+  SR.Ed = function (p) {
+    var tk = React.useState(0), setT = tk[1], T = SR.uiprefs.texts || (SR.uiprefs.texts = {}), has = Object.prototype.hasOwnProperty.call(T, p.id), v = has ? T[p.id] : (p.def || '');
+    var tag = p.tag || 'span';
+    var save = function (txt) { txt = String(txt || '').replace(/\s+/g, ' ').trim(); if (txt === (p.def || '')) delete T[p.id]; else T[p.id] = txt; setT(function (x) { return x + 1; }); };
+    return html`<${tag} key=${p.id + ':' + v} class=${'ed' + (v ? '' : ' empty') + (p.cls ? ' ' + p.cls : '')} style=${p.style || ''} data-ph=${p.ph || 'Add text'} contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" role="textbox" aria-label=${p.ph || 'Edit text'}
+      onBlur=${function (e) { save(e.currentTarget.textContent); }}
+      onKeyDown=${function (e) { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } else if (e.key === 'Escape') { e.currentTarget.textContent = v; e.currentTarget.blur(); } }}
+      onPaste=${function (e) { e.preventDefault(); var t = (e.clipboardData || window.clipboardData).getData('text') || ''; document.execCommand('insertText', false, t.replace(/\s+/g, ' ')); }}>${v}<//>`;
+  };
+
+  /* ---- Notion-style blocks and databases ---- */
+  var BK = {
+    p: ['Text', 'Just start writing with plain text'], h: ['Heading 1', 'Big section heading'], h2: ['Heading 2', 'Medium heading'], h3: ['Heading 3', 'Small heading'],
+    ul: ['Bulleted list', 'A simple bulleted list'], ol: ['Numbered list', 'A list with numbering'], todo: ['To-do list', 'Track tasks with a checkbox'],
+    toggle: ['Toggle list', 'Hide and show content'], quote: ['Quote', 'Capture a quote'], callout: ['Callout', 'Make writing stand out'], code: ['Code', 'Capture a code snippet'],
+    divider: ['Divider', 'Visually divide blocks'], toc: ['Table of contents', 'Links to the headings on this page'], bookmark: ['Web bookmark', 'A link card for a web page'], date: ['Date', 'Insert today\'s date'], mention: ['Mention a person', 'Tag someone from the team'], emoji: ['Emoji', 'Insert an emoji'], table: ['Table', 'A simple table'], db: ['Database', 'A table, board or list you can sort and filter']
+  };
+  var BORDER = ['p', 'h', 'h2', 'h3', 'ul', 'ol', 'todo', 'toggle', 'quote', 'callout', 'code', 'divider', 'toc', 'bookmark', 'table', 'db', 'date', 'mention', 'emoji'];
+  var cleanHtml = function (h) {
+    var d = document.createElement('div'); d.innerHTML = String(h || '');
+    var walk = function (n) { Array.prototype.slice.call(n.childNodes).forEach(function (c) { if (c.nodeType === 1) { var t = c.tagName.toLowerCase(); if (t === 'b' || t === 'strong') { var b = document.createElement('b'); while (c.firstChild) b.appendChild(c.firstChild); n.replaceChild(b, c); walk(b); } else if (t === 'i' || t === 'em') { var i = document.createElement('i'); while (c.firstChild) i.appendChild(c.firstChild); n.replaceChild(i, c); walk(i); } else if (t === 'u' || t === 's' || t === 'strike' || t === 'code' || t === 'br') { walk(c); } else if (t === 'a') { var href = c.getAttribute('href') || ''; if (!/^(https?:|mailto:)/i.test(href)) { c.removeAttribute('href'); } Array.prototype.slice.call(c.attributes).forEach(function (a) { if (a.name !== 'href') c.removeAttribute(a.name); }); c.setAttribute('target', '_blank'); c.setAttribute('rel', 'noopener'); walk(c); } else { while (c.firstChild) n.insertBefore(c.firstChild, c); n.removeChild(c); } } else if (c.nodeType !== 3) n.removeChild(c); }); };
+    walk(d); return d.innerHTML;
+  };
+  var plain = function (h) { var d = document.createElement('div'); d.innerHTML = String(h || ''); return d.textContent || ''; };
+  var KW = { h: 'h1 heading1 title', h2: 'h2 heading2', h3: 'h3 heading3', ul: 'bullet list', ol: 'number list', todo: 'checkbox task', toggle: 'collapse', db: 'table board list kanban', toc: 'contents', bookmark: 'link url' };
+  var COLORS = [['Default', ''], ['Gray', '#9B9A97'], ['Brown', '#9F6B53'], ['Orange', '#D9730D'], ['Yellow', '#CB912F'], ['Green', '#448361'], ['Blue', '#337EA9'], ['Purple', '#9065B0'], ['Pink', '#C14C8A'], ['Red', '#D44C47']];
+  var EMOJI = ['😀', '👍', '🎉', '✅', '🔥', '⭐', '💡', '📌', '🚀', '⚠️', '❤️', '👀'];
+  var uid = function () { return 'b' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); };
+  var newDb = function () { return { type: 'db', title: 'Untitled database', view: 'table', props: [{ id: 'name', name: 'Name', type: 'title' }, { id: 'st', name: 'Status', type: 'select', opts: ['Not started', 'In progress', 'Done'] }, { id: 'dt', name: 'Date', type: 'date' }], rows: [{ id: uid(), v: {} }, { id: uid(), v: {} }], sort: '', q: '' }; };
+  var mkBlock = function (k) {
+    if (k === 'table') return { type: 'table', rows: [['', '', ''], ['', '', ''], ['', '', '']] };
+    if (k === 'db') return newDb();
+    if (k === 'divider') return { type: 'divider' };
+    if (k === 'toc') return { type: 'toc' };
+    if (k === 'bookmark') return { type: 'bookmark', url: '', title: '' };
+    if (k === 'callout') return { type: 'callout', html: '', icon: '💡' };
+    if (k === 'toggle') return { type: 'toggle', html: '', body: '', open: true };
+    if (k === 'todo') return { type: 'todo', html: '', done: false };
+    return { type: k, html: '' };
+  };
+  var TAGC = ['#E7F3F8:#0B6E99', '#DBEDDB:#1C3829', '#FBF3DB:#7A5F14', '#FFE2DD:#8B1A0F', '#E8DEEE:#492F64', '#EEE0DA:#603B2C', '#F1F1EF:#37352F'];
+  var tagStyle = function (s) { var i = 0; for (var k = 0; k < String(s).length; k++) i += String(s).charCodeAt(k); var c = TAGC[i % TAGC.length].split(':'); return 'background:' + c[0] + ';color:' + c[1]; };
+
+  SR.Database = function (p) {
+    var b = p.block, bump = p.bump, R = React;
+    var ms = R.useState(null), menu = ms[0], setMenu = ms[1];
+    var P = b.props, titleP = P[0];
+    var addRow = function (v) { b.rows.push({ id: uid(), v: v || {} }); bump(); };
+    var setV = function (r, pid, val) { r.v[pid] = val; bump(); };
+    var rows = b.rows.slice();
+    if (b.q) { var q = b.q.toLowerCase(); rows = rows.filter(function (r) { return P.some(function (pp) { var v = r.v[pp.id]; return String(Array.isArray(v) ? v.join(' ') : v == null ? '' : v).toLowerCase().indexOf(q) > -1; }); }); }
+    if (b.sort) { var sp = P.filter(function (x) { return x.id === b.sort; })[0]; if (sp) rows.sort(function (a, c) { var x = a.v[sp.id], y = c.v[sp.id]; if (sp.type === 'number') return (+x || 0) - (+y || 0); return String(x == null ? '' : x).localeCompare(String(y == null ? '' : y)); }); }
+    var cell = function (r, pp) {
+      var v = r.v[pp.id];
+      if (pp.type === 'title' || pp.type === 'text' || pp.type === 'url') return html`<div class="dbc-t" contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" data-ph=${pp.type === 'title' ? 'Untitled' : ''} onBlur=${function (e) { var t = String(e.currentTarget.textContent || '').trim(); if (t !== (v || '')) r.v[pp.id] = t; }} onKeyDown=${function (e) { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}>${v || ''}</div>`;
+      if (pp.type === 'number') return html`<input class="dbc-i" type="number" value=${v == null ? '' : v} onChange=${function (e) { setV(r, pp.id, e.target.value === '' ? null : +e.target.value); }} />`;
+      if (pp.type === 'date') return html`<input class="dbc-i" type="date" value=${v || ''} onChange=${function (e) { setV(r, pp.id, e.target.value); }} />`;
+      if (pp.type === 'checkbox') return html`<input type="checkbox" class="dbc-ck" checked=${!!v} onChange=${function (e) { setV(r, pp.id, e.target.checked); }} />`;
+      if (pp.type === 'select') return html`<select class="dbc-s" value=${v || ''} style=${v ? tagStyle(v) : ''} onChange=${function (e) { if (e.target.value === '__new') { var nm = window.prompt('New option'); if (nm && nm.trim()) { pp.opts = (pp.opts || []).concat([nm.trim()]); setV(r, pp.id, nm.trim()); } else bump(); } else setV(r, pp.id, e.target.value); }}><option value="">Empty</option>${(pp.opts || []).map(function (o) { return html`<option key=${o} value=${o}>${o}</option>`; })}<option value="__new">+ New option</option></select>`;
+      if (pp.type === 'person') return html`<select class="dbc-s" value=${v || ''} onChange=${function (e) { setV(r, pp.id, e.target.value); }}><option value="">Empty</option>${(SR.TEAM || []).map(function (o) { return html`<option key=${o} value=${o}>${o}</option>`; })}</select>`;
+      return null;
+    };
+    var propMenu = menu && menu.pid ? P.filter(function (x) { return x.id === menu.pid; })[0] : null;
+    var TYPES = [['text', 'Text'], ['number', 'Number'], ['select', 'Select'], ['date', 'Date'], ['checkbox', 'Checkbox'], ['url', 'URL'], ['person', 'Person']];
+    var table = html`<div class="db-scroll"><table class="db-tbl"><thead><tr>${P.map(function (pp) { return html`<th key=${pp.id}><button type="button" class="db-th" onClick=${function (e) { var r = e.currentTarget.getBoundingClientRect(); setMenu({ pid: pp.id, x: r.left, y: r.bottom + 4 }); }}><span class="db-ti">${pp.type === 'title' ? 'Aa' : pp.type === 'number' ? '#' : pp.type === 'date' ? '▦' : pp.type === 'checkbox' ? '☑' : pp.type === 'select' ? '▾' : pp.type === 'url' ? '↗' : pp.type === 'person' ? '☺' : '≡'}</span>${pp.name}</button></th>`; })}<th class="db-addcol"><button type="button" class="db-th" aria-label="Add a property" onClick=${function () { var n = 'Property ' + P.length; P.push({ id: uid(), name: n, type: 'text' }); bump(); }}>+</button></th></tr></thead>
+      <tbody>${rows.map(function (r) { return html`<tr key=${r.id}>${P.map(function (pp) { return html`<td key=${pp.id}>${cell(r, pp)}</td>`; })}<td class="db-rm"><button type="button" aria-label="Delete row" onClick=${function () { b.rows = b.rows.filter(function (x) { return x.id !== r.id; }); bump(); }}>×</button></td></tr>`; })}</tbody></table>
+      <button type="button" class="db-new" onClick=${function () { addRow(); }}>+ New</button></div>`;
+    var gp = P.filter(function (x) { return x.type === 'select'; })[0];
+    var board = !gp ? html`<div class="db-empty">Add a Select property to group the board.</div>` : html`<div class="db-board">${(gp.opts || []).concat(['']).map(function (o) { var col = rows.filter(function (r) { return (r.v[gp.id] || '') === o; });
+      return html`<div key=${o || 'none'} class="db-col" onDragOver=${function (e) { if (p.dragRow) e.preventDefault(); }} onDrop=${function (e) { e.preventDefault(); var id = p.dragRow(); if (!id) return; b.rows.forEach(function (r) { if (r.id === id) r.v[gp.id] = o; }); bump(); }}>
+        <div class="db-ch">${o ? html`<span class="db-tag" style=${tagStyle(o)}>${o}</span>` : html`<span class="db-tag" style="background:var(--card2);color:var(--muted)">No ${gp.name}</span>`} <span class="db-n">${col.length}</span></div>
+        ${col.map(function (r) { return html`<div key=${r.id} class="db-card" draggable="true" onDragStart=${function () { p.setDragRow(r.id); }}>${cell(r, titleP)}${P.filter(function (x) { return x.id !== titleP.id && x.id !== gp.id && r.v[x.id] != null && r.v[x.id] !== ''; }).map(function (x) { return html`<div key=${x.id} class="db-cm">${x.type === 'checkbox' ? (r.v[x.id] ? '☑ ' + x.name : '') : String(r.v[x.id])}</div>`; })}</div>`; })}
+        <button type="button" class="db-new" onClick=${function () { var v = {}; v[gp.id] = o; addRow(v); }}>+ New</button></div>`; })}</div>`;
+    var list = html`<div class="db-list">${rows.map(function (r) { return html`<div key=${r.id} class="db-li"><div style="flex:1;min-width:0">${cell(r, titleP)}</div>${P.slice(1, 4).map(function (pp) { return html`<div key=${pp.id} class="db-lc">${cell(r, pp)}</div>`; })}<button type="button" class="db-rmb" aria-label="Delete row" onClick=${function () { b.rows = b.rows.filter(function (x) { return x.id !== r.id; }); bump(); }}>×</button></div>`; })}<button type="button" class="db-new" onClick=${function () { addRow(); }}>+ New</button></div>`;
+    return html`<div class="db">
+      <div class="db-head"><div class="db-title" contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" data-ph="Untitled database" onBlur=${function (e) { b.title = String(e.currentTarget.textContent || '').trim(); bump(); }} onKeyDown=${function (e) { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}>${b.title}</div>
+        <div class="db-tools"><button type="button" class="dbx" onClick=${function () { if (window.confirm('Delete this database and all its rows?')) p.onDelete(); }} title="Delete database">Delete</button></div></div>
+      <div class="db-bar"><div class="ntabs db-views" role="tablist">${[['table', 'Table'], ['board', 'Board'], ['list', 'List']].map(function (v) { return html`<button key=${v[0]} type="button" role="tab" aria-selected=${b.view === v[0]} class=${b.view === v[0] ? 'on' : ''} onClick=${function () { b.view = v[0]; bump(); }}>${v[1]}</button>`; })}</div>
+        <span style="flex:1"></span><select class="nsel" aria-label="Sort" value=${b.sort || ''} onChange=${function (e) { b.sort = e.target.value; bump(); }}><option value="">Sort: none</option>${P.map(function (pp) { return html`<option key=${pp.id} value=${pp.id}>Sort: ${pp.name}</option>`; })}</select>
+        <input class="nsearch" type="search" placeholder="Filter" aria-label="Filter rows" value=${b.q || ''} onInput=${function (e) { b.q = e.target.value; bump(); }} /></div>
+      ${b.view === 'board' ? board : b.view === 'list' ? list : table}
+      ${propMenu ? html`<div class="qas-bg" style="background:transparent;padding:0" onMouseDown=${function () { setMenu(null); }}><div class="sr-navmenu" style=${'left:' + Math.min(menu.x, window.innerWidth - 230) + 'px;top:' + Math.min(menu.y, window.innerHeight - 330) + 'px;min-width:210px'} onMouseDown=${function (e) { e.stopPropagation(); }}>
+        <input class="sr-navren" style="margin-bottom:4px" defaultValue=${propMenu.name} aria-label="Property name" onKeyDown=${function (e) { if (e.key === 'Enter') { var v = e.target.value.trim(); if (v) propMenu.name = v; setMenu(null); bump(); } }} onBlur=${function (e) { var v = e.target.value.trim(); if (v) propMenu.name = v; bump(); }} />
+        ${propMenu.type === 'title' ? html`<div style="font-size:12px;color:var(--muted);padding:4px 8px">The name column cannot change type.</div>` : html`<div style="font-size:11px;color:var(--muted);padding:4px 8px">Type</div>${TYPES.map(function (t) { return html`<button type="button" key=${t[0]} style=${propMenu.type === t[0] ? 'font-weight:600' : ''} onClick=${function () { propMenu.type = t[0]; if (t[0] === 'select' && !propMenu.opts) propMenu.opts = ['Option 1', 'Option 2']; setMenu(null); bump(); }}>${t[1]}${propMenu.type === t[0] ? ' ✓' : ''}</button>`; })}${propMenu.type === 'select' ? html`<button type="button" onClick=${function () { var nm = window.prompt('New option'); if (nm && nm.trim()) { propMenu.opts = (propMenu.opts || []).concat([nm.trim()]); } setMenu(null); bump(); }}>+ Add an option</button>` : null}<button type="button" style="color:var(--red)" onClick=${function () { var id = propMenu.id; b.props = b.props.filter(function (x) { return x.id !== id; }); setMenu(null); bump(); }}>Delete property</button>`}
+      </div></div>` : null}</div>`;
+  };
+
+  SR.Blocks = function (p) {
+    var R = React, tk = R.useState(0), bump = function () { tk[1](function (x) { return x + 1; }); };
+    var P = SR.uiprefs; P.blocks = P.blocks || {}; var L = P.blocks[p.id] = P.blocks[p.id] || [];
+    L.forEach(function (x) { if (x.html === undefined && x.text !== undefined && x.type !== 'table') { x.html = String(x.text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); delete x.text; } });
+    var ms = R.useState(null), menu = ms[0], setMenu = ms[1];
+    var fs = R.useState(null), fmt = fs[0], setFmt = fs[1];
+    var dragId = R.useRef(null), dragRow = R.useRef(null), overId = R.useState(null), over = overId[0], setOver = overId[1];
+    var idx = function (id) { for (var i = 0; i < L.length; i++) if (L[i].id === id) return i; return -1; };
+    var add = function (after, b) { b.id = uid(); var i = after ? idx(after) + 1 : L.length; L.splice(i, 0, b); SR._fb = b.id; bump(); return b; };
+    var del = function (id, focusPrev) { var i = idx(id); if (i < 0) return; L.splice(i, 1); if (focusPrev && L[i - 1]) SR._fb = L[i - 1].id; bump(); };
+    var turn = function (id, k) { var i = idx(id); if (i < 0) return; var old = L[i], nb = mkBlock(k); if (nb.html !== undefined && old.html !== undefined) nb.html = old.html; nb.id = id; L[i] = nb; SR._fb = id; bump(); };
+    var fref = function (id) { return function (el) { if (el && SR._fb === id) { SR._fb = null; setTimeout(function () { try { el.focus(); var r = document.createRange(); r.selectNodeContents(el); r.collapse(false); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } catch (x) {} }, 0); } }; };
+    var save = function (b, el) { b.html = cleanHtml(el.innerHTML); };
+    var caretInfo = function (el) { var s = window.getSelection(); if (!s.rangeCount || !el.contains(s.anchorNode)) return null; var r = s.getRangeAt(0), pre = document.createRange(); pre.selectNodeContents(el); pre.setEnd(r.startContainer, r.startOffset); var post = document.createRange(); post.selectNodeContents(el); post.setStart(r.endContainer, r.endOffset); var a = document.createElement('div'); a.appendChild(pre.cloneContents()); var z = document.createElement('div'); z.appendChild(post.cloneContents()); return { before: a.innerHTML, after: z.innerHTML, atStart: plain(a.innerHTML) === '', atEnd: plain(z.innerHTML) === '' }; };
+    var SHORT = { '#': 'h', '##': 'h2', '###': 'h3', '-': 'ul', '*': 'ul', '1.': 'ol', '[]': 'todo', '>': 'toggle', '"': 'quote' };
+    var numberOf = function (b) { var n = 1, i = idx(b.id) - 1; while (i >= 0 && L[i].type === 'ol') { n++; i--; } return n; };
+    var openSlash = function (b, el) { var r = el.getBoundingClientRect(); setMenu({ id: b.id, x: r.left, y: r.bottom + 4, q: '' }); };
+    var recent = (P.recent || []).filter(function (k) { return BORDER.indexOf(k) > -1; }).slice(0, 3);
+    var cmdQ = menu ? (menu.q || '').toLowerCase() : '';
+    var colorHit = menu && cmdQ ? COLORS.filter(function (c) { return c[1] && c[0].toLowerCase().indexOf(cmdQ) === 0; }) : [];
+    var cmdHit = menu && !menu.after ? ['delete', 'duplicate'].filter(function (c) { return cmdQ && c.indexOf(cmdQ) === 0; }) : [];
+    var menuItems = menu ? BORDER.filter(function (k) { var q = cmdQ; return !q || BK[k][0].toLowerCase().indexOf(q) > -1 || (KW[k] || '').split(' ').some(function (w) { return w.indexOf(q) === 0; }); }) : [];
+    if (menu && !cmdQ) menuItems = recent.concat(menuItems.filter(function (k) { return recent.indexOf(k) < 0; }));
+    var pickMenu = function (k) { var m = menu; setMenu(null); if (!m) return; P.recent = [k].concat((P.recent || []).filter(function (x) { return x !== k; })).slice(0, 5);
+      var who = ''; if (k.indexOf('mention:') === 0) { who = k.slice(8); k = 'mention'; }
+      if (k === 'date' || k === 'emoji' || k === 'mention') { var tgt = m.after ? null : L[idx(m.id)]; if (!tgt || tgt.html === undefined) tgt = add(m.after || m.id, mkBlock('p')); var ins = k === 'date' ? '<b>' + new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) + '</b> ' : k === 'emoji' ? EMOJI[Math.floor(Math.random() * EMOJI.length)] + ' ' : '<b>@' + (who || 'Name') + '</b> '; if (m.after) { tgt.html = ins; } else { tgt.html = ins; SR._fb = tgt.id; } bump(); return; } if (m.after) { var nb = mkBlock(k); add(m.after, nb); } else { var i = idx(m.id); if (i < 0) return; var cur = L[i]; if (cur.html !== undefined && plain(cur.html).replace(/^\//, '') !== '' && !m.keep) cur.html = ''; turn(m.id, k); } };
+    var onKey = function (b) { return function (e) {
+      var el = e.currentTarget, t = plain(el.innerHTML);
+      if (e.key === 'Escape' && !(menu && menu.id === b.id)) { e.preventDefault(); setSel(b.id); setTimeout(function () { var w = document.getElementById('blk-' + b.id); if (w) w.focus(); }, 0); return; }
+      if (menu && menu.id === b.id) {
+        if (e.key === 'Escape') { setMenu(null); return; }
+        if (e.key === 'Enter') { e.preventDefault(); if (cmdHit[0] || colorHit[0]) { var cq = cmdHit[0] ? cmdHit[0] : 'color:' + colorHit[0][0]; var mm = menu; setMenu(null); el.innerHTML = ''; b.html = ''; if (cq === 'delete') del(b.id); else if (cq === 'duplicate') { var cp2 = JSON.parse(JSON.stringify(b)); cp2.id = uid(); L.splice(idx(b.id) + 1, 0, cp2); bump(); } else { b.color = colorHit[0][1]; bump(); } return; } if (menuItems[0]) { el.innerHTML = ''; b.html = ''; pickMenu(menuItems[0]); } return; }
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); return; }
+      }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) { var k = e.key.toLowerCase(); if (k === 'b' || k === 'i' || k === 'u') { e.preventDefault(); document.execCommand(k === 'b' ? 'bold' : k === 'i' ? 'italic' : 'underline'); save(b, el); return; } if (k === 'e') { e.preventDefault(); wrapCode(); save(b, el); return; } if (k === 'k') { e.preventDefault(); link(b, el); return; } }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 's') { e.preventDefault(); document.execCommand('strikeThrough'); save(b, el); return; }
+      if (e.key === ' ' && SHORT[t] && b.type === 'p') { e.preventDefault(); el.innerHTML = ''; b.html = ''; turn(b.id, SHORT[t]); return; }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        if (b.type === 'code') return;
+        e.preventDefault();
+        if (t === '---' && b.type === 'p') { b.html = ''; var i = idx(b.id); L[i] = { id: b.id, type: 'divider' }; add(b.id, { type: 'p', html: '' }); return; }
+        var ci = caretInfo(el); if (!ci) return;
+        if (!t && ['ul', 'ol', 'todo', 'quote', 'callout', 'toggle', 'h', 'h2', 'h3'].indexOf(b.type) > -1 && b.type !== 'h' && b.type !== 'h2' && b.type !== 'h3') { turn(b.id, 'p'); return; }
+        b.html = cleanHtml(ci.before); var keepT = (b.type === 'ul' || b.type === 'ol' || b.type === 'todo') ? b.type : 'p'; var nb = mkBlock(keepT); nb.html = cleanHtml(ci.after); add(b.id, nb); return;
+      }
+      if (e.key === 'Backspace' && (!t || (caretInfo(el) && caretInfo(el).atStart && b.type !== 'p'))) { if (!t) { e.preventDefault(); if (b.type !== 'p') turn(b.id, 'p'); else del(b.id, true); } else if (caretInfo(el).atStart && b.type !== 'p') { e.preventDefault(); turn(b.id, 'p'); } return; }
+      if (e.key === 'ArrowUp') { var c1 = caretInfo(el); if (c1 && c1.atStart) { var i2 = idx(b.id); if (L[i2 - 1] && L[i2 - 1].html !== undefined) { e.preventDefault(); SR._fb = L[i2 - 1].id; bump(); } } }
+      if (e.key === 'ArrowDown') { var c2 = caretInfo(el); if (c2 && c2.atEnd) { var i3 = idx(b.id); if (L[i3 + 1] && L[i3 + 1].html !== undefined) { e.preventDefault(); SR._fb = L[i3 + 1].id; bump(); } } }
+    }; };
+    var onInput = function (b) { return function (e) { var t = plain(e.currentTarget.innerHTML); if (t.charAt(0) === '/' && t.length < 20 && b.type !== 'code') { var r = e.currentTarget.getBoundingClientRect(); setMenu({ id: b.id, x: r.left, y: r.bottom + 4, q: t.slice(1) }); } else if (menu && menu.id === b.id) setMenu(null); }; };
+    var wrapCode = function () { var s = window.getSelection(); if (!s.rangeCount || s.isCollapsed) return; var r = s.getRangeAt(0), c = document.createElement('code'); try { c.appendChild(r.extractContents()); r.insertNode(c); } catch (x) {} };
+    var link = function (b, el) { var s = window.getSelection(); if (!s.rangeCount || s.isCollapsed) return; var u = window.prompt('Link address (https://...)'); if (u) { document.execCommand('createLink', false, /^(https?:|mailto:)/i.test(u) ? u : 'https://' + u); save(b, el); } };
+    R.useEffect(function () {
+      var on = function () { var s = window.getSelection(); if (!s || s.isCollapsed || !s.rangeCount) { setFmt(null); return; } var n = s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement); var el = n && n.closest && n.closest('.blk-t'); if (!el || !el.closest('.blocks[data-bid="' + p.id + '"]')) { setFmt(null); return; } var r = s.getRangeAt(0).getBoundingClientRect(); setFmt({ x: r.left + r.width / 2, y: r.top, id: el.getAttribute('data-bid') }); };
+      document.addEventListener('selectionchange', on); return function () { document.removeEventListener('selectionchange', on); };
+    }, []);
+    var fmtDo = function (cmd) { document.execCommand(cmd); var s = window.getSelection(); var n = s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement), el = n && n.closest('.blk-t'); if (el) { var b = L[idx(el.getAttribute('data-bid'))]; if (b) save(b, el); } };
+    var sl = R.useState(null), sel = sl[0], setSel = sl[1];
+    var blkOps = R.useState(null), ops = blkOps[0], setOps = blkOps[1];
+    var dnd = function (b) { return { onDragOver: function (e) { if (dragId.current) { e.preventDefault(); setOver(b.id); } }, onDrop: function (e) { if (!dragId.current) return; e.preventDefault(); var f = dragId.current; dragId.current = null; setOver(null); if (f === b.id) return; var fi = idx(f), blk = L.splice(fi, 1)[0], ti = idx(b.id); L.splice(ti + (fi < ti + 1 && fi <= ti ? 1 : 0), 0, blk); bump(); } }; };
+    var gutter = function (b) { return html`<div class="blk-g"><button type="button" class="blk-plus" aria-label="Add a block below" title="Add a block below" onClick=${function (e) { var r = e.currentTarget.getBoundingClientRect(); setMenu({ after: b.id, x: r.left, y: r.bottom + 4, q: '' }); }}>+</button><button type="button" class="blk-hd" draggable="true" aria-label="Drag to move, click for options" title="Drag to move. Click for options" onDragStart=${function (e) { dragId.current = b.id; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'blk'); } catch (x) {} }} onDragEnd=${function () { dragId.current = null; setOver(null); }} onClick=${function (e) { var r = e.currentTarget.getBoundingClientRect(); setOps({ id: b.id, x: r.left, y: r.bottom + 4 }); }}>⋮⋮</button></div>`; };
+    var ce = function (b, cls, ph, extra) { return html`<div class=${'blk-t ' + (cls || '')} data-bid=${b.id} contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" data-ph=${ph} ref=${fref(b.id)} dangerouslySetInnerHTML=${{ __html: b.html || '' }} onBlur=${function (e) { save(b, e.currentTarget); }} onKeyDown=${onKey(b)} onInput=${onInput(b)} onPaste=${function (e) { e.preventDefault(); var tx = (e.clipboardData || window.clipboardData).getData('text') || ''; document.execCommand('insertText', false, tx); }}></div>`; };
+    var render = function (b) {
+      var wrap = function (cls, inner) { return html`<div key=${b.id} id=${'blk-' + b.id} style=${b.color ? 'color:' + b.color : ''} tabindex="-1" class=${'blk ' + cls + (over === b.id ? ' blk-over' : '') + (sel === b.id ? ' blk-sel' : '')} ...${dnd(b)} onKeyDown=${function (e) { if (sel === b.id && e.target === e.currentTarget) { if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); setSel(null); del(b.id); } else if (e.key === 'Enter') { e.preventDefault(); setSel(null); SR._fb = b.id; bump(); } } }}>${gutter(b)}${inner}</div>`; };
+      switch (b.type) {
+        case 'h': return wrap('blk-h', ce(b, '', 'Heading 1'));
+        case 'h2': return wrap('blk-h2', ce(b, '', 'Heading 2'));
+        case 'h3': return wrap('blk-h3', ce(b, '', 'Heading 3'));
+        case 'ul': return wrap('blk-li', html`<span class="blk-mk">•</span>${ce(b, '', 'List')}`);
+        case 'ol': return wrap('blk-li', html`<span class="blk-mk blk-num">${numberOf(b)}.</span>${ce(b, '', 'List')}`);
+        case 'todo': return wrap('blk-li' + (b.done ? ' blk-done' : ''), html`<input type="checkbox" class="blk-ck" checked=${!!b.done} onChange=${function (e) { b.done = e.target.checked; bump(); }} />${ce(b, '', 'To-do')}`);
+        case 'quote': return wrap('blk-quote', ce(b, '', 'Quote'));
+        case 'callout': return wrap('blk-callout', html`<button type="button" class="blk-ico" onClick=${function () { var e2 = window.prompt('Emoji for the callout', b.icon || '💡'); if (e2) { b.icon = e2; bump(); } }}>${b.icon || '💡'}</button>${ce(b, '', 'Type something')}`);
+        case 'code': return wrap('blk-code', ce(b, 'blk-mono', 'Code'));
+        case 'toggle': return wrap('blk-toggle', html`<button type="button" class="blk-tg" aria-expanded=${!!b.open} onClick=${function () { b.open = !b.open; bump(); }}>${b.open ? '▾' : '▸'}</button><div style="flex:1;min-width:0">${ce(b, '', 'Toggle')}${b.open ? html`<div class="blk-tbody" contentEditable="true" suppressContentEditableWarning=${true} data-ph="Empty toggle. Click to add content." onBlur=${function (e) { b.body = String(e.currentTarget.innerText || '').trim(); }}>${b.body || ''}</div>` : null}</div>`);
+        case 'divider': return wrap('blk-div', html`<hr/>`);
+        case 'toc': return wrap('blk-toc', html`<div style="flex:1">${L.filter(function (x) { return x.type === 'h' || x.type === 'h2' || x.type === 'h3'; }).map(function (x) { return html`<a key=${x.id} href=${'#blk-' + x.id} class=${'blk-tl blk-tl-' + x.type} onClick=${function (e) { e.preventDefault(); var w = document.getElementById('blk-' + x.id); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>${plain(x.html) || 'Untitled'}</a>`; })}${L.some(function (x) { return x.type === 'h' || x.type === 'h2' || x.type === 'h3'; }) ? null : html`<span style="color:var(--muted);font-size:13px">Add headings and they show up here.</span>`}</div>`);
+        case 'bookmark': return wrap('blk-bm', b.url ? html`<a class="blk-bmc" href=${b.url} target="_blank" rel="noopener"><b>${b.title || b.url}</b><span>${b.url}</span></a>` : html`<form class="blk-bmf" onSubmit=${function (e) { e.preventDefault(); var u = String(e.currentTarget.elements.u.value || '').trim(); if (!u) return; if (!/^https?:/i.test(u)) u = 'https://' + u; b.url = u; try { b.title = new URL(u).hostname.replace(/^www\./, ''); } catch (x) {} bump(); }}><input name="u" class="cal-in" style="margin:0" placeholder="Paste a link, then press Enter" autofocus /></form>`);
+        case 'db': return wrap('blk-db', html`<${SR.Database} block=${b} bump=${bump} dragRow=${function () { return dragRow.current; }} setDragRow=${function (v) { dragRow.current = v; }} onDelete=${function () { del(b.id); }} />`);
+        case 'table': {
+          var Rw = b.rows, nc = Rw[0].length, focusCell = function (tbl, n) { var c = tbl.querySelectorAll('td'); if (c[n]) c[n].focus(); };
+          return wrap('blk-table', html`<div><div class="blk-scroll"><table>${Rw.map(function (r, ri) { return html`<tr key=${ri}>${r.map(function (c, ci) { return html`<td key=${ri + '-' + ci} contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" ref=${ri === 0 && ci === 0 ? fref(b.id) : null} onBlur=${function (e) { Rw[ri][ci] = String(e.currentTarget.textContent || ''); }} onKeyDown=${function (e) { if (e.key === 'Tab') { e.preventDefault(); var tbl = e.currentTarget.closest('table'), n = ri * nc + ci + (e.shiftKey ? -1 : 1); Rw[ri][ci] = String(e.currentTarget.textContent || ''); if (n >= Rw.length * nc) { Rw.push(new Array(nc).fill('')); bump(); setTimeout(function () { focusCell(tbl, n); }, 20); } else focusCell(tbl, Math.max(0, n)); } else if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}>${c}</td>`; })}</tr>`; })}</table></div>
+            <div class="blk-tact"><button type="button" onClick=${function () { Rw.push(new Array(nc).fill('')); bump(); }}>+ Row</button><button type="button" onClick=${function () { Rw.forEach(function (r) { r.push(''); }); bump(); }}>+ Column</button>${Rw.length > 1 ? html`<button type="button" onClick=${function () { Rw.pop(); bump(); }}>− Row</button>` : null}${nc > 1 ? html`<button type="button" onClick=${function () { Rw.forEach(function (r) { r.pop(); }); bump(); }}>− Column</button>` : null}</div></div>`);
+        }
+        default: return wrap('blk-p', ce(b, '', 'Type / for blocks'));
+      }
+    };
+    var opBlock = ops ? L[idx(ops.id)] : null;
+    var PS = P.pageStyle = P.pageStyle || {}; var psm = R.useState(false), psOpen = psm[0], setPsOpen = psm[1];
+    return html`<div class=${'blocks' + (PS.font === 'serif' ? ' pg-serif' : PS.font === 'mono' ? ' pg-mono' : '') + (PS.small ? ' pg-small' : '') + (PS.full ? ' pg-full' : '')} data-bid=${p.id} aria-label="Notes">
+      <div class="pg-ctl"><button type="button" class="pg-b" aria-label="Page style" title="Page style: font, text size, width" onClick=${function () { setPsOpen(!psOpen); }}>Aa</button>${psOpen ? html`<div class="sr-navmenu pg-menu"><div style="font-size:11px;color:var(--muted);padding:4px 9px">Font</div>${[['', 'Default'], ['serif', 'Serif'], ['mono', 'Mono']].map(function (f) { return html`<button type="button" key=${f[0]} style=${(PS.font || '') === f[0] ? 'font-weight:600' : ''} onClick=${function () { PS.font = f[0]; bump(); }}>${f[1]}${(PS.font || '') === f[0] ? ' ✓' : ''}</button>`; })}<button type="button" onClick=${function () { PS.small = !PS.small; bump(); }}>Small text${PS.small ? ' ✓' : ''}</button><button type="button" onClick=${function () { PS.full = !PS.full; bump(); }}>Full width${PS.full ? ' ✓' : ''}</button><button type="button" onClick=${function () { setPsOpen(false); }}>Close</button></div>` : null}</div>
+      ${L.map(render)}
+      <div class="blk-add" onClick=${function () { var last = L[L.length - 1]; if (last && last.type === 'p' && !plain(last.html)) { SR._fb = last.id; bump(); } else add(null, { type: 'p', html: '' }); }}>${L.length ? '' : 'Click to write. Type / for headings, lists, tables and databases.'}</div>
+      ${menu ? html`<div class="qas-bg" style="background:transparent;padding:0" onMouseDown=${function () { setMenu(null); }}><div class="sr-navmenu blk-menu" style=${'left:' + Math.min(menu.x, window.innerWidth - 300) + 'px;top:' + Math.min(menu.y, window.innerHeight - 360) + 'px'} onMouseDown=${function (e) { e.preventDefault(); e.stopPropagation(); }}>
+        ${cmdHit.concat(colorHit.map(function (c) { return 'color:' + c[0]; })).map(function (c) { return html`<button type="button" key=${c} onClick=${function () { var m = menu; setMenu(null); var el = document.querySelector('.blk-t[data-bid="' + m.id + '"]'), bb = L[idx(m.id)]; if (el) el.innerHTML = ''; if (!bb) return; bb.html = ''; if (c === 'delete') { if (bb.html === '' && L.length) del(m.id); } else if (c === 'duplicate') { var cp = JSON.parse(JSON.stringify(bb)); cp.id = uid(); L.splice(idx(m.id) + 1, 0, cp); bump(); } else { var nm = c.slice(6), col = COLORS.filter(function (x) { return x[0] === nm; })[0]; bb.color = col ? col[1] : ''; bump(); } }}><b>${c.indexOf('color:') === 0 ? 'Color: ' + c.slice(6) : '/' + c}</b><span>${c === 'delete' ? 'Remove this block' : c === 'duplicate' ? 'Make a copy of this block' : 'Change the text color'}</span></button>`; })}
+        <div style="font-size:11px;color:var(--muted);padding:4px 9px">${!cmdQ && recent.length ? 'Recent and basic blocks' : 'Basic blocks'}</div>${menuItems.length || cmdHit.length || colorHit.length ? [].concat.apply([], menuItems.map(function (k) { return k === 'mention' ? (SR.TEAM || []).map(function (n) { return ['mention:' + n, 'Mention ' + n, 'Tag them on this page']; }) : [[k, BK[k][0], BK[k][1]]]; })).map(function (e) { return html`<button type="button" key=${e[0]} onClick=${function () { var m = menu; var el = document.querySelector('.blk-t[data-bid="' + m.id + '"]'); if (el && !m.after) { el.innerHTML = ''; var bb = L[idx(m.id)]; if (bb) bb.html = ''; } pickMenu(e[0]); }}><b>${e[1]}</b><span>${e[2]}</span></button>`; }) : html`<div style="padding:8px 10px;color:var(--muted)">No results</div>`}</div></div>` : null}
+      ${ops && opBlock ? html`<div class="qas-bg" style="background:transparent;padding:0" onMouseDown=${function () { setOps(null); }}><div class="sr-navmenu" style=${'left:' + Math.min(ops.x, window.innerWidth - 230) + 'px;top:' + Math.min(ops.y, window.innerHeight - 300) + 'px'} onMouseDown=${function (e) { e.stopPropagation(); }}>
+        ${opBlock.html !== undefined ? html`<div style="font-size:11px;color:var(--muted);padding:4px 9px">${(function () { var tx = plain(opBlock.html).trim(); var w = tx ? tx.split(/\s+/).length : 0; return w + ' word' + (w === 1 ? '' : 's') + ', ' + tx.length + ' characters'; })()}</div>` : null}
+        <button type="button" onClick=${function () { var o = ops; setOps(null); del(o.id); }}>Delete</button>
+        <button type="button" onClick=${function () { var o = ops; setOps(null); var u = location.href.split('#')[0] + '#blk-' + o.id; try { navigator.clipboard.writeText(u); } catch (x) {} }}>Copy link to block</button>
+        ${opBlock.html !== undefined ? html`<div style="font-size:11px;color:var(--muted);padding:6px 9px 2px">Color</div><div class="blk-sw">${COLORS.map(function (c) { return html`<button type="button" key=${c[0]} title=${c[0]} aria-label=${c[0]} class=${'blk-swb' + ((opBlock.color || '') === c[1] ? ' on' : '')} style=${'color:' + (c[1] || 'var(--text)')} onClick=${function () { var o = ops; setOps(null); var bb = L[idx(o.id)]; if (bb) { bb.color = c[1]; bump(); } }}>A</button>`; })}</div>` : null}
+        <button type="button" onClick=${function () { var o = ops; setOps(null); var i = idx(o.id), cp = JSON.parse(JSON.stringify(L[i])); cp.id = uid(); L.splice(i + 1, 0, cp); bump(); }}>Duplicate</button>
+        <button type="button" onClick=${function () { var o = ops; setOps(null); var i = idx(o.id); if (i > 0) { var t = L[i]; L[i] = L[i - 1]; L[i - 1] = t; bump(); } }}>Move up</button>
+        <button type="button" onClick=${function () { var o = ops; setOps(null); var i = idx(o.id); if (i < L.length - 1) { var t = L[i]; L[i] = L[i + 1]; L[i + 1] = t; bump(); } }}>Move down</button>
+        ${opBlock.html !== undefined ? html`<div style="font-size:11px;color:var(--muted);padding:6px 9px 2px">Turn into</div>${['p', 'h', 'h2', 'h3', 'ul', 'ol', 'todo', 'toggle', 'quote', 'callout', 'code'].map(function (k) { return html`<button type="button" key=${k} onClick=${function () { var o = ops; setOps(null); turn(o.id, k); }}>${BK[k][0]}</button>`; })}` : null}</div></div>` : null}
+      ${fmt ? html`<div class="blk-fmt" style=${'left:' + Math.max(8, Math.min(window.innerWidth - 230, fmt.x - 105)) + 'px;top:' + Math.max(8, fmt.y - 42) + 'px'} onMouseDown=${function (e) { e.preventDefault(); }}>
+        <button type="button" title="Bold (Ctrl B)" onClick=${function () { fmtDo('bold'); }}><b>B</b></button><button type="button" title="Italic (Ctrl I)" onClick=${function () { fmtDo('italic'); }}><i>I</i></button><button type="button" title="Underline (Ctrl U)" onClick=${function () { fmtDo('underline'); }}><u>U</u></button><button type="button" title="Strikethrough" onClick=${function () { fmtDo('strikeThrough'); }}><s>S</s></button>
+        <button type="button" title="Code (Ctrl E)" onClick=${function () { wrapCode(); var q = window.getSelection(), n = q.anchorNode && (q.anchorNode.nodeType === 1 ? q.anchorNode : q.anchorNode.parentElement), el = n && n.closest('.blk-t'); if (el) { var bb = L[idx(el.getAttribute('data-bid'))]; if (bb) save(bb, el); } }} style="font-family:monospace">&lt;/&gt;</button><button type="button" title="Link (Ctrl K)" onClick=${function () { var s = window.getSelection(), n = s.anchorNode && (s.anchorNode.nodeType === 1 ? s.anchorNode : s.anchorNode.parentElement), el = n && n.closest('.blk-t'); if (el) link(L[idx(el.getAttribute('data-bid'))], el); }}>🔗</button></div>` : null}
+    </div>`;
+  };
+
+
+
+  /* quick assign: after adding tasks, pick the battlefront (and owner) in one click */
+  SR.QuickAssign = function (p) {
+    var R2 = React, fr = SR.fronts(p.clients), team = SR.TEAM || [];
+    var qs = R2.useState(''), q = qs[0], setQ = qs[1];
+    var ids = p.ids, rows = ids.map(function (id) { return p.tasks.filter(function (t) { return t.id === id; })[0]; }).filter(Boolean);
+    var ss = R2.useState(function () { return rows.filter(function (t) { return !t.clientId; }).map(function (t) { return t.id; }); }), sel = ss[0], setSel = ss[1];
+    var inp = R2.useRef(null);
+    R2.useEffect(function () { if (inp.current) inp.current.focus(); }, []);
+    R2.useEffect(function () { var k = function (e) { if (e.key === 'Escape') p.onClose(); }; document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, []);
+    var ini = function (n) { return String(n || '?').split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase(); };
+    var shortN = function (n) { return String(n).replace(/\s+(Consulting|Services?)$/i, '').replace(/\s+for\s+Expats$/i, '').replace(/ \/ Admin$/, ''); };
+    var ql = q.trim().toLowerCase();
+    var list = fr.filter(function (f) { return !ql || f.name.toLowerCase().indexOf(ql) > -1; });
+    var apply = function (f) {
+      var target = sel.length ? sel : rows.filter(function (t) { return !t.clientId; }).map(function (t) { return t.id; });
+      if (!target.length) target = ids;
+      p.onSet(target, { clientId: f.id });
+      var left = rows.filter(function (t) { return !t.clientId && target.indexOf(t.id) < 0; }).map(function (t) { return t.id; });
+      setSel(left); setQ(''); if (!left.length && rows.length === 1) p.onClose();
+      if (inp.current) inp.current.focus();
+    };
+    var missing = rows.filter(function (t) { return !t.clientId; }).length;
+    var tog = function (id) { setSel(function (a) { return a.indexOf(id) > -1 ? a.filter(function (x) { return x !== id; }) : a.concat([id]); }); };
+    var owners = team;
+    var allOwn = rows.length && rows.every(function (t) { return t.owner === rows[0].owner; }) ? rows[0].owner : '';
+    return html`<div class="qas-bg" onMouseDown=${function (e) { if (e.target === e.currentTarget) p.onClose(); }}><div class="qas" role="dialog" aria-label="Choose battlefront">
+      <div class="qas-top"><b>${rows.length === 1 ? 'Where does this go?' : 'Where do these ' + rows.length + ' go?'}</b><button type="button" class="qas-x" onClick=${p.onClose} aria-label="Close">${SR.Icon('close', 14)}</button></div>
+      <div class="qas-rows">${rows.map(function (t) {
+        var c = t.clientId ? SR.clientById(p.clients, t.clientId) : null, on = sel.indexOf(t.id) > -1;
+        return html`<button type="button" key=${t.id} class=${'qas-row' + (on ? ' on' : '')} onClick=${function () { tog(t.id); }}>
+          <span class="qas-ck">${on ? SR.Icon('check', 11) : null}</span><span class="qas-nm">${t.name}</span>
+          ${c ? html`<span class="qas-tag"><i style=${'background:' + c.color}></i>${shortN(c.name)}</span>` : html`<span class="qas-tag none">No front</span>`}</button>`; })}</div>
+      <input ref=${inp} class="qas-s" type="text" placeholder="Type to find a battlefront" value=${q} onInput=${function (e) { setQ(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter' && list.length) { e.preventDefault(); apply(list[0]); } }} />
+      <div class="qas-grid">${list.map(function (f) { return html`<button type="button" key=${f.id} class="qas-f" onClick=${function () { apply(f); }}><span class="sr-ib" style=${'background:' + f.color}>${ini(f.name)}</span><span>${shortN(f.name)}</span></button>`; })}${list.length ? null : html`<span class="qas-none">No match</span>`}</div>
+      <div class="qas-foot"><span class="qas-own">Owner ${owners.map(function (n) { return html`<button type="button" key=${n} class=${'nchip' + (allOwn === n ? ' on' : '')} onClick=${function () { p.onSet(ids, { owner: n }); }}>${n}</button>`; })}</span>
+        <button type="button" class="ar-go" onClick=${p.onClose}>${missing ? 'Skip (' + missing + ' left)' : 'Done'}</button></div>
+    </div></div>`;
+  };
 
   /* quick links for a task, picked from its wording */
   SR.taskLinks = function (t, c) {
@@ -259,6 +505,9 @@ window.SR = window.SR || {};
     trend: '<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',
     doc: '<path d="M7 3h8l4 4v14H7z"/><path d="M15 3v4h4M10 12h6M10 16h6"/>',
     shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>',
+    house: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
+    compass: '<circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/>',
+    briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2M3 13h18"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     pencil: '<path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/>',
     plus: '<path d="M12 5v14M5 12h14"/>'

@@ -9,8 +9,8 @@
 </script>
 <style>
 /* Sales uses the client dashboard colours. Dark is the default, light follows the dashboard theme. */
-:root{--s-bg:#0B1626;--s-card:#11233A;--s-card2:#0F1E33;--s-card3:#1A2F4B;--s-border:#2F4A6C;--s-text:#EEF2F7;--s-text2:#C9D4E3;--s-muted:#9FB0C5;--s-faint:#7488A3;--s-blue:#8CBBE8;--s-green:#4CC38A;--s-red:#F87171;--s-gold:#DBBF69;--s-orange:#E8935A;--s-total:#2A2410;color-scheme:dark}
-:root[data-theme="light"]{--s-bg:#F3F5F8;--s-card:#FFFFFF;--s-card2:#F6F8FB;--s-card3:#E7EEF8;--s-border:#DCE2EA;--s-text:#13213A;--s-text2:#2B3A55;--s-muted:#5B6678;--s-faint:#8896A8;--s-blue:#2F5C99;--s-green:#087443;--s-red:#B42318;--s-gold:#8A5A00;--s-orange:#B4531F;--s-total:#FBF1DC;color-scheme:light}
+:root{--s-bg:#191919;--s-card:#202020;--s-card2:#252525;--s-card3:#2B2B2B;--s-border:#2F2F2F;--s-text:#E6E6E4;--s-text2:#CFCFCB;--s-muted:#9B9B97;--s-faint:#787874;--s-blue:#8CBBE8;--s-green:#4CC38A;--s-red:#F87171;--s-gold:#DBBF69;--s-orange:#E8935A;--s-total:#2E2A1C;color-scheme:dark}
+:root[data-theme="light"]{--s-bg:#FFFFFF;--s-card:#FFFFFF;--s-card2:#F7F7F5;--s-card3:#EFEFED;--s-border:#E9E9E7;--s-text:#37352F;--s-text2:#4B4A45;--s-muted:#787774;--s-faint:#9B9A97;--s-blue:#2F5C99;--s-green:#087443;--s-red:#B42318;--s-gold:#8A5A00;--s-orange:#B4531F;--s-total:#FBF1DC;color-scheme:light}
 .embed .sr-hdr{display:none!important}
 .sr-bk{display:none}
 .embed .sr-bk{display:inline-flex;align-items:center;gap:6px;margin:6px 0 6px auto;padding:6px 14px;border-radius:9px;border:1px solid var(--s-border);background:var(--s-card2);color:var(--s-text2);font:600 12px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
@@ -311,7 +311,7 @@
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
           <sc-for list="{{ lane.boxes }}" as="c" hint-placeholder-count="6">
-            <div style="position: relative; overflow: hidden; background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, {{ c.glow }} 16%, transparent) 0%, transparent 60%), linear-gradient(180deg, #19212B 0%, var(--s-bg) 100%); border: 1px solid color-mix(in srgb, {{ c.glow }} 30%, var(--s-border)); border-radius: 14px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset, 0 8px 28px -12px color-mix(in srgb, {{ c.glow }} 45%, transparent); transition: transform 0.2s, box-shadow 0.2s;" style-hover="transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 12px 34px -10px color-mix(in srgb, {{ c.glow }} 65%, transparent);">
+            <div style="position: relative; overflow: hidden; background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, {{ c.glow }} 16%, transparent) 0%, transparent 60%), linear-gradient(180deg, var(--s-card2) 0%, var(--s-bg) 100%); border: 1px solid color-mix(in srgb, {{ c.glow }} 30%, var(--s-border)); border-radius: 14px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset, 0 8px 28px -12px color-mix(in srgb, {{ c.glow }} 45%, transparent); transition: transform 0.2s, box-shadow 0.2s;" style-hover="transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 12px 34px -10px color-mix(in srgb, {{ c.glow }} 65%, transparent);">
               <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 22px;">
                 <span style="display: flex; align-items: center; gap: 7px; min-width: 0;">
                   <span style="width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: {{ c.glow }}; background: color-mix(in srgb, {{ c.glow }} 14%, transparent); border: 1px solid color-mix(in srgb, {{ c.glow }} 30%, transparent);">{{ c.icon }}</span>
@@ -3965,7 +3965,7 @@ class Component extends DCLogic {
       this._lastApolloError = null;
       return json;
     } catch(e) {
-      this._lastApolloError = 'Could not reach the Apollo function (' + e.message + '). This only works on the deployed Netlify site.';
+      this._lastApolloError = 'Could not reach the Apollo function (' + e.message + '). This only works on the live platform, not when you open the files locally.';
       console.warn('Apollo fetch failed:', e);
       return null;
     }

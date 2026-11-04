@@ -6,12 +6,31 @@ window.SR = window.SR || {};
   var H1 = function (t) { return html`<h1 style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:32px">${t}</h1>`; };
   var label = function (t) { return html`<div style="font-size:11px;letter-spacing:0.12em;font-weight:700;color:var(--muted)">${t}</div>`; };
 
+
+  /* Notion helpers: contract end, health, simple icons */
+  SR.contractEnd = function (c) {
+    var A = SR.acct && SR.acct[c.id]; if (A && A.renewal) return A.renewal;
+    var st = (A && A.start) || c.start || ''; if (!st) return '';
+    var d = new Date(st + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + (parseInt((A && A.term) || c.term) || 3)); return d.toISOString().slice(0, 10);
+  };
+  SR.daysTo = function (d) { return d ? Math.round((new Date(d + 'T00:00:00Z') - new Date(SR.TODAY + 'T00:00:00Z')) / 86400000) : null; };
+  SR.clientHealth = function (c, tasks) {
+    var mine = (tasks || []).filter(function (x) { return x.clientId === c.id && !x.done && !x.milestone; });
+    var over = mine.filter(function (x) { return x.date && x.date < SR.TODAY; });
+    var A = SR.acct && SR.acct[c.id];
+    var payOver = A ? A.payments.filter(function (q) { return !q.paid && q.date < SR.TODAY; }).length : 0;
+    var end = SR.contractEnd(c), dl = SR.daysTo(end);
+    var h = payOver || over.length >= 3 ? 'risk' : (over.length || (dl != null && dl <= 45 && dl >= -3)) ? 'watch' : 'ok';
+    return { h: h, over: over.length, payOver: payOver, end: end, dl: dl, next: mine.filter(function (x) { return x.date; }).sort(function (a, b) { return a.date.localeCompare(b.date); })[0] || null, A: A };
+  };
+  SR.HLAB = { ok: ['On track', 'g'], watch: ['Watch', 'y'], risk: ['At risk', 'r'] };
+
   /* ---------- HOME ---------- */
   SR.Home = function (p) {
     var mrr = SR.useMrr();
     var who = p.who;
     var hr = React.useRef(null), hw = SR.useWidth(hr), narrow = hw < 980;
-    var sdn = useState(false), showDone = sdn[0], setShowDone = sdn[1];
+    var showDone = false;
     var liveCount = p.clients.length, slots = 14;
     var st0 = p.settling || {};
     var doneCount = p.tasks.filter(function (t) { return t.done; }).length;
@@ -22,32 +41,27 @@ window.SR = window.SR || {};
     var T0 = SR.TODAY, T1 = SR.addDays(T0, 1), W7 = SR.addDays(T0, 7);
     var dayOk = function (t, k) { var d = t.date || ''; if (k === 'all') return true; if (k === 'over') return !!d && d < T0 && !t.done; if (k === 'today') return d === T0; if (k === 'tom') return d === T1; if (k === 'week') return !!d && d >= T0 && d <= W7; if (k === 'none') return !d; if (k === 'pick') return !dpick || d === dpick; return true; };
     var dayCount = function (k) { return p.tasks.filter(function (t) { return !t.done && dayOk(t, k); }).length; };
-    var filtered = p.tasks.filter(function (t) { return (showDone || !t.done || st0[t.id] || t.doneDay === SR.TODAY) && (who === 'all' || (who === 'none' ? !t.owner : t.owner === who)) && dayOk(t, day); });
+    var filtered = p.tasks.filter(function (t) { return (showDone || !t.done || st0[t.id] || t.doneDay === SR.TODAY) && (who === 'all' || who === 'none' || t.owner === who) && dayOk(t, day); });
     var chipCount = function (w) { return p.tasks.filter(function (t) { return !t.done && (w === 'all' || (w === 'none' ? !t.owner : t.owner === w)); }).length; };
     var openTotal = p.tasks.filter(function (t) { return !t.done; }).length;
+    var overdueN = p.tasks.filter(function (t) { return !t.done && !t.milestone && t.date && t.date < SR.TODAY; }).length;
+    var hs = p.clients.map(function (c) { return { c: c, H: SR.clientHealth(c, p.tasks) }; });
+    var renew = hs.filter(function (x) { return x.H.dl != null && x.H.dl >= -3 && x.H.dl <= 90; }).sort(function (a, b) { return a.H.dl - b.H.dl; });
+    var attn = [];
+    hs.forEach(function (x) { if (x.H.payOver) attn.push({ k: 'r', c: x.c, t: x.c.name + ' has ' + x.H.payOver + ' payment overdue.' }); else if (x.H.over) attn.push({ k: x.H.over >= 3 ? 'r' : 'y', c: x.c, t: x.c.name + ' has ' + x.H.over + ' overdue task' + (x.H.over > 1 ? 's' : '') + '.' }); });
+    renew.slice(0, 2).forEach(function (x) { attn.push({ k: 'b', c: x.c, t: x.c.name + ' contract ends in ' + x.H.dl + ' day' + (x.H.dl === 1 ? '' : 's') + '. Plan the renewal.' }); });
     return html`<div ref=${hr} class=${'home' + (narrow ? ' narrow' : '')} style="display:flex;flex-direction:column;gap:20px">
-      <div><div style="font-size:13px;color:var(--muted)">${(function () { var n = SR.nowParts(); return n.date + ' · ' + n.time + ' ' + n.zone; })()}</div>${H1('Home')}</div>
-      <section aria-label="Numbers" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px">
-        <div style=${card + ';padding:14px 18px'}>${label('MRR')}<div style="font-size:26px;font-weight:700;color:var(--green);margin-top:4px">${mrr == null ? '—' : SR.money(mrr)}</div><div class="stc">↻ Live from Sales · Revenue${SR.mrr.at ? ' · updated ' + new Date(SR.mrr.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</div></div>
-        <div style=${card + ';padding:14px 18px'}>${label('OPEN TASKS')}<div style="font-size:26px;font-weight:700;margin-top:4px">${openTotal}</div><div class="stc">across all clients</div></div>
-        <div style=${card + ';padding:14px 18px'}>${label('CLIENTS · CAPACITY')}<div style="font-size:26px;font-weight:700;margin-top:4px">${liveCount} <span style="font-size:15px;color:var(--muted);font-weight:400">of ${slots} slots</span></div><div style="height:6px;background:var(--line);border-radius:3px;margin-top:8px"><div style=${'width:' + Math.round(liveCount / slots * 100) + '%;height:100%;background:var(--accent);border-radius:3px'}></div></div></div>
-      </section>
-      <section style=${card + ';padding:20px 22px'}>
-        <div class="hd-row" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><h2 style="margin:0;font-size:18px">Tasks</h2>
-            <div class="viewsw" role="group" aria-label="View">${[['list', 'List'], ['date', 'By date'], ['people', 'Workload']].map(function (v) { return html`<button key=${v[0]} type="button" aria-pressed=${view === v[0] ? 'true' : 'false'} class=${view === v[0] ? 'on' : ''} onClick=${function () { setView(v[0]); }}>${v[1]}</button>`; })}</div></div>
-          <div role="group" aria-label="Filter by person" class="hd-fil" style="display:flex;gap:8px;flex-wrap:wrap">
-            ${narrow ? html`<select class="cal-in" aria-label="Filter by person" style="margin:0;min-height:34px;border-radius:17px;padding:0 12px;font-weight:600;max-width:190px" value=${who} onChange=${function (e) { p.setWho(e.target.value); }}>${[['all', 'Everyone']].concat(SR.TEAM.map(function (n) { return [n, n]; })).concat([['none', 'Unassigned']]).map(function (c) { return html`<option key=${c[0]} value=${c[0]}>${c[1] + ' · ' + chipCount(c[0])}</option>`; })}</select>`
-              : [['all', 'Everyone']].concat(SR.TEAM.map(function (n) { return [n, n]; })).concat([['none', 'Unassigned']]).map(function (c) {
-              return html`<${SR.Pill} key=${c[0]} on=${who === c[0]} onClick=${function () { p.setWho(c[0]); }}>${c[1] + ' · ' + chipCount(c[0])}<//>`;
-            })}
-            <${SR.Pill} on=${showDone} onClick=${function () { setShowDone(!showDone); }}>${narrow ? 'Done · ' + doneCount : (showDone ? 'Hide' : 'Show') + ' completed · ' + doneCount}<//>
-          </div>
+      <div><div style="font-size:14px;color:var(--muted);margin-bottom:6px">${(function () { var n = SR.nowParts(); return n.date + ' · ' + n.time + ' ' + n.zone; })()}</div>${H1((function () { var h = new Date().getHours(); return (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (p.me ? ', ' + String(p.me).split(' ')[0] : ''); })())}<${SR.Ed} tag="p" id="home.desc" def="" ph="Add a description" style="margin:6px 0 0;font-size:14px;color:var(--muted)" /></div>
+      <section style="padding:4px 0">
+        <div class="ntabs hd-row" role="tablist" aria-label="View">${[['list', 'List'], ['date', 'By date'], ['people', 'Workload']].map(function (v) { return html`<button key=${v[0]} type="button" role="tab" aria-selected=${view === v[0]} class=${view === v[0] ? 'on' : ''} onClick=${function () { setView(v[0]); }}>${v[1]}</button>`; })}<span class="sp"></span>
+          <div class="nfil hd-fil" role="group" aria-label="Filter by person" style="padding-bottom:5px">${[['all', 'Everyone']].concat(SR.TEAM.map(function (n) { return [n, n]; })).map(function (c) { return html`<button key=${c[0]} type="button" class=${'nchip' + (who === c[0] ? ' on' : '')} aria-pressed=${who === c[0]} onClick=${function () { p.setWho(c[0]); }}>${c[1]} <span style="opacity:.55">${chipCount(c[0])}</span></button>`; })}</div>
         </div>
+        <div style="height:10px"></div>
         ${view === 'people' ? html`<${SR.Workload} tasks=${filtered} clients=${p.clients} onOpen=${p.onOpen} openId=${p.openId} />` : html`<${SR.TaskList} tasks=${filtered} clients=${p.clients} showClient=${true} selected=${p.sel} flat=${view !== 'date'} dnd=${true}
           onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} onClearSel=${p.onClearSel} onBulk=${p.onBulk}
           newTask=${p.newTask} onNewTask=${p.onNewTask} onAdd=${p.onAdd} qFront=${p.qFront} onQFront=${p.onQFront} qOwner=${p.qOwner} onQOwner=${p.onQOwner} autoOwner=${p.autoOwner} qNeed=${p.qNeed} settling=${p.settling} just=${p.just} openId=${p.openId} />`}
       </section>
+      <${SR.Blocks} id="home" />
     </div>`;
   };
 
@@ -123,6 +137,10 @@ window.SR = window.SR || {};
     var T0 = SR.TODAY, me = p.me, MN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], DN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     var ms = useState(function () { return SR.jget('sr_calmode', 'week'); }), mode = ms[0], setModeS = ms[1];
     var setMode = function (m) { setModeS(m); SR.jset('sr_calmode', m); };
+    var rs = useState(function () { return SR.jget('sr_calrail', true) !== false; }), railOpen = rs[0], setRailS = rs[1];
+    var ls = useState(function () { return SR.jget('sr_calleft', true) !== false; }), leftOpen = ls[0], setLeftS = ls[1];
+    var setLeft = function (v) { setLeftS(v); try { SR.jset('sr_calleft', v); } catch (e) {} };
+    var setRail = function (v) { setRailS(v); SR.jset('sr_calrail', v); };
     var as = useState(T0), anchor = as[0], setAnchor = as[1];
     var vs = useState(function () { return SR.jget('sr_calvis', null); }), visSaved = vs[0], setVisSaved = vs[1];
     var shs = useState(function () { return SR.jget('sr_calshowdone', false); }), showDone = shs[0], setShowDone = shs[1];
@@ -240,10 +258,10 @@ window.SR = window.SR || {};
         <div class="tk-t"><b>${t.name}${n > 1 ? ' (part ' + (it.b.i + 1) + '/' + n + ')' : ''}${lt ? html`<em class="tk-late" title=${'Scheduled ' + lt + ' days after the deadline'}>!</em>` : null}</b><span>${it.b.time} - ${SR.hm(it.e)}${SR.TEAM.length > 1 && t.owner && visible[me] && Object.keys(visible).filter(function (k) { return k && visible[k]; }).length > 1 ? ' · ' + t.owner : ''}</span></div>
         ${pr ? html`<div class="tk-pr" style=${'width:' + pr + '%'}></div>` : null}<i class="cal-rz" onMouseDown=${function (e) { press(e, it, 'resize'); }}></i></div>`;
     };
-    var modeSel = html`<select class="cal-mode" aria-label="Calendar view" value=${mode} onChange=${function (e) { setMode(e.target.value); }}><option value="day">Day</option><option value="week">Week</option><option value="month">Month</option></select>`;
+    var modeSel = html`<div class="cal-seg" role="tablist" aria-label="Calendar view">${[['day', 'Day'], ['week', 'Week'], ['month', 'Month']].map(function (m) { return html`<button key=${m[0]} type="button" role="tab" aria-selected=${mode === m[0]} class=${mode === m[0] ? 'on' : ''} onClick=${function () { setMode(m[0]); }}>${m[1]}</button>`; })}</div>`;
     var anyAllday = days.some(function (d) { return alldayOn(d).length; });
-    return html`<div class=${"cpg" + (p.drawerOpen ? " nor" : "")}>
-      <aside class="cp-l">
+    return html`<div class=${"cpg" + (p.drawerOpen || !railOpen ? " nor" : "") + (leftOpen ? "" : " nol")}>
+      ${leftOpen ? html`<aside class="cp-l">
         <div class="cal-mini"><div class="cp-mh"><button type="button" class="cp-ar" aria-label="Previous month" onClick=${function () { var mm = q0.m - 2, yy = q0.y + Math.floor(mm / 12); mm = ((mm % 12) + 12) % 12; setAnchor(yy + '-' + pad(mm + 1) + '-01'); }}>‹</button><b>${MN[q0.m - 1] + ' ' + q0.y}</b><button type="button" class="cp-ar" aria-label="Next month" onClick=${function () { var mm = q0.m, yy = q0.y + Math.floor(mm / 12); mm = mm % 12; setAnchor(yy + '-' + pad(mm + 1) + '-01'); }}>›</button></div>
           <div class="cal-mg">${['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(function (d, k) { return html`<span key=${k} class="mdw">${d}</span>`; })}
             ${mini.map(function (d) { return html`<button key=${d} type="button" class=${'md' + (d === T0 ? ' today' : '') + (days.indexOf(d) >= 0 && mode !== 'month' ? ' sel' : '') + (ymd(d).m !== q0.m ? ' out' : '')} onClick=${function () { setAnchor(d); }}>${ymd(d).d}</button>`; })}</div></div>
@@ -255,12 +273,12 @@ window.SR = window.SR || {};
         <div class="cp-h">Accounts</div>
         <div class="cal-note">Google Calendar sync is paused. Events and tasks stay in this calendar only. You can import a Google .ics file below.</div>
         <input ref=${fileRef} type="file" accept=".ics,text/calendar" style="display:none" onChange=${onFile} /><button type="button" class="edbtn" style="margin-top:8px" onClick=${function () { fileRef.current && fileRef.current.click(); }}>Import .ics file</button>
-      </aside>
+      </aside>` : null}
       <section class="cp-c">
         <div class="cal-bar"><button type="button" class="edbtn" onClick=${function () { setAnchor(T0); setTimeout(scrollTo, 0); }}>Today</button>
           <button type="button" class="cal-arrow" aria-label="Previous" onClick=${function () { step(-1); }}>‹</button><button type="button" class="cal-arrow" aria-label="Next" onClick=${function () { step(1); }}>›</button>
           <h3 class="cal-title">${title}</h3>
-          <div style="margin-left:auto;display:flex;gap:8px;align-items:center"><button type="button" class="cal-arrow" aria-label="Search" title="Search (Ctrl K)" onClick=${function () { SR.openPalette && SR.openPalette(); }}>⌕</button><button type="button" class="cal-arrow" aria-label="New event" title="New event" onClick=${function () { setForm({ id: '', title: '', date: anchor, start: '09:00', end: '10:00', who: me }); }}>+</button>${modeSel}</div></div>
+          <div style="margin-left:auto;display:flex;gap:8px;align-items:center"><button type="button" class="cal-arrow" aria-label="Search" title="Search (Ctrl K)" onClick=${function () { SR.openPalette && SR.openPalette(); }}>⌕</button><button type="button" class="cal-arrow" aria-label="New event" title="New event" onClick=${function () { setForm({ id: '', title: '', date: anchor, start: '09:00', end: '10:00', who: me }); }}>+</button>${modeSel}<button type="button" class=${'nchip' + (leftOpen ? ' on' : '')} aria-pressed=${leftOpen} title=${leftOpen ? 'Tuck the calendar list away' : 'Show the calendar list'} onClick=${function () { setLeft(!leftOpen); }}>${leftOpen ? 'Hide calendars' : 'Show calendars'}</button>${p.drawerOpen ? null : html`<button type="button" class=${'nchip' + (railOpen ? ' on' : '')} aria-pressed=${railOpen} title=${railOpen ? 'Tuck the task list away' : 'Show the task list'} onClick=${function () { setRail(!railOpen); }}>${railOpen ? 'Hide tasks' : 'Show tasks'}</button>`}</div></div>
         ${mode === 'month' ? html`<div class="cal-month">${DN.map(function (d) { return html`<div key=${d} class="cal-dow">${d}</div>`; })}
           ${days.map(function (d) { var q5 = ymd(d), its = itemsOn(d).map(function (x) { return x; }).concat(alldayOn(d).map(function (e) { return { kind: 'ev', ev: e, id: e.id, allday: true }; }));
             return html`<div key=${d} class=${'cal-cell' + (q5.m !== q0.m ? ' out' : '') + (d === T0 ? ' today' : '')} onClick=${function () { setForm({ id: '', title: '', date: d, start: '', end: '', who: me }); }} onDragOver=${function (e) { e.preventDefault(); }} onDrop=${function (e) { dropDay(e, d); }}>
@@ -281,7 +299,8 @@ window.SR = window.SR || {};
           </div></div></div>`}
         <label class="cp-foot"><input type="checkbox" checked=${showDone} onChange=${function (e) { setShowDone(e.target.checked); SR.jset('sr_calshowdone', e.target.checked); }} /> Show completed tasks</label>
       </section>
-      ${p.drawerOpen ? null : html`<aside class="cp-r">
+      ${p.drawerOpen ? null : !railOpen ? html`<button type="button" class="cp-tab" aria-label="Show the task list" title="Show the task list" onClick=${function () { setRail(true); }}>‹ Tasks</button>` : html`<aside class="cp-r">
+        <button type="button" class="cp-min" aria-label="Minimise the task list" title="Minimise the task list" onClick=${function () { setRail(false); }}>Minimise ›</button>
         ${adding ? html`<form onSubmit=${addNew}><input class="cal-in" autofocus placeholder="Task name, then Enter. It is scheduled for you." value=${nt} onInput=${function (e) { setNt(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Escape') setAdding(false); }} /></form>` : html`<button type="button" class="cp-add" onClick=${function () { setAdding(true); }}>+ Add task</button>`}
         ${late.length ? html`<div class="cp-warn"><div><b>${late.length}</b> task${late.length > 1 ? 's' : ''} scheduled past deadline</div><button type="button" onClick=${function () { p.onSchedule(late.map(function (t) { return t.id; }), 'Resolved'); }}>Resolve</button></div>` : null}
         <div class="cp-list">
@@ -330,7 +349,7 @@ window.SR = window.SR || {};
     var open = p.tasks.filter(function (t) { return !t.done; });
     var T0 = SR.TODAY, W7 = SR.addDays(T0, 7), CAP = 40;
     var cols = SR.TEAM.map(function (n) { return { name: n, label: n, list: open.filter(function (t) { return t.owner === n; }) }; })
-      .concat([{ name: '', label: 'Unassigned', list: open.filter(function (t) { return !t.owner || SR.TEAM.indexOf(t.owner) < 0; }) }]);
+      .concat(open.some(function (t) { return !t.owner || SR.TEAM.indexOf(t.owner) < 0; }) ? [{ name: '', label: 'Unassigned', list: open.filter(function (t) { return !t.owner || SR.TEAM.indexOf(t.owner) < 0; }) }] : []);
     var by = function (a, b) { return (a.date || '9999') < (b.date || '9999') ? -1 : (a.date || '9999') > (b.date || '9999') ? 1 : 0; };
     var add = function () { if (nm.trim()) { SR.addPerson(nm); setNm(''); setRt(rt + 1); } };
     return html`<div style="margin-top:16px">
@@ -390,37 +409,59 @@ window.SR = window.SR || {};
   };
   SR.Clients = function (p) {
     var tasks = p.tasks || [];
+    var vs = useState(function () { try { return localStorage.getItem('sr_cview') || 'table'; } catch (e) { return 'table'; } }), view = vs[0], setViewS = vs[1];
+    var setView = function (v) { setViewS(v); try { localStorage.setItem('sr_cview', v); } catch (e) {} };
+    var fs = useState('all'), fil = fs[0], setFil = fs[1];
+    var qs = useState(''), q = qs[0], setQ = qs[1];
+    var ss = useState('attn'), sort = ss[0], setSort = ss[1];
     var rows = p.clients.map(function (c) {
       var projs = (c.projects || [c.type]).map(function (t) { var T = SR.TEMPLATES[t] || {}; return { t: t, label: T.label || t, color: T.color || '#C9A84C', pct: SR.projPct(c, t, tasks) }; });
-      var mine = tasks.filter(function (x) { return x.clientId === c.id && !x.done && !x.milestone; });
-      var over = mine.filter(function (x) { return x.date && x.date < SR.TODAY; });
-      var A = SR.acct && SR.acct[c.id];
-      var payOver = A ? A.payments.filter(function (q) { return !q.paid && q.date < SR.TODAY; }).length : 0;
-      var nextPay = A ? A.payments.filter(function (q) { return !q.paid; }).sort(function (x, y) { return x.date.localeCompare(y.date); })[0] : null;
-      var nxt = mine.filter(function (x) { return x.date; }).sort(function (x, y) { return x.date.localeCompare(y.date); })[0];
+      var H = SR.clientHealth(c, tasks), A = H.A;
+      var nextPay = A ? A.payments.filter(function (x) { return !x.paid; }).sort(function (x, y) { return x.date.localeCompare(y.date); })[0] : null;
       var mrr = A ? (+A.retainer || 0) : (c.retainer || 0);
-      var bad = over.length || payOver;
-      return { c: c, projs: projs, over: over.length, payOver: payOver, nextPay: nextPay, nxt: nxt, mrr: mrr, bad: bad,
-        why: payOver ? payOver + ' payment overdue' : over.length ? over.length + ' task' + (over.length > 1 ? 's' : '') + ' overdue' : '' };
-    }).sort(function (x, y) { return (y.bad ? 1 : 0) - (x.bad ? 1 : 0); });
-    var attn = rows.filter(function (r) { return r.bad; }).length, total = rows.reduce(function (t, r) { return t + r.mrr; }, 0);
-    return html`<div style="display:flex;flex-direction:column;gap:20px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px">
-        <div>${H1('Clients')}<p style="margin:6px 0 0;font-size:14px;color:var(--muted)">${rows.length} clients · ${SR.money(total)} a month · ${attn ? attn + ' need attention' : 'everyone is on track'}</p></div>
-        <button type="button" onClick=${function () { p.go('onboard'); }} style="min-height:44px;padding:0 18px;border-radius:9px;border:0;background:var(--primary);color:#FFF;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer">+ Onboard client</button>
-      </div>
-      <section style=${card + ';padding:6px 8px;overflow-x:auto'}>
-        <table class="ctable"><thead><tr><th>Client</th><th>Projects and progress</th><th>MRR</th><th>Next date</th><th>Next action</th><th>Health</th></tr></thead><tbody>
-        ${rows.map(function (r) { var c = r.c;
-          return html`<tr key=${c.id} tabindex="0" onContextMenu=${function (e) { SR.clientMenu(e, c); }} onClick=${function () { p.openClient(c.id); }} onKeyDown=${function (e) { if (e.key === 'Enter') p.openClient(c.id); }}>
-            <td><span class="cn"><i style=${'background:' + c.color}></i><b>${c.name}</b><span class="m">${c.region || ''}</span></span></td>
-            <td>${r.projs.map(function (q) { return html`<div class="cp" key=${q.t}><span class="m">${q.label}</span><span class="bar"><i style=${'width:' + q.pct.v + '%;background:' + q.color}></i></span><span class="m" title=${q.pct.src === 'results' ? 'Latest result vs target' : 'Setup progress'}>${q.pct.v}%</span></div>`; })}</td>
-            <td><b>${SR.money(r.mrr)}</b></td>
-            <td class="m">${r.nextPay ? 'Invoice ' + SR.fmtDay(r.nextPay.date) : (c.nextUpdate && c.nextUpdate !== '—' ? 'Update ' + c.nextUpdate : '—')}</td>
-            <td>${r.nxt ? html`<span>${r.nxt.name.length > 38 ? r.nxt.name.slice(0, 36) + '…' : r.nxt.name}</span> <span class="m">${SR.fmtDay(r.nxt.date)}</span>` : html`<span class="m">Nothing scheduled</span>`}</td>
-            <td><span class=${'hchip ' + (r.bad ? 'bad' : 'ok')}>${r.bad ? r.why : 'On track'}</span></td></tr>`; })}
-        </tbody></table>
-      </section>
+      var why = H.payOver ? H.payOver + ' payment overdue' : H.over ? H.over + ' task' + (H.over > 1 ? 's' : '') + ' overdue' : (H.dl != null && H.dl <= 45 && H.dl >= -3) ? 'Contract ends in ' + H.dl + ' days' : '';
+      return { c: c, projs: projs, H: H, h: H.h, nextPay: nextPay, nxt: H.next, mrr: mrr, why: why, over: H.over };
+    });
+    var total = rows.reduce(function (t, r) { return t + r.mrr; }, 0), attn = rows.filter(function (r) { return r.h !== 'ok'; }).length;
+    var cnt = function (k) { return rows.filter(function (r) { return k === 'all' || r.h === k; }).length; };
+    var vis = rows.filter(function (r) { return (fil === 'all' || r.h === fil) && (!q || (r.c.name + ' ' + (r.c.region || '') + ' ' + (r.c.contact || '')).toLowerCase().indexOf(q.toLowerCase()) > -1); });
+    var rank = { risk: 0, watch: 1, ok: 2 };
+    vis.sort(function (x, y) { if (sort === 'mrr') return y.mrr - x.mrr; if (sort === 'name') return x.c.name.localeCompare(y.c.name); if (sort === 'end') return (x.H.end || '9').localeCompare(y.H.end || '9'); return rank[x.h] - rank[y.h] || y.mrr - x.mrr; });
+    var tag = function (h, txt) { var L = SR.HLAB[h]; return html`<span class=${'ntag ' + L[1]}>${txt || L[0]}</span>`; };
+    var dot = function (c) { return html`<span class="nav" style=${'background:' + c.color}>${SR.ini ? SR.ini(c.name) : c.name.split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase()}</span>`; };
+    var open = function (c) { p.openClient(c.id); };
+    var nextTxt = function (r) { return r.nxt ? html`<span style=${r.nxt.date < SR.TODAY ? 'color:var(--red)' : ''}>${r.nxt.name.length > 34 ? r.nxt.name.slice(0, 32) + '…' : r.nxt.name}</span> <span class="m">${SR.fmtDay(r.nxt.date)}</span>` : html`<span class="m">Nothing scheduled</span>`; };
+    var table = html`<div role="table" aria-label="Clients">
+      <div class="nrow h" role="row"><span>Client</span><span>Projects</span><span>Health</span><span>Fee</span><span>Ends</span><span>Next task</span></div>
+      ${vis.map(function (r) { var c = r.c;
+        return html`<div key=${c.id} class="nrow" role="row" tabindex="0" onContextMenu=${function (e) { SR.clientMenu(e, c); }} onClick=${function () { open(c); }} onKeyDown=${function (e) { if (e.key === 'Enter') open(c); }}>
+          <span style="display:flex;align-items:center;gap:10px;min-width:0">${dot(c)}<b style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</b><span class="m">${c.region || ''}</span></span>
+          <span style="display:flex;flex-wrap:wrap;gap:4px">${r.projs.map(function (x) { return html`<span key=${x.t} class="ntag n" title=${x.pct.src === 'results' ? 'Latest result vs target' : 'Setup progress'}>${x.label} ${x.pct.v}%</span>`; })}</span>
+          <span>${tag(r.h, r.why || null)}</span>
+          <span style="font-variant-numeric:tabular-nums"><b style="font-weight:500">${SR.money(r.mrr)}</b></span>
+          <span class="m">${r.H.end ? SR.fmtDay(r.H.end) : '—'}</span>
+          <span>${nextTxt(r)}</span></div>`; })}
+      <button type="button" class="nchip" style="margin-top:10px;border:0" onClick=${function () { p.go('onboard'); }}>+ New client</button></div>`;
+    var board = html`<div class="nboard">${[['risk', 'At risk'], ['watch', 'Watch'], ['ok', 'On track']].map(function (col) {
+      var cs = vis.filter(function (r) { return r.h === col[0]; });
+      return html`<div key=${col[0]} class="ncol"><b>${col[1]} <span style="color:var(--muted);font-weight:400">${cs.length}</span></b>
+        ${cs.map(function (r) { var c = r.c; return html`<button key=${c.id} type="button" class="ncard" onContextMenu=${function (e) { SR.clientMenu(e, c); }} onClick=${function () { open(c); }}>
+          <span style="display:flex;align-items:center;gap:8px">${dot(c)}<b style="font-weight:600;font-size:14px">${c.name}</b></span>
+          <span style="font-size:13px;color:var(--muted)">${SR.money(r.mrr)} a month${r.H.end ? ' · ends ' + SR.fmtDay(r.H.end) : ''}</span>
+          <span style="display:flex;flex-wrap:wrap;gap:4px">${r.projs.map(function (x) { return html`<span key=${x.t} class="ntag n">${x.label}</span>`; })}</span>
+          ${r.why ? html`<span style="font-size:13px;color:var(--muted)">${r.why}</span>` : null}</button>`; })}
+        ${cs.length ? null : html`<div style="font-size:13px;color:var(--muted);padding:4px">Nobody here</div>`}</div>`; })}</div>`;
+    var renewals = html`<div role="table" aria-label="Renewals">${vis.slice().sort(function (x, y) { return (x.H.end || '9').localeCompare(y.H.end || '9'); }).map(function (r) { var c = r.c;
+      return html`<div key=${c.id} class="nrow" style="grid-template-columns:minmax(0,2.2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)" tabindex="0" onClick=${function () { open(c); }} onKeyDown=${function (e) { if (e.key === 'Enter') open(c); }}><span style="display:flex;align-items:center;gap:10px">${dot(c)}<b style="font-weight:600">${c.name}</b></span><span>${r.H.end ? SR.fmtDay(r.H.end) : '—'}</span><span class="m">${r.H.dl == null ? '' : r.H.dl < 0 ? 'ended' : r.H.dl + ' days left'}</span><span style="font-variant-numeric:tabular-nums">${SR.money(r.mrr)}</span></div>`; })}</div>`;
+    return html`<div style="display:flex;flex-direction:column;gap:16px">
+      <div><${SR.Ed} tag="h1" id="clients.title" def="Clients" style="margin:0" ph="Add a title" /><p style="margin:6px 0 0;font-size:14px;color:var(--muted)">${rows.length} clients · ${SR.money(total)} a month · ${attn ? attn + ' need attention' : 'everyone is on track'}</p><${SR.Ed} tag="p" id="clients.desc" def="" ph="Add a description" style="margin:4px 0 0;font-size:14px;color:var(--muted)" /></div>
+      <div class="ntabs" role="tablist">${[['table', 'Table'], ['board', 'Board'], ['renew', 'Renewals']].map(function (v) { return html`<button key=${v[0]} type="button" role="tab" aria-selected=${view === v[0]} class=${view === v[0] ? 'on' : ''} onClick=${function () { setView(v[0]); }}>${v[1]}</button>`; })}<span class="sp"></span>
+        <button type="button" onClick=${function () { p.go('onboard'); }} style="color:var(--accent);font-weight:600">+ Onboard client</button></div>
+      <div class="nfil"><input class="nsearch" type="search" placeholder="Search clients" aria-label="Search clients" value=${q} onInput=${function (e) { setQ(e.target.value); }} />
+        ${[['all', 'All'], ['ok', 'On track'], ['watch', 'Watch'], ['risk', 'At risk']].map(function (f) { return html`<button key=${f[0]} type="button" class=${'nchip' + (fil === f[0] ? ' on' : '')} aria-pressed=${fil === f[0]} onClick=${function () { setFil(f[0]); }}>${f[1]} ${cnt(f[0])}</button>`; })}
+        <span style="flex:1"></span><label style="font-size:13px;color:var(--muted)">Sort <select class="nsel" value=${sort} onChange=${function (e) { setSort(e.target.value); }}><option value="attn">Needs attention</option><option value="mrr">Fee, high to low</option><option value="end">Contract end</option><option value="name">Name</option></select></label></div>
+      ${vis.length ? (view === 'board' ? board : view === 'renew' ? renewals : table) : html`<div style="padding:30px 0;color:var(--muted);font-size:14px">No clients match.</div>`}
+      <${SR.Blocks} id="clients" />
     </div>`;
   };
 
