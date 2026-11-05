@@ -219,6 +219,7 @@ window.SR = window.SR || {};
       return api('/clients/' + S.client.id + '/meta', 'POST', { key: '_edits', patch: ed }).catch(function (e) { toast('Could not save. ' + e.message); });
     };
     var rid = function (pre) { return pre + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); };
+    window.__ED = { edits: edits, saveEd: saveEd, rid: rid };
     var inp = function (attrs, val, cls, style) { return '<input class="pxin ' + (cls || '') + '" type="text" ' + attrs + ' value="' + esc(val) + '"' + (style ? ' style="' + style + '"' : '') + '>'; };
     var editCard = function (p) {
       var rows = '', secs = p.items.filter(function (i) { return i.kind === 's' && !i._virtual; });
@@ -323,6 +324,7 @@ window.SR = window.SR || {};
         var sp = SP[tab]; if (!sp._c0) { sp._c0 = sp.cols.slice(); sp._t0 = sp.title; }
         var ce = ed.cols[tab] || {};
         sp.cols = sp._c0.filter(function (c) { return c.first || !(ce.gone || {})[c.k]; }).map(function (c) { return (ce.ren || {})[c.k] ? Object.assign({}, c, { label: ce.ren[c.k] }) : c; }).concat((ce.add || []).map(function (a) { return { k: a.k, label: a.label, w: 170 }; }));
+        if (ce.ord && ce.ord.length) { var rk = function (c) { var i = ce.ord.indexOf(c.k); return c.first ? -1 : (i < 0 ? 9999 : i); }, ix = sp.cols.map(function (c, i) { return [c, i]; }); ix.sort(function (a, b) { return rk(a[0]) - rk(b[0]) || a[1] - b[1]; }); sp.cols = ix.map(function (x) { return x[0]; }); }
         sp.title = ed.tabsRen[tab] || sp._t0;
       });
       ACCESS.length = 0;
@@ -657,8 +659,11 @@ window.SR = window.SR || {};
     window.addEventListener('scroll', function () { if (hp && !hpPin) hpClose(); }, true);
     setInterval(function () { if (expire()) render(); }, 20000);
   };
+
+  SEO_CSS += '.gridbar{display:flex;flex-direction:column;gap:6px;margin:0 0 8px}.gbtns{display:flex;flex-wrap:wrap;gap:6px}.gbtn{border:1px solid var(--line);background:var(--panel);color:var(--ink);font:inherit;font-size:12.5px;font-weight:500;border-radius:6px;padding:4px 10px;min-height:28px;cursor:pointer}.gbtn:hover:not(:disabled){background:var(--soft);border-color:var(--line2)}.gbtn:disabled{opacity:.4;cursor:default}.fxrow{display:flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--panel);overflow:hidden}.fxname{min-width:74px;padding:5px 10px;font-size:12.5px;font-weight:600;color:var(--muted);border-right:1px solid var(--line);text-align:center}.fxl{padding:0 8px;font-style:italic;font-weight:600;color:var(--muted);font-size:13px}.fxin{flex:1;min-width:0;border:0;outline:none;background:transparent;color:var(--ink);font:inherit;font-size:13.5px;padding:6px 8px}.fxin:disabled{opacity:.5}table.sheet td.gs{background:color-mix(in srgb,var(--accent) 24%,var(--panel))!important}table.sheet td.gs .cell{background:transparent}table.sheet td.ga{outline:2px solid var(--accent);outline-offset:-2px}table.sheet th.gh,table.sheet td.rn.gh{background:color-mix(in srgb,var(--accent) 22%,var(--soft))!important;color:var(--ink)}table.sheet th{cursor:pointer;user-select:none}table.sheet td.rn{cursor:pointer;user-select:none}table.sheet td.fx .cell{color:var(--accent)}body.gdrag{user-select:none}.gren{width:100%;font:inherit;font-weight:600;border:1px solid var(--accent);border-radius:4px;padding:2px 4px;background:var(--panel);color:var(--ink)}.gmenu{position:absolute;z-index:99999;min-width:200px;background:var(--panel);color:var(--ink);border:1px solid var(--line2);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:4px}.gmenu button{display:block;width:100%;text-align:left;border:0;background:none;color:inherit;font:inherit;font-size:13px;padding:6px 10px;border-radius:5px;cursor:pointer}.gmenu button:hover{background:var(--soft)}.gmenu button.bad{color:var(--bad)}.gsep{height:1px;background:var(--line);margin:4px 2px}.gl{display:inline-block;min-width:16px;margin-right:6px;color:var(--faint);font-weight:700;font-size:11px}';
   SEO_JS += '\n;(' + seoTasksLayer.toString() + ')();\n';
   if (SR.colResizer) SEO_JS += '\n;(' + SR.colResizer.toString() + ')(document);\n';
+  if (SR.seoGrid) SEO_JS += '\n;(' + SR.seoGrid.toString() + ')();\n';
   SR.seoEdit = function () {
     var f = document.querySelector('iframe[title="SEO / AEO workspace"]');
     if (f && f.contentWindow) f.contentWindow.postMessage({ sr: 'edit' }, '*'); else SR._seoEditPending = true;
@@ -675,7 +680,7 @@ window.SR = window.SR || {};
       return '<!doctype html><html lang="en"' + (dark ? ' data-theme="dark"' : '') + '><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
         '<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>' + B.css + SEO_CSS + plat + '</style></head><body><div id="app"></div><div id="toast" role="status" aria-live="polite"></div>' +
         '<script>(' + seoShim.toString() + ')(' + safe(cfg) + ',' + safe({ work: B.work, baseline: B.baseline }) + ');<\/script>' +
-        '<script>' + B.tabs.replace('return { setup, render, dashStats', 'window.__SPECS = SPECS; return { setup, render, dashStats').replace(/<\/script/g, '<\\/script') + '<\/script><script>' + B.app.replace(/route\(\);\s*\}\)\(\);\s*$/, function () { return B.embed + SEO_JS + '\nroute();\n})();'; }).replace(/<\/script/g, '<\\/script') + '<\/script></body></html>';
+        '<script>' + B.tabs.replace('return { setup, render, dashStats', 'window.__SPECS = SPECS; window.__SX = { D, rowOf, realize, markDirty, send, setValue, refreshRow, idsOf, uid, num, blank, pad, padRows }; return { setup, render, dashStats').replace(/<\/script/g, '<\\/script') + '<\/script><script>' + B.app.replace(/route\(\);\s*\}\)\(\);\s*$/, function () { return B.embed + SEO_JS + '\nroute();\n})();'; }).replace(/<\/script/g, '<\\/script') + '<\/script></body></html>';
     }, [id, dark, SR.getAccent(), c.name, c.domain, SR.acct && SR.acct[c.id] && SR.acct[c.id].domain]);
     var fr = React.useRef(null), hs = React.useState(900), ht = hs[0], setHt = hs[1];
     React.useEffect(function () {

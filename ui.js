@@ -473,6 +473,7 @@ window.SR = window.SR || {};
     bell: '<path d="M6 17V11a6 6 0 0112 0v6l2 2H4l2-2zM10 21h4"/>',
     link: '<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    drive: '<path d="M8 3h8l6 10-4 7H6l-4-7L8 3zM8 3l6 10h8M2 13h12l4 7"/>',
     wallet: '<path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7zm0 0V6a2 2 0 012-2h11"/><circle cx="17" cy="14" r="1.2"/>',
     key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9m-3 3l3 3"/>',
     pen: '<path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/>',

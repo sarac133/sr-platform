@@ -513,7 +513,7 @@
     };
     var palItems = function () {
       var it = [], edits = [];
-      [['home', 'Home'], ['clients', 'Clients'], ['calendar', 'Calendar'], ['finance', 'Finance']].forEach(function (n) { it.push({ g: 'Go to', label: n[1], sub: 'Page', fn: function () { setScreen(n[0]); setOpenId(null); } }); });
+      [['home', 'Home'], ['clients', 'Clients'], ['calendar', 'Calendar'], ['finance', 'Finance'], ['drive', 'Drive']].forEach(function (n) { it.push({ g: 'Go to', label: n[1], sub: 'Page', fn: function () { setScreen(n[0]); setOpenId(null); } }); });
       it.push({ g: 'Actions', label: 'Open settings', fn: function () { setSettingsOpen(true); } });
       it.push({ g: 'Actions', label: 'Open automations and connections', fn: function () { setAutoOpen(true); } });
       it.push({ g: 'Actions', label: 'Onboard a new client', fn: startOnboard });
@@ -566,14 +566,14 @@
     /* sidebar */
     var navItem = function (on) { return 'min-height:30px;display:flex;align-items:center;gap:8px;padding:0 8px;border:0;border-radius:6px;font-family:inherit;font-size:14px;text-align:left;cursor:pointer;' + (on ? 'background:rgba(255,255,255,0.12);color:#FFF;font-weight:500' : 'background:transparent;color:#C9D2E0'); };
     var compact = navMin && vw > 860;
-    var NAVI = { war: 'compass', home: 'house', clients: 'briefcase', calendar: 'clock', results: 'chart', finance: 'wallet', sales: 'trend', mytasks: 'check' };
+    var NAVI = { war: 'compass', home: 'house', clients: 'briefcase', calendar: 'clock', results: 'chart', finance: 'wallet', sales: 'trend', mytasks: 'check', drive: 'drive' };
     var logoOf = function (c) { if (c.logo) return c.logo; var d = String(c.domain || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim(); return d && d.indexOf('.') > 0 ? 'https://www.google.com/s2/favicons?sz=128&domain=' + encodeURIComponent(d) : ''; };
     var ini = function (n) { return String(n || '?').split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase(); };
     var toggleBtn = html`<button type="button" class="navtog" aria-label=${compact ? 'Expand the menu' : 'Tuck the menu in'} title=${compact ? 'Expand the menu' : 'Tuck the menu in'} onClick=${function () { if (navMin) setNavMin(false); else if (compact) { setNavAuto(false); setNavMin(false); } else setNavMin(true); }}>${compact ? '»' : '«'}</button>`;
     var favs = clients.filter(function (c) { return c.fav; });
     var myDue = tasks.filter(function (t) { return !t.done && t.owner === me && t.date && t.date <= SR.TODAY; }).length;
-    var NAMES0 = { war: 'Battlefronts', home: 'Home', sales: 'Sales', mytasks: 'My tasks', clients: 'Clients', results: 'Results', finance: 'Finance', calendar: 'Calendar' };
-    var NAVKEYS = ['home', 'sales', 'clients', 'finance', 'calendar'];
+    var NAMES0 = { war: 'Battlefronts', home: 'Home', sales: 'Sales', mytasks: 'My tasks', clients: 'Clients', results: 'Results', finance: 'Finance', calendar: 'Calendar', drive: 'Drive' };
+    var NAVKEYS = ['home', 'sales', 'clients', 'finance', 'calendar', 'drive'];
     var navOrder = function () { var o = (SR.uiprefs.order || []).filter(function (k) { return NAVKEYS.indexOf(k) > -1; }); NAVKEYS.forEach(function (k) { if (o.indexOf(k) < 0) o.push(k); }); return o; };
     var navMove = function (k, to) { var o = navOrder(), i = o.indexOf(k); if (i < 0) return; o.splice(i, 1); o.splice(Math.max(0, Math.min(o.length, to)), 0, k); SR.uiprefs.order = o; setUb(function (x) { return x + 1; }); };
     var navBtn = function (k) {
@@ -632,7 +632,7 @@
       <div class="sr-nresize" style=${compact ? 'display:none' : ''} title="Drag to resize, double-click to reset" onDoubleClick=${function () { setNavW(232); try { localStorage.setItem('sr_navw', '232'); } catch (x) {} }} onMouseDown=${function (e) { e.preventDefault(); var x0 = e.clientX, w0 = navW, last = w0; document.body.style.cursor = 'ew-resize'; var mv = function (ev) { last = Math.max(200, Math.min(420, w0 + ev.clientX - x0)); setNavW(last); }; var up = function () { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.style.cursor = ''; try { localStorage.setItem('sr_navw', String(last)); } catch (x) {} }; document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up); }}></div>
     </nav>`;
 
-    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', finance: 'Finance', onboard: 'New client', sales: 'Sales', calendar: 'Calendar', mytasks: 'My tasks', war: 'Battlefronts' }[screen];
+    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', finance: 'Finance', drive: 'Drive', onboard: 'New client', sales: 'Sales', calendar: 'Calendar', mytasks: 'My tasks', war: 'Battlefronts' }[screen];
     if (screen !== 'client' && (SR.uiprefs.labels || {})[screen]) crumb = SR.uiprefs.labels[screen];
     var topbar = html`<div class="sr-top" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
       <div style="font-size:13px;color:var(--muted)">${crumb}</div>
@@ -653,8 +653,9 @@
     else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104h')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104k')}></iframe>`;
     else if (screen === 'finance') body = html`<${SR.Finance} clients=${clients} />`;
+    else if (screen === 'drive') body = html`<${SR.Drive} />`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;
     else body = html`<${SR.ClientPage} proj=${projSel[activeClient]} setProj=${function (t) { setProjSel(function (o) { var n = Object.assign({}, o); n[activeClient] = t; return n; }); }} addProject=${addProject} setGoal=${setGoal} client=${SR.clientById(clients, activeClient)} tasks=${tasks} tab=${clientTab} setTab=${setClientTab} exp=${exp} toggleExp=${function (id, v) { setExp(function (e) { var n = Object.assign({}, e); n[id] = v; return n; }); }} rm=${rm} setRm=${setRm} ac=${ac} setAc=${setAc} onToggle=${toggle} onOpen=${openFn} goResults=${goResults} goLive=${goLive} sel=${selected} onSelect=${onSelect} openId=${openId} settling=${settling} just=${just} phaseSel=${phaseSel} setPhase=${setPhase} justLive=${justLive} addCustom=${addCustom} setTasks=${setTasks} setEdits=${setEdits} />`;
 
@@ -669,7 +670,7 @@
       else if (tpl && openTask.step) tpl.phases.forEach(function (ph) { ph.steps.forEach(function (st) { if (st[0] === openTask.step) where = ph.name + ' · ' + st[1]; }); });
     }
 
-    var ntOn = ['home', 'clients', 'client', 'onboard', 'war', 'finance', 'calendar', 'sales'].indexOf(screen) > -1;
+    var ntOn = ['home', 'clients', 'client', 'onboard', 'war', 'finance', 'calendar', 'sales', 'drive'].indexOf(screen) > -1;
     return html`<div class=${'nsb' + (theme === 'dark' ? ' nsbd' : '') + (ntOn ? ' nt' + (theme === 'dark' ? ' ntd' : '') : '')} style="font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch">
       ${sidebar}
       <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "") + (dock ? " pdock" : "")} style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px 34px 120px 34px"}>

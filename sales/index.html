@@ -565,7 +565,7 @@
         <div>
           <div>
             <sc-for list="{{ eiRows }}" as="r" hint-placeholder-count="3">
-              <div draggable="true" onDragStart="{{ r.dragStart }}" title="Drag onto a tab above to move" style="display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 22px; border-top: 1px solid var(--s-card2);" style-hover="background: #1A222C;">
+              <div draggable="true" onDragStart="{{ r.dragStart }}" title="Drag onto a tab above to move" style="display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 22px; border-top: 1px solid var(--s-card2);" style-hover="background: var(--s-card2);">
                 <div style="min-width: 0; flex: 1 1 200px;">
                   <div style="font-size: 13px; font-weight: 700; color: var(--s-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.name }}</div>
                   <div style="font-size: 11px; color: var(--s-faint); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.sub }}</div>
@@ -588,12 +588,17 @@
                       <button onClick="{{ r.startBook }}" style="padding: 6px 10px; background: rgba(62,207,135,0.12); border: 1px solid rgba(62,207,135,0.35); color: var(--s-green); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">Booked → Pipeline</button>
                       <button onClick="{{ r.follow }}" style="padding: 6px 10px; background: rgba(169,143,224,0.12); border: 1px solid rgba(169,143,224,0.35); color: #A98FE0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">Follow up → Call Out</button>
                       <button onClick="{{ r.notInt }}" style="padding: 6px 10px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-red); color: var(--s-red);">Not interested</button>
+                      <button onClick="{{ r.trash }}" title="Remove from the list. Kept in Trash, you can restore it." style="padding: 6px 10px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-red); color: var(--s-red);">Trash</button>
                     </sc-if>
                     <sc-if value="{{ r.isCrm }}" hint-placeholder-val="{{ false }}">
                       <sc-if value="{{ r.canBook }}" hint-placeholder-val="{{ true }}"><button onClick="{{ r.startBook }}" style="padding: 6px 10px; background: rgba(62,207,135,0.12); border: 1px solid rgba(62,207,135,0.35); color: var(--s-green); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">Booked → Pipeline</button></sc-if>
                       <sc-if value="{{ r.canFollow }}" hint-placeholder-val="{{ true }}"><button onClick="{{ r.toFollow }}" style="padding: 6px 10px; background: rgba(169,143,224,0.12); border: 1px solid rgba(169,143,224,0.35); color: #A98FE0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">→ Call Out Box</button></sc-if>
                       <sc-if value="{{ r.canNotInt }}" hint-placeholder-val="{{ true }}"><button onClick="{{ r.toNotInt }}" title="Moves to Recycle, back in 2 months" style="padding: 6px 10px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-red); color: var(--s-red);">→ Not interested</button></sc-if>
                       <button onClick="{{ r.open }}" style="padding: 6px 10px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit;" style-hover="border-color: var(--s-blue); color: var(--s-blue);">Open</button>
+                      <button onClick="{{ r.trash }}" title="Remove from the list. Kept in Trash, you can restore it." style="padding: 6px 10px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="border-color: var(--s-red); color: var(--s-red);">Trash</button>
+                    </sc-if>
+                    <sc-if value="{{ r.isTrash }}" hint-placeholder-val="{{ false }}">
+                      <button onClick="{{ r.restore }}" style="padding: 6px 12px; background: rgba(62,207,135,0.12); border: 1px solid rgba(62,207,135,0.35); color: var(--s-green); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; white-space: nowrap;">Restore</button>
                     </sc-if>
                   </sc-if>
                 </div>
@@ -798,6 +803,10 @@
               <sc-if value="{{ p.isOpen }}" hint-placeholder-val="{{ false }}">
                 <div style="border-top: 1px solid var(--s-border); margin: 0 4px 12px 22px; padding: 18px 0 8px; display: grid; grid-template-columns: 280px minmax(0,1fr); gap: 30px;">
                   <div style="display: flex; flex-direction: column; gap: 14px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Name</span><input type="text" value="{{ p.name }}" onChange="{{ p.onNameEdit }}" placeholder="Full name" style="font-family: inherit; font-size: 12px; padding: 7px 9px; border-radius: 3px; background: var(--s-card2); color: var(--s-text); border: 1px solid var(--s-border); font-weight: 600; font-size: 14px;"></div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Company</span><input type="text" value="{{ p.company }}" onChange="{{ p.onCompanyEdit }}" placeholder="Company" style="font-family: inherit; font-size: 12px; padding: 7px 9px; border-radius: 3px; background: var(--s-card2); color: var(--s-text); border: 1px solid var(--s-border);"></div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;"><div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Account owner</span><select value="{{ p.person }}" onChange="{{ p.onPersonEdit }}" style="font-family: inherit; font-size: 12px; padding: 7px 9px; border-radius: 3px; background: var(--s-card2); color: var(--s-text); border: 1px solid var(--s-border);"><option value="Josh">Josh</option><option value="Matt">Matt</option></select></div><div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Location</span><select value="{{ p.regionValue }}" onChange="{{ p.onRegionEdit }}" style="font-family: inherit; font-size: 12px; padding: 7px 9px; border-radius: 3px; background: var(--s-card2); color: var(--s-text); border: 1px solid var(--s-border);"><sc-for list="{{ p.regionOptions }}" as="ro" hint-placeholder-count="3"><option value="{{ ro.id }}">{{ ro.name }}</option></sc-for></select></div></div>
+                    <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Value ($)</span><input type="number" value="{{ p.valueNum }}" onChange="{{ p.onValueEdit }}" style="font-family: inherit; font-size: 12px; padding: 7px 9px; border-radius: 3px; background: var(--s-card2); color: var(--s-text); border: 1px solid var(--s-border); color: var(--s-green);"></div>
                     <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Phone</span><input type="text" value="{{ p.phone }}" onChange="{{ p.onPhoneEdit }}" placeholder="No number yet" style="font-family: inherit; font-size: 14px; font-weight: 600; padding: 7px 9px; border-radius: 3px; background: var(--s-card2); color: var(--s-text); border: 1px solid var(--s-border);"></div>
                     <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Email</span><input type="text" value="{{ p.email }}" onChange="{{ p.onEmailEdit }}" style="font-family: inherit; font-size: 12px; padding: 7px 9px; border-radius: 3px; background: var(--s-card2); color: var(--s-blue); border: 1px solid var(--s-border);"></div>
                     <div style="display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">{{ p.nextFieldLabel }}</span><input type="date" value="{{ p.nextRaw }}" onChange="{{ p.onNextEdit }}" style="font-family: inherit; font-size: 12px; padding: 7px 9px; border-radius: 3px; background: var(--s-card2); color: var(--s-text); border: 1px solid var(--s-border); color-scheme: dark;"></div>
@@ -1247,7 +1256,7 @@
                 <div style="font-size: 11px; color: var(--s-faint); margin-top: 3px;">{{ r.company }} · {{ r.when }} · <span style="color: var(--s-orange);">{{ r.auto }}</span></div>
               </div>
               <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                <button onClick="{{ r.held }}" style="font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 6px; background: rgba(62,207,135,0.12); border: 1px solid rgba(62,207,135,0.4); color: var(--s-green); cursor: pointer; font-family: inherit;">✓ Held</button>
+                <button onClick="{{ r.held }}" style="font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 6px; background: rgba(62,207,135,0.12); border: 1px solid rgba(62,207,135,0.4); color: var(--s-green); cursor: pointer; font-family: inherit;">✓ Held</button><sc-if value="{{ r.isDisc }}" hint-placeholder-val="{{ false }}"><button onClick="{{ r.notFit }}" title="Held, not a fit. Moves to Closed Lost." style="font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 6px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); cursor: pointer; font-family: inherit;">Not a fit</button></sc-if>
                 <button onClick="{{ r.noShow }}" style="font-size: 11px; font-weight: 700; padding: 6px 10px; border-radius: 6px; background: rgba(245,118,109,0.1); border: 1px solid rgba(245,118,109,0.4); color: var(--s-red); cursor: pointer; font-family: inherit;">✕ No-show</button>
                 <button onClick="{{ r.resched }}" style="font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 6px; background: transparent; border: 1px solid var(--s-border); color: var(--s-text2); cursor: pointer; font-family: inherit;">↻ Rescheduled</button>
                 <button onClick="{{ r.cancel }}" style="font-size: 11px; font-weight: 600; padding: 6px 10px; border-radius: 6px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); cursor: pointer; font-family: inherit;">⊘ Cancelled</button>
@@ -1309,9 +1318,11 @@
                             <div onClick="{{ item.clearDate }}" style="font-size: 10px; color: var(--s-faint); cursor: pointer; margin-top: 4px;" style-hover="color: var(--s-text);">Clear date</div>
                           </sc-if>
                         </div>
+<div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Call time</label><input type="time" value="{{ item.timeValue }}" onChange="{{ item.onTimeChange }}" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; width: 100%; box-sizing: border-box;"></div>
                         <sc-if value="{{ item.isCancelled }}" hint-placeholder-val="{{ false }}">
                           <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Re-book for</label><input type="date" value="{{ item.rebookValue }}" onChange="{{ item.onRebookChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
                         </sc-if>
+<sc-if value="{{ item.isCancelled }}" hint-placeholder-val="{{ false }}"><div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Re-book time</label><input type="time" value="{{ item.rebookTimeValue }}" onChange="{{ item.onRebookTimeChange }}" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; width: 100%; box-sizing: border-box;"></div></sc-if><sc-if value="{{ item.canNotFit }}" hint-placeholder-val="{{ false }}"><div onClick="{{ item.onNotFit }}" title="Held the call, not a good fit. Moves to Closed Lost." style="grid-column: 1 / -1; font-size: 11px; color: var(--s-red); border: 1px solid var(--s-border); border-radius: 5px; padding: 7px 9px; cursor: pointer; text-align: center;" style-hover="background: var(--s-card2);">Not a fit after discovery → Closed Lost</div></sc-if>
 <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Disc call booked on</label><input type="date" value="{{ item.discBookedValue }}" onChange="{{ item.onDiscBookedChange }}" title="The day the call was booked, not the call date" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
                         <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Sales call booked on</label><input type="date" value="{{ item.salesBookedValue }}" onChange="{{ item.onSalesBookedChange }}" title="The day the call was booked, not the call date" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
                         <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Booked through</label><select value="{{ item.channelValue }}" onChange="{{ item.onChannelChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: {{ item.chanColor }}; padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; font-weight: 600; margin-top: 4px;"><option value="email">✉ Email</option><option value="cold">☎ Cold call</option></select></div>
@@ -1369,7 +1380,7 @@
 
                 <sc-if value="{{ item.needsOutcome }}" hint-placeholder-val="{{ false }}">
                   <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px;">
-                    <button onClick="{{ item.oHeld }}" title="Held" style="font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 4px; border: none; background: rgba(62,207,135,0.14); color: var(--s-green); cursor: pointer; font-family: inherit;">✓ Held</button>
+                    <button onClick="{{ item.oHeld }}" title="Held" style="font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 4px; border: none; background: rgba(62,207,135,0.14); color: var(--s-green); cursor: pointer; font-family: inherit;">✓ Held</button><sc-if value="{{ item.isDiscCard }}" hint-placeholder-val="{{ false }}"><button onClick="{{ item.oNotFit }}" title="Held, not a fit. Moves to Closed Lost." style="font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 6px; background: transparent; border: 1px solid var(--s-border); color: var(--s-muted); cursor: pointer; font-family: inherit;">Not a fit</button></sc-if>
                     <button onClick="{{ item.oNoShow }}" title="No-show" style="font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 4px; border: none; background: rgba(245,118,109,0.12); color: var(--s-red); cursor: pointer; font-family: inherit;">✕ No-show</button>
                     <button onClick="{{ item.oResched }}" title="Rescheduled" style="font-size: 10px; padding: 3px 7px; border-radius: 4px; border: 1px solid var(--s-border); background: transparent; color: var(--s-text2); cursor: pointer; font-family: inherit;">↻</button>
                     <button onClick="{{ item.oCancel }}" title="Cancelled" style="font-size: 10px; padding: 3px 7px; border-radius: 4px; border: 1px solid var(--s-border); background: transparent; color: var(--s-muted); cursor: pointer; font-family: inherit;">⊘</button>
@@ -1584,9 +1595,11 @@
         <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Booked through</label><select value="{{ leadDetailCard.channelValue }}" onChange="{{ leadDetailCard.onChannelChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: {{ leadDetailCard.chanColor }}; padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; font-weight: 600;"><option value="email">✉ Email</option><option value="cold">☎ Cold call</option></select></div>
           <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Disc call booked on</label><input type="date" value="{{ leadDetailCard.discBookedValue }}" onChange="{{ leadDetailCard.onDiscBookedChange }}" title="The day the call was booked, not the call date" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
                         <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Sales call booked on</label><input type="date" value="{{ leadDetailCard.salesBookedValue }}" onChange="{{ leadDetailCard.onSalesBookedChange }}" title="The day the call was booked, not the call date" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+<div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Call time</label><input type="time" value="{{ leadDetailCard.timeValue }}" onChange="{{ leadDetailCard.onTimeChange }}" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; width: 100%; box-sizing: border-box;"></div>
           <sc-if value="{{ leadDetailCard.isCancelled }}" hint-placeholder-val="{{ false }}">
             <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Re-book for</label><input type="date" value="{{ leadDetailCard.rebookValue }}" onChange="{{ leadDetailCard.onRebookChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
           </sc-if>
+<sc-if value="{{ leadDetailCard.isCancelled }}" hint-placeholder-val="{{ false }}"><div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Re-book time</label><input type="time" value="{{ leadDetailCard.rebookTimeValue }}" onChange="{{ leadDetailCard.onRebookTimeChange }}" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; width: 100%; box-sizing: border-box;"></div></sc-if><sc-if value="{{ leadDetailCard.canNotFit }}" hint-placeholder-val="{{ false }}"><div onClick="{{ leadDetailCard.onNotFit }}" title="Held the call, not a good fit. Moves to Closed Lost." style="grid-column: 1 / -1; font-size: 11px; color: var(--s-red); border: 1px solid var(--s-border); border-radius: 5px; padding: 7px 9px; cursor: pointer; text-align: center;" style-hover="background: var(--s-card2);">Not a fit after discovery → Closed Lost</div></sc-if>
           <sc-if value="{{ leadDetailCard.isClosed }}" hint-placeholder-val="{{ false }}">
             <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Close reason</label><input type="text" value="{{ leadDetailCard.closeReason }}" onChange="{{ leadDetailCard.onCloseReasonChange }}" placeholder="Why won or lost..." style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: #BDA262; padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
           </sc-if>
@@ -2200,9 +2213,11 @@
         <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Booked through</label><select value="{{ leadDetailCard.channelValue }}" onChange="{{ leadDetailCard.onChannelChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: {{ leadDetailCard.chanColor }}; padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; font-weight: 600;"><option value="email">✉ Email</option><option value="cold">☎ Cold call</option></select></div>
           <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Disc call booked on</label><input type="date" value="{{ leadDetailCard.discBookedValue }}" onChange="{{ leadDetailCard.onDiscBookedChange }}" title="The day the call was booked, not the call date" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
                         <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Sales call booked on</label><input type="date" value="{{ leadDetailCard.salesBookedValue }}" onChange="{{ leadDetailCard.onSalesBookedChange }}" title="The day the call was booked, not the call date" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-muted); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
+<div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Call time</label><input type="time" value="{{ leadDetailCard.timeValue }}" onChange="{{ leadDetailCard.onTimeChange }}" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; width: 100%; box-sizing: border-box;"></div>
           <sc-if value="{{ leadDetailCard.isCancelled }}" hint-placeholder-val="{{ false }}">
             <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Re-book for</label><input type="date" value="{{ leadDetailCard.rebookValue }}" onChange="{{ leadDetailCard.onRebookChange }}" style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
           </sc-if>
+<sc-if value="{{ leadDetailCard.isCancelled }}" hint-placeholder-val="{{ false }}"><div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Re-book time</label><input type="time" value="{{ leadDetailCard.rebookTimeValue }}" onChange="{{ leadDetailCard.onRebookTimeChange }}" style="background: var(--s-card2); border: 1px solid var(--s-border); color: var(--s-text); padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px; width: 100%; box-sizing: border-box;"></div></sc-if><sc-if value="{{ leadDetailCard.canNotFit }}" hint-placeholder-val="{{ false }}"><div onClick="{{ leadDetailCard.onNotFit }}" title="Held the call, not a good fit. Moves to Closed Lost." style="grid-column: 1 / -1; font-size: 11px; color: var(--s-red); border: 1px solid var(--s-border); border-radius: 5px; padding: 7px 9px; cursor: pointer; text-align: center;" style-hover="background: var(--s-card2);">Not a fit after discovery → Closed Lost</div></sc-if>
           <sc-if value="{{ leadDetailCard.isClosed }}" hint-placeholder-val="{{ false }}">
             <div><label style="font-size: 10px; color: var(--s-muted); text-transform: uppercase; letter-spacing: 0.6px;">Close reason</label><input type="text" value="{{ leadDetailCard.closeReason }}" onChange="{{ leadDetailCard.onCloseReasonChange }}" placeholder="Why won or lost..." style="width: 100%; box-sizing: border-box; background: var(--s-card2); border: 1px solid var(--s-border); color: #BDA262; padding: 7px 9px; border-radius: 5px; font-family: inherit; font-size: 12px; margin-top: 4px;"></div>
           </sc-if>
@@ -3107,8 +3122,20 @@ class Component extends DCLogic {
     const fmt = (d) => d ? new Date(String(d).slice(0, 10) + 'T00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
     const B = s.eiBook;
     const setB = (p) => this.setState(st => ({ eiBook: { ...(st.eiBook || {}), ...p } }));
+    const trashCrm = [];
+    Object.entries(s.crmData || {}).forEach(([rid, rd]) => (rd.trash || []).forEach((l, idx) => trashCrm.push({ l, rid, idx, group: 'trash' })));
+    const trashEm = new Set(trashCrm.map(x => (x.l.email || '').toLowerCase().trim()).filter(Boolean));
+    const trashAp = Object.values(s.apolloContactsData || {}).filter(c => c.trashed);
+    const nowIso = this._todayIso();
+    const trashRow = (x) => this.setState(st => {
+      const data = JSON.parse(JSON.stringify(st.crmData || {})), rd = data[x.rid]; if (!rd) return {};
+      const i = (rd[x.group] || []).findIndex(l => l.id === x.l.id); if (i < 0) return {};
+      const [lead] = rd[x.group].splice(i, 1); lead.trashedFrom = x.group; lead.trashedDate = nowIso;
+      rd.trash = [...(rd.trash || []), lead]; return { crmData: data };
+    });
+    const trashContact = (c) => this.updateApolloContact(c.id, 'trashed', true) || this.updateApolloContact(c.id, 'trashedDate', nowIso);
     const newOnes = Object.values(s.apolloContactsData || {})
-      .filter(c => (c.replied || c.positive || c.apolloStatus === 'Replied') && !c.replyDismissed && !inCrm.has((c.email || '').toLowerCase().trim()))
+      .filter(c => (c.replied || c.positive || c.apolloStatus === 'Replied') && !c.replyDismissed && !c.trashed && !inCrm.has((c.email || '').toLowerCase().trim()) && !trashEm.has((c.email || '').toLowerCase().trim()))
       .sort((a, b) => (b.replyDate || '').localeCompare(a.replyDate || ''));
     const crm = { follow: [], booked: [], notint: [] };
     Object.entries(s.crmData || {}).forEach(([rid, rd]) => {
@@ -3135,13 +3162,22 @@ class Component extends DCLogic {
       };
     };
     let rows;
-    if (tab === 'new') {
+    if (tab === 'trash') {
+      const restoreRow = (x) => this.setState(st => {
+        const data = JSON.parse(JSON.stringify(st.crmData || {})), rd = data[x.rid]; if (!rd) return {};
+        const i = (rd.trash || []).findIndex(l => l.id === x.l.id); if (i < 0) return {};
+        const [lead] = rd.trash.splice(i, 1); const g = lead.trashedFrom || 'leads'; delete lead.trashedFrom; delete lead.trashedDate;
+        rd[g] = [...(rd[g] || []), lead]; return { crmData: data };
+      });
+      rows = trashAp.map(c => ({ name: c.name || '(no name)', sub: c.company || c.email || '', campaign: (c.sequenceName || '').split(', ')[0] || '—', when: 'Trashed ' + fmt(c.trashedDate), reply: c.replyText || '', isNew: false, isCrm: false, isTrash: true, booking: false, notBooking: true, restore: () => this.setState(st => ({ apolloContactsData: { ...st.apolloContactsData, [c.id]: { ...st.apolloContactsData[c.id], trashed: false, replyDismissed: false } } })) }))
+        .concat(trashCrm.map(x => ({ name: x.l.name || '(no name)', sub: x.l.company || x.l.email || '', campaign: (x.l.campaign || '').split(', ')[0] || '—', when: 'Trashed ' + fmt(x.l.trashedDate) + (x.l.trashedFrom ? ' from ' + x.l.trashedFrom : ''), reply: x.l.replyText || x.l.notes || '', isNew: false, isCrm: false, isTrash: true, booking: false, notBooking: true, restore: () => restoreRow(x) })));
+    } else if (tab === 'new') {
       rows = newOnes.map(c => ({
         name: c.name || '(no name)', sub: c.company || c.email || '', campaign: (c.sequenceName || '').split(', ')[0] || '—',
         when: c.replyDate ? fmt(c.replyDate) : 'Replied',
         reply: c.replyText || (c.positive ? 'Marked interested in Apollo' : 'Replied to the sequence'),
         isNew: true, isFollow: false, isCrm: false,
-        follow: () => this._eiMove(c, 'leads'), notInt: () => this._eiMove(c, 'recycle'),
+        follow: () => this._eiMove(c, 'leads'), notInt: () => this._eiMove(c, 'recycle'), trash: () => trashContact(c),
         ...bookUi('c:' + c.id, (d, t) => this._eiMove(c, 'pipeline', d, t)),
       }));
     } else {
@@ -3158,22 +3194,22 @@ class Component extends DCLogic {
           hasStage: tab === 'booked', stageLabel: x.group === 'recycle' ? (l.pipelineStage || 'Closed Lost') : (l.pipelineStage || l.dealStage || 'Disc Call Booked'),
           stageColor: STC[x.group === 'recycle' ? (l.pipelineStage || 'Closed Lost') : (l.pipelineStage || l.dealStage || 'Disc Call Booked')] || 'var(--s-muted)',
           canBook: tab !== 'booked', canFollow: tab !== 'follow', canNotInt: tab !== 'notint',
-          toFollow: () => this._eiRelocate(x, 'leads'), toNotInt: () => this._eiRelocate(x, 'recycle'),
+          toFollow: () => this._eiRelocate(x, 'leads'), toNotInt: () => this._eiRelocate(x, 'recycle'), trash: () => trashRow(x),
           open: () => this.setState({ crmLeadDetail: { regionId: x.rid, group: x.group, leadIdx: x.idx }, crmNewNote: '' }),
           ...bookUi('l:' + l.id, (d, t) => this._eiRelocate(x, 'pipeline', d, t)),
         };
       });
     }
-    const dragTo = (r, k) => { if (k === tab) return; if (k === 'booked') return r.startBook(); if (k === 'follow') return tab === 'new' ? r.follow() : r.toFollow(); if (k === 'notint') return tab === 'new' ? r.notInt() : r.toNotInt(); };
+    const dragTo = (r, k) => { if (k === tab) return; if (k === 'booked') return r.startBook(); if (k === 'follow') return tab === 'new' ? r.follow() : r.toFollow(); if (k === 'trash') return r.trash ? r.trash() : null; if (k === 'notint') return tab === 'new' ? r.notInt() : r.toNotInt(); };
     rows = rows.map(r => ({ ...r, dragStart: (e) => { window.__eiDrag = (k) => dragTo(r, k); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'ei'); } catch (x) {} } }));
-    const counts = { new: newOnes.length, follow: crm.follow.length, booked: crm.booked.length, notint: crm.notint.length };
-    const eiTabs = [['new', 'New'], ['follow', 'In Call Out Box'], ['booked', 'Booked'], ['notint', 'Not interested']].map(([k, l]) => ({
+    const counts = { new: newOnes.length, follow: crm.follow.length, booked: crm.booked.length, notint: crm.notint.length, trash: trashAp.length + trashCrm.length };
+    const eiTabs = [['new', 'New'], ['follow', 'In Call Out Box'], ['booked', 'Booked'], ['notint', 'Not interested'], ['trash', 'Trash']].map(([k, l]) => ({
       label: l, count: counts[k], bg: tab === k ? 'var(--s-blue)' : 'transparent', fg: tab === k ? 'var(--s-bg)' : 'var(--s-text2)', border: tab === k ? 'var(--s-blue)' : 'var(--s-border)',
       pick: () => this.setState({ eiTab: k, eiBook: null }),
       over: (e) => { if (window.__eiDrag && k !== tab) e.preventDefault(); },
       drop: (e) => { e.preventDefault(); const f = window.__eiDrag; window.__eiDrag = null; if (f) f(k); },
     }));
-    const empty = { new: 'No new replies. Press ↻ Sync replies to pull the latest from Apollo.', follow: 'Nobody from email is in the Call Out Box.', booked: 'No calls booked from email yet.', notint: 'Nothing here.' }[tab];
+    const empty = { new: 'No new replies. Press ↻ Sync replies to pull the latest from Apollo.', follow: 'Nobody from email is in the Call Out Box.', booked: 'No calls booked from email yet.', notint: 'Nothing here.', trash: 'Trash is empty. Use Trash on a reply that is not a good fit or should not be here.' }[tab];
     return { eiTabs, eiRows: rows, eiHasRows: rows.length > 0, eiEmpty: rows.length === 0, eiEmptyText: empty, eiNewCount: counts.new };
   }
 
@@ -3198,6 +3234,37 @@ class Component extends DCLogic {
   }
 
   // ===== Call outcomes / show-up =====
+  // Back to the call row once a new time is chosen
+  _applyRebook(l, date, time, stageHint) {
+    const cur = l.pipelineStage || l.dealStage || '';
+    const back = stageHint || l.outcomeStage || 'Disc Call Booked';
+    const n = { ...l, pipelineDate: date, pipelineTime: time || '', pipelineMonth: date.slice(0, 7), rebookDate: '', rebookTime: '', rebookNeedsCall: false, callOutcome: '', nextStepDate: '' };
+    if (cur === 'Cancelled / Re-book' || stageHint) { n.pipelineStage = back; n.dealStage = back; }
+    if (n.pipelineStage === 'Disc Call Booked') { n.discDate = date.slice(0, 10); if (!n.discMonth) n.discMonth = date.slice(0, 7); }
+    return n;
+  }
+
+  _rebookTo(rid, idx, date, time) {
+    this.setState(s => {
+      const data = { ...(s.crmData || {}) }; const rg = { ...(data[rid] || {}) }; const list = [...(rg.pipeline || [])];
+      if (!list[idx]) return {};
+      list[idx] = date ? this._applyRebook(list[idx], date, time) : { ...list[idx], rebookDate: '', rebookTime: '' };
+      rg.pipeline = list; data[rid] = rg; return { crmData: data };
+    });
+  }
+
+  _notFit(rid, leadId) {
+    this.setState(s => {
+      const data = JSON.parse(JSON.stringify(s.crmData || {}));
+      const l = (data[rid]?.pipeline || []).find(x => x.id === leadId); if (!l) return {};
+      const today = this._todayIso();
+      l.pipelineStage = 'Closed Lost'; l.dealStage = 'Closed Lost'; l.closeReason = 'Not a fit after discovery'; l.callOutcome = 'held';
+      l.attendance = [...this._leadAttendance(l), { stage: 'discovery', outcome: 'held', date: today }];
+      l.outcomeDate = today; l.rebookDate = ''; l.rebookNeedsCall = false;
+      return { crmData: data };
+    });
+  }
+
   _cxConfirm() {
     const P = this.state.cxPrompt; if (!P || !P.outcome) return;
     if (P.outcome === 'cancelled' && !P.date && !P.noDate) return;
@@ -3210,6 +3277,7 @@ class Component extends DCLogic {
         const entry = { stage: P.stage, outcome: P.outcome, date: this._todayIso() };
         if (i >= 0 && !P.add) ev[i] = { ...ev[i], outcome: P.outcome }; else ev.push(entry);
         if (P.outcome !== 'cancelled') return { ...l, attendance: ev };
+        if (P.date && !P.noDate) return this._applyRebook({ ...l, attendance: ev.map(e => e.outcome === 'cancelled' ? { ...e, rebooked: true } : e) }, P.date, P.time, P.stage === 'sales' ? 'Sales Call Booked' : 'Disc Call Booked');
         return { ...l, attendance: ev, rebookDate: P.noDate ? '' : (P.date || l.rebookDate || ''), rebookTime: P.noDate ? '' : (P.time || ''), rebookNeedsCall: !!P.noDate || (!P.date && !l.rebookDate) };
       });
       return { crmData: { ...st.crmData, [P.rid]: { ...rd, pipeline } }, cxPrompt: null };
@@ -3421,6 +3489,7 @@ class Component extends DCLogic {
     return {
       outcomeLabel: t[0], hasOutcome: !!t[0], outcomeColor: t[1], outcomeBg: t[2], needsOutcome: needs,
       oHeld: () => this._setCallOutcome(rid, id, 'held'),
+      isDiscCard: st !== 'Sales Call Booked', oNotFit: () => this._notFit(rid, id),
       oNoShow: () => this._setCallOutcome(rid, id, 'noShow'),
       oCancel: () => this._setCallOutcome(rid, id, 'cancelled'),
       oResched: () => this.setState({ datePrompt: { rid, leadId: id, stage: unknown ? (l.outcomeStage || 'Disc Call Booked') : st, name: l.name || '', date: '', time: '', resched: true } }),
@@ -3702,6 +3771,7 @@ class Component extends DCLogic {
         auto: x.deadline === today ? 'auto-moves today 18:00 ' + this._tzShort() : x.deadline === tm ? 'auto-moves ' + fmt(x.deadline) + ' 18:00' : 'auto-moves ' + fmt(x.deadline),
         ...this._chanTag(l),
         held: () => this._setCallOutcome(x.rid, l.id, 'held'),
+        isDisc: x.st !== 'Sales Call Booked', notFit: () => this._notFit(x.rid, l.id),
         noShow: () => this._setCallOutcome(x.rid, l.id, 'noShow'),
         cancel: () => this._setCallOutcome(x.rid, l.id, 'cancelled'),
         resched: () => this.setState({ datePrompt: { rid: x.rid, leadId: l.id, stage: x.st, name: l.name || '', date: '', time: '', resched: true } }),
@@ -5810,7 +5880,11 @@ class Component extends DCLogic {
           rebookValue: item.rebookDate || '',
           rebookBadge: item.rebookDate
             ? 'Re-book ' + new Date(item.rebookDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : (st.key === 'Cancelled / Re-book' && item.callOutcome !== 'noShow' && ((log[log.length - 1] || {}).outcome || 'cancelled') === 'cancelled' ? '☎ Call to rebook' : ''),
-          onRebookChange: (e) => this.crmUpdateLead(item._regionId, 'pipeline', item._idx, 'rebookDate', e.target.value),
+          onRebookChange: (e) => { if (e.target.value) this._rebookTo(item._regionId, item._idx, e.target.value, item.rebookTime || item.pipelineTime || ''); else this.crmUpdateLead(item._regionId, 'pipeline', item._idx, 'rebookDate', ''); },
+          rebookTimeValue: item.rebookTime || '', onRebookTimeChange: (e) => { if (item.rebookDate) this._rebookTo(item._regionId, item._idx, item.rebookDate, e.target.value); else this.crmUpdateLead(item._regionId, 'pipeline', item._idx, 'rebookTime', e.target.value); },
+          timeValue: item.pipelineTime || '', onTimeChange: (e) => this.crmUpdateLead(item._regionId, 'pipeline', item._idx, 'pipelineTime', e.target.value),
+          onNotFit: () => this._notFit(item._regionId, item.id),
+          canNotFit: (item.pipelineStage || item.dealStage) !== 'Closed Lost' && (item.pipelineStage || item.dealStage) !== 'Closed Won',
           monthBadge: item.pipelineDate
             ? this._stageDateLabel(st.key) + ' ' + new Date(item.pipelineDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
             : (item.pipelineMonth ? this._monthLabel(item.pipelineMonth) : ''),
@@ -7695,6 +7769,12 @@ class Component extends DCLogic {
         stop: (ev) => ev.stopPropagation(),
         attemptsLine: n + ' attempt' + (n === 1 ? '' : 's') + (lead.lastContactDate ? ' · last ' + this._cbFmt(lead.lastContactDate) : ''),
         phone: lead.phone || '', email: lead.email || '',
+        onNameEdit: (ev) => this._cbEdit(e, 'name', ev.target.value),
+        onCompanyEdit: (ev) => this._cbEdit(e, 'company', ev.target.value),
+        person: lead.person || 'Josh', onPersonEdit: (ev) => this._cbEdit(e, 'person', ev.target.value),
+        regionValue: e.rid, regionOptions: (s.crmRegions || []).map(r => ({ id: r.id, name: r.name })),
+        onRegionEdit: (ev) => { if (ev.target.value && ev.target.value !== e.rid) this.crmReassignRegion(e.rid, e.group, e.idx, ev.target.value); },
+        valueNum: lead.value == null ? '' : lead.value, onValueEdit: (ev) => this._cbEdit(e, 'value', ev.target.value === '' ? 0 : Number(ev.target.value)),
         onPhoneEdit: (ev) => this._cbEdit(e, 'phone', ev.target.value),
         onEmailEdit: (ev) => this._cbEdit(e, 'email', ev.target.value),
         nextFieldLabel: e.group === 'recycle' ? 'Next contact (re-engage)' : 'Next contact',
