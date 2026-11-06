@@ -219,6 +219,12 @@ window.SR = window.SR || {};
       ${custom ? html`<div style="display:flex;gap:6px;align-items:center"><span style="font-size:13px;color:var(--muted)">Every</span><input type="number" min="1" max="365" value=${m[1]} aria-label="Number" class=${p.cls || 'sr-field'} style="width:72px" onChange=${function (e) { set(e.target.value, m[2].toLowerCase()); }} /><select value=${m[2].toLowerCase()} class=${p.cls || 'sr-field'} aria-label="Unit" onChange=${function (e) { set(m[1], e.target.value); }}><option value="day">days</option><option value="week">weeks</option><option value="month">months</option></select></div>` : null}
     </div>`;
   };
+  /* when a milestone becomes due: "After month N" = start + 30N days, "in N days" = start + N. Conditional ones (goal hit, CPA target) have no date. */
+  SR.milestoneDate = function (name, start) {
+    var s = String(name || ''), m, n = 0, b = /^\d{4}-\d\d-\d\d$/.test(start || '') ? start : SR.TODAY;
+    if ((m = /^after month (\d+)/i.exec(s))) n = 30 * parseInt(m[1], 10); else if ((m = /\bin (\d+) days\b/i.exec(s))) n = parseInt(m[1], 10);
+    return n ? SR.addDays(b, n) : '';
+  };
   SR.addDays = function (d, n) { return new Date(new Date(d + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10); };
   SR.item = function (it) { return typeof it === 'string' ? { name: it, how: [] } : { name: it[0], how: it[1] || [] }; };
   SR.setupTotal = function (type) { var n = 0; SR.TEMPLATES[type].phases.forEach(function (p) { p.steps.forEach(function (s) { n += s[2].length; }); }); return n; };

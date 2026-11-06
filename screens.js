@@ -41,10 +41,16 @@ window.SR = window.SR || {};
     var setCf = function (v) { setCfS(v); try { localStorage.setItem('sr_hcf', v); } catch (e) {} };
     var qs = useState(''), q = qs[0], setQ = qs[1];
     var dps = useState(''), dpick = dps[0], setDpick = dps[1];
+    var lts = useState(false), later = lts[0], setLater = lts[1];
+    var cbs = useState({}), colB = cbs[0], setColB = cbs[1];
     var T0 = SR.TODAY, T1 = SR.addDays(T0, 1), W7 = SR.addDays(T0, 7);
     var dayOk = function (t, k) { var d = t.date || ''; if (k === 'all') return true; if (k === 'over') return !!d && d < T0 && !t.done; if (k === 'today') return d === T0; if (k === 'tom') return d === T1; if (k === 'week') return !!d && d >= T0 && d <= W7; if (k === 'none') return !d; if (k === 'pick') return !dpick || d === dpick; return true; };
     var dayCount = function (k) { return p.tasks.filter(function (t) { return !t.done && dayOk(t, k); }).length; };
-    var filtered = p.tasks.filter(function (t) { return (showDone || !t.done || st0[t.id] || t.doneDay === SR.TODAY) && (who === 'all' || who === 'none' || t.owner === who) && dayOk(t, day) && (!cf || t.clientId === cf) && (!q.trim() || (String(t.name || '') + ' ' + String(t.owner || '')).toLowerCase().indexOf(q.trim().toLowerCase()) > -1); });
+    var base = p.tasks.filter(function (t) { return (showDone || !t.done || st0[t.id] || t.doneDay === SR.TODAY) && (who === 'all' || who === 'none' || t.owner === who) && dayOk(t, day) && (!cf || t.clientId === cf) && (!q.trim() || (String(t.name || '') + ' ' + String(t.owner || '')).toLowerCase().indexOf(q.trim().toLowerCase()) > -1); });
+    /* only show what is due now or within the next 7 days. Later tasks and milestones waiting on a trigger stay hidden until you ask. */
+    var inWindow = function (t) { if (t.done || later || day !== 'all') return true; if (!t.date) return !t.milestone; return t.date <= W7; };
+    var filtered = base.filter(inWindow);
+    var hiddenN = base.filter(function (t) { return !inWindow(t); }).length;
     var chipCount = function (w) { return p.tasks.filter(function (t) { return !t.done && (w === 'all' || (w === 'none' ? !t.owner : t.owner === w)); }).length; };
     var openTotal = p.tasks.filter(function (t) { return !t.done; }).length;
     var overdueN = p.tasks.filter(function (t) { return !t.done && !t.milestone && t.date && t.date < SR.TODAY; }).length;
@@ -72,13 +78,14 @@ window.SR = window.SR || {};
           if (!ids.length) return html`<div style="padding:16px 0;font-size:14px;color:var(--muted)">Nothing here.</div>`;
           return html`<div>${ids.map(function (cid) {
             var c = SR.clientById(p.clients, cid), list = filtered.filter(function (t) { return t.clientId === cid; }).sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || String(a.date || '9999').localeCompare(String(b.date || '9999')); });
-            return html`<div key=${cid} class="dgroup" style="margin-top:18px" onDragOver=${function (e) { if (SR._drag != null) e.preventDefault(); }} onDragEnter=${function (e) { if (SR._drag != null) e.currentTarget.classList.add('dover'); }} onDragLeave=${function (e) { if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('dover'); }} onDrop=${function (e) { e.preventDefault(); e.currentTarget.classList.remove('dover'); var id = SR._drag; SR._drag = null; if (id != null) SR.dnd.dropOnClient(id, cid); }}><div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px;border-bottom:1px solid var(--border)"><h3 style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:19px;display:flex;align-items:center;gap:8px"><span style=${'width:10px;height:10px;border-radius:50%;background:' + c.color}></span>${c.name}</h3><span style="font-size:12px;color:var(--muted)">${list.filter(function (t) { return !t.done; }).length} open</span></div>
-              ${list.map(function (t) { return html`<${SR.TaskRow} key=${t.id} task=${t} selected=${!!sel[t.id]} active=${p.openId === t.id} just=${!!just[t.id]} showClient=${false} clientColor=${c.color} clientName=${c.name} dnd=${true} dropDate=${undefined} onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} />`; })}</div>`;
+            return html`<div key=${cid} class="dgroup" style="margin-top:18px" onDragOver=${function (e) { if (SR._drag != null) e.preventDefault(); }} onDragEnter=${function (e) { if (SR._drag != null) e.currentTarget.classList.add('dover'); }} onDragLeave=${function (e) { if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) e.currentTarget.classList.remove('dover'); }} onDrop=${function (e) { e.preventDefault(); e.currentTarget.classList.remove('dover'); var id = SR._drag; SR._drag = null; if (id != null) SR.dnd.dropOnClient(id, cid); }}><div class="fgh"><button type="button" class="fcar" aria-expanded=${colB[cid] ? 'false' : 'true'} aria-label=${(colB[cid] ? 'Expand ' : 'Collapse ') + c.name} onClick=${function () { setColB(function (o) { var n = Object.assign({}, o); n[cid] = !o[cid]; return n; }); }}>${colB[cid] ? '\u25B6' : '\u25BC'}</button><span class="ftag" style=${'background:color-mix(in srgb,' + c.color + ' 24%,transparent);color:color-mix(in srgb,' + c.color + ' 72%,var(--text))'}><span class="fdot" style=${'background:' + c.color}></span>${c.name}</span><span class="fcnt">${list.filter(function (t) { return !t.done; }).length}</span></div>
+              ${colB[cid] ? null : html`<div class="frows">${list.map(function (t) { return html`<${SR.TaskRow} key=${t.id} task=${t} selected=${!!sel[t.id]} active=${p.openId === t.id} just=${!!just[t.id]} showClient=${false} clientColor=${c.color} clientName=${c.name} dnd=${true} dropDate=${undefined} onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} />`; })}</div>`}</div>`;
           })}</div>`;
         })() : null}
         ${view === 'client' ? null : view === 'people' ? html`<${SR.Workload} tasks=${filtered} clients=${p.clients} onOpen=${p.onOpen} openId=${p.openId} />` : html`<${SR.TaskList} tasks=${filtered} clients=${p.clients} showClient=${true} selected=${p.sel} flat=${view !== 'date'} dnd=${true} noOver=${true}
           onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} onClearSel=${p.onClearSel} onBulk=${p.onBulk}
           newTask=${p.newTask} onNewTask=${p.onNewTask} onAdd=${p.onAdd} qFront=${p.qFront} onQFront=${p.onQFront} qOwner=${p.qOwner} onQOwner=${p.onQOwner} autoOwner=${p.autoOwner} qNeed=${p.qNeed} settling=${p.settling} just=${p.just} openId=${p.openId} />`}
+        ${hiddenN || later ? html`<div style="margin:16px 0 4px"><button type="button" class="nchip" onClick=${function () { setLater(!later); }}>${later ? 'Hide later tasks' : 'Show ' + hiddenN + ' later task' + (hiddenN === 1 ? '' : 's') + ' (after the next 7 days)'}</button></div>` : null}
       </section>
       <${SR.Blocks} id="home" />
     </div>`;

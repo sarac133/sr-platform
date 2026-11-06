@@ -87,6 +87,12 @@
     var gmS = useState(''); var gmsg = gmS[0], setGmsg = gmS[1];
     /* tasks keep their owner. Anyone not on the team list shows under Unassigned instead of being reassigned. */
     useEffect(function () { SR.store.onStatus(setSaveState); SR.store.subscribe(); }, []);
+    /* milestones get a real due date (once), so they only appear when their time comes */
+    useEffect(function () {
+      var bad = function (t) { return t.milestone && !t.mset && !t.custom && !t.done; };
+      if (!tasks.some(bad)) return;
+      setTasks(function (ts) { return ts.map(function (t) { if (!bad(t)) return t; var c = clients.filter(function (x) { return x.id === t.clientId; })[0]; return Object.assign({}, t, { date: SR.milestoneDate(t.name, c && c.start), mset: true }); }); });
+    }, [tasks, clients]);
     useEffect(function () { SR.store.saveColl('tasks', tasks); SR.store.saveKV('order', tasks.map(function (t) { return t.id; })); }, [tasks]);
     useEffect(function () { SR.store.saveColl('events', events); }, [events]);
     useEffect(function () { SR.store.saveColl('notifs', notifs.slice(-100)); }, [notifs]);
@@ -301,7 +307,7 @@
         });
       });
       (tp.milestones || []).forEach(function (m) {
-        add.push({ id: n++, clientId: id, proj: pt, name: m[0] + ': ' + m[1], how: m[2] || m[1].split(' · '), owner: me, date: '', milestone: true, maint: true, done: false, subs: [], note: '' });
+        add.push({ id: n++, clientId: id, proj: pt, name: m[0] + ': ' + m[1], how: m[2] || m[1].split(' · '), owner: me, date: SR.milestoneDate(m[0], c.start), mset: true, milestone: true, maint: true, done: false, subs: [], note: '' });
       });
       setTasks(function (ts) { return ts.concat(add); }); setSeq(n); setExp({});
       var pk = pt === c.type ? id : id + ':' + pt; setPhase(pk, 'ongoing'); setJustLive(pk); setTimeout(function () { setJustLive(null); }, 1800);
@@ -672,7 +678,7 @@
     else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104p')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104q')}></iframe>`;
     else if (screen === 'finance') body = html`<${SR.Finance} clients=${clients} />`;
     else if (screen === 'drive') body = html`<${SR.Drive} />`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;

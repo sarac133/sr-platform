@@ -600,7 +600,7 @@ window.SR = window.SR || {};
     var bk = React.useState(false), bulkOn = bk[0], setBulkOn = bk[1];
     var sel = p.selected, just = p.just || {};
     var cl = React.useState({}), colp = cl[0], setColp = cl[1];
-    var byFront = !p.lockFront && !p.flat;
+    var byFront = !p.lockFront;
     var row = function (t, g) {
       var c = SR.clientById(p.clients, t.clientId);
       return html`<${SR.TaskRow} key=${t.id} task=${t} selected=${!!sel[t.id]} active=${p.openId === t.id} just=${!!just[t.id]} showClient=${true} hideChip=${byFront} clientColor=${c.color} clientName=${c.name}
@@ -631,7 +631,7 @@ window.SR = window.SR || {};
     if (p.flat) {
       var fin = function (t) { return t.done && !(p.settling || {})[t.id]; };
       var items = p.tasks.slice().sort(function (a, b) { return (fin(a) ? 1 : 0) - (fin(b) ? 1 : 0); });
-      body = html`<div style="margin-top:14px">${items.map(function (t) { return row(t, null); })}</div>`;
+      body = byFront ? html`<div style="margin-top:6px">${subgroups({ items: items, date: undefined }, 'flat')}</div>` : html`<div style="margin-top:14px">${items.map(function (t) { return row(t, null); })}</div>`;
     } else {
       var groups = SR.groupByDay(p.tasks, p.settling, p.noOver);
       body = html`<div>
