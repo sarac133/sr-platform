@@ -1454,3 +1454,7 @@ button.nb{cursor:pointer}button.nb:hover{background:var(--ntHv)}
 .sr-top{flex-wrap:wrap;gap:8px;min-width:0}.sr-where{min-width:0;flex:1 1 140px;max-width:100%}.sr-status{flex:0 0 auto}
 .sr-pbody .sr-top{margin:0 0 18px;padding:0;min-height:0;border:0}
 .sr-ptitle{flex:none}
+
+.grip{touch-action:none;cursor:grab}.task{-webkit-user-select:none;user-select:none}.task .tt{-webkit-user-select:none}
+body.sr-pdragging,body.sr-pdragging *{cursor:grabbing!important;-webkit-user-select:none;user-select:none}
+.task.dragging{opacity:.3}

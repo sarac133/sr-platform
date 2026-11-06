@@ -567,7 +567,7 @@ window.SR = window.SR || {};
     return html`<div class=${cls} data-tid=${t.id} onContextMenu=${function (e) { if (SR.taskMenu) SR.taskMenu(e, t); }}
       onDragEnter=${dnd ? rowOver(true) : null} onDragOver=${dnd ? rowOver(true) : null} onDragLeave=${dnd ? rowOver(false) : null}
       onDrop=${dnd ? function (e) { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove('over'); var id = SR._drag; SR._drag = null; if (id != null) SR.dnd.dropOnTask(id, t.id, p.dropDate); } : null}>
-      ${dnd ? html`<span class="grip" draggable="true" title="Drag to reorder or move" aria-hidden="true" onDragStart=${function (e) { SR._drag = t.id; var ms = sel && SR.selIds ? SR.selIds() : []; SR._dragMulti = ms.length > 1 && ms.indexOf(t.id) >= 0 ? ms : null; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(t.id)); var row = e.currentTarget.closest('.task'); e.dataTransfer.setDragImage(row, 20, 20); setTimeout(function () { row.classList.add('dragging'); if (SR._dragMulti) document.querySelectorAll('.task.picked').forEach(function (r) { r.classList.add('dragging'); }); }, 0); } catch (x) {} }} onDragEnd=${function (e) { SR._drag = null; SR._dragMulti = null; document.querySelectorAll('.task.dragging').forEach(function (r) { r.classList.remove('dragging'); }); }}>⋮⋮</span>` : null}
+      ${dnd ? html`<span class="grip" title="Drag to reorder or move" aria-hidden="true" onDragStart=${function (e) { SR._drag = t.id; var ms = sel && SR.selIds ? SR.selIds() : []; SR._dragMulti = ms.length > 1 && ms.indexOf(t.id) >= 0 ? ms : null; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(t.id)); var row = e.currentTarget.closest('.task'); e.dataTransfer.setDragImage(row, 20, 20); setTimeout(function () { row.classList.add('dragging'); if (SR._dragMulti) document.querySelectorAll('.task.picked').forEach(function (r) { r.classList.add('dragging'); }); }, 0); } catch (x) {} }} onDragEnd=${function (e) { SR._drag = null; SR._dragMulti = null; document.querySelectorAll('.task.dragging').forEach(function (r) { r.classList.remove('dragging'); }); }}>⋮⋮</span>` : null}
       <button type="button" class=${'cb' + (t.done ? ' done' : '')} onClick=${function () { p.onToggle(t.id); }} aria-pressed=${t.done ? 'true' : 'false'} aria-label=${(t.done ? 'Mark not done: ' : 'Mark done: ') + t.name}><span>${t.done ? '✓' : ''}</span></button>
       <button type="button" class="tx" onClick=${function () { p.onOpen(t.id); }} aria-expanded=${p.active ? 'true' : 'false'}>
         ${p.num ? html`<span class="id">${p.num}</span>` : null}
@@ -631,6 +631,69 @@ window.SR = window.SR || {};
     </div>`;
   };
 
+
+  /* pointer-based task dragging: smooth ghost, auto scroll, and it drives the same drop handlers as native drag */
+  SR.pdrag = function () {
+    if (SR._pdragOn) return; SR._pdragOn = true;
+    var st = null, ghost = null, cur = null, raf = 0, vy = 0;
+    var fire = function (type, el, e, rel) {
+      if (!el) return;
+      var ev; try { ev = new DragEvent(type, { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY, relatedTarget: rel || null, dataTransfer: new DataTransfer() }); } catch (x) { return; }
+      el.dispatchEvent(ev);
+    };
+    var cleanup = function () {
+      if (ghost) { ghost.remove(); ghost = null; }
+      if (st && st.row) st.row.classList.remove('dragging');
+      document.querySelectorAll('.task.dragging,.task.over,.dgroup.dover,.wlc.dover,.tdrop').forEach(function (n) { n.classList.remove('dragging', 'over', 'dover', 'tdrop'); });
+      document.body.classList.remove('sr-pdragging'); cancelAnimationFrame(raf); raf = 0; vy = 0;
+      SR._drag = null; SR._dragMulti = null; st = null; cur = null;
+    };
+    var loop = function () { if (!st || !st.on) return; if (vy) window.scrollBy(0, vy); raf = requestAnimationFrame(loop); };
+    var begin = function (e) {
+      st.on = true; var id = st.id;
+      SR._drag = id; var ms = SR.selIds ? SR.selIds() : []; SR._dragMulti = ms.length > 1 && ms.indexOf(id) >= 0 ? ms : null;
+      var r = st.row.getBoundingClientRect(); st.dx = e.clientX - r.left; st.dy = e.clientY - r.top;
+      ghost = st.row.cloneNode(true); ghost.removeAttribute('data-tid'); ghost.classList.remove('dragging', 'over', 'sel');
+      ghost.style.cssText = 'position:fixed;z-index:99999;pointer-events:none;left:0;top:0;width:' + r.width + 'px;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 10px 30px rgba(0,0,0,.22);opacity:.96;transform:translate(' + r.left + 'px,' + r.top + 'px)';
+      if (SR._dragMulti) { var b = document.createElement('span'); b.textContent = SR._dragMulti.length + ' tasks'; b.style.cssText = 'position:absolute;right:10px;top:50%;transform:translateY(-50%);background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px'; ghost.appendChild(b); }
+      document.body.appendChild(ghost);
+      st.row.classList.add('dragging'); if (SR._dragMulti) document.querySelectorAll('.task.picked').forEach(function (n) { n.classList.add('dragging'); });
+      document.body.classList.add('sr-pdragging');
+      raf = requestAnimationFrame(loop);
+    };
+    document.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0 || st) return;
+      var row = e.target.closest && e.target.closest('.task[data-tid]'); if (!row || !row.querySelector('.grip')) return;
+      var onGrip = !!e.target.closest('.grip');
+      if (!onGrip && (e.pointerType !== 'mouse' || e.target.closest('.cb,input,select,textarea,a,.chip'))) return;
+      st = { id: Number(row.getAttribute('data-tid')), row: row, x: e.clientX, y: e.clientY, on: false, pid: e.pointerId };
+      if (isNaN(st.id)) st.id = row.getAttribute('data-tid');
+      if (onGrip) e.preventDefault();
+    }, true);
+    document.addEventListener('pointermove', function (e) {
+      if (!st || e.pointerId !== st.pid) return;
+      if (!st.on) { if (Math.abs(e.clientX - st.x) + Math.abs(e.clientY - st.y) < 6) return; begin(e); }
+      e.preventDefault();
+      ghost.style.transform = 'translate(' + (e.clientX - st.dx) + 'px,' + (e.clientY - st.dy) + 'px)';
+      var h = window.innerHeight; vy = e.clientY < 80 ? -Math.ceil((80 - e.clientY) / 4) : e.clientY > h - 80 ? Math.ceil((e.clientY - (h - 80)) / 4) : 0;
+      var t = document.elementFromPoint(e.clientX, e.clientY);
+      if (t !== cur) { if (cur) fire('dragleave', cur, e, t); if (t) fire('dragenter', t, e, cur); cur = t; }
+      if (t) fire('dragover', t, e);
+    }, true);
+    var finish = function (e, drop) {
+      if (!st) return; var was = st.on;
+      if (was) {
+        if (drop && cur) { fire('drop', cur, e); }
+        else if (cur) fire('dragleave', cur, e, null);
+        var swallow = function (ev) { ev.stopPropagation(); ev.preventDefault(); }; document.addEventListener('click', swallow, true); setTimeout(function () { document.removeEventListener('click', swallow, true); }, 60);
+      }
+      cleanup();
+    };
+    document.addEventListener('pointerup', function (e) { if (st && e.pointerId === st.pid) finish(e, true); }, true);
+    document.addEventListener('pointercancel', function (e) { if (st) finish(e, false); }, true);
+    document.addEventListener('keydown', function (e) { if (st && st.on && e.key === 'Escape') finish(e, false); }, true);
+    document.addEventListener('selectstart', function (e) { if (st && st.on) e.preventDefault(); }, true);
+  };
   /* floating bulk bar, fixed at the bottom of the screen */
   SR.BulkBar = function (p) {
     var n = p.count; if (!n) return null;

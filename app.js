@@ -127,6 +127,7 @@
     SR.store.onRemote(SR.remote);
     useEffect(function () {
       var rs = function () { setTimeout(function () { SR._drag = null; SR._dragMulti = null; SR._dragC = null; if (SR._spr) { clearTimeout(SR._spr.t); SR._spr = null; } document.querySelectorAll('.tdrop,.task.over').forEach(function (x) { x.classList.remove('tdrop'); x.classList.remove('over'); }); }, 0); };
+      SR.pdrag();
       var scr = null, sy = 0, tick = function () { if (!scr) return; window.scrollBy(0, scr); requestAnimationFrame(tick); };
       var edge = function (e) { if (SR._drag == null) { scr = null; return; } var h = window.innerHeight, y = e.clientY; sy = y < 90 ? -Math.ceil((90 - y) / 6) : y > h - 90 ? Math.ceil((y - (h - 90)) / 6) : 0; if (sy && !scr) { scr = sy; requestAnimationFrame(tick); } else scr = sy || null; };
       document.addEventListener('dragover', edge, true); document.addEventListener('dragend', function () { scr = null; }, true); document.addEventListener('drop', function () { scr = null; }, true);
@@ -671,7 +672,7 @@
     else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104m')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104n')}></iframe>`;
     else if (screen === 'finance') body = html`<${SR.Finance} clients=${clients} />`;
     else if (screen === 'drive') body = html`<${SR.Drive} />`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;
