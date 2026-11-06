@@ -1447,3 +1447,10 @@ button.nb{cursor:pointer}button.nb:hover{background:var(--ntHv)}
 /* smoother task dragging */
 .task{transition:background .12s,box-shadow .12s}.task.dragging{opacity:.35;transition:none}.task.over{box-shadow:0 -3px 0 var(--accent) inset;background:color-mix(in srgb,var(--accent) 6%,transparent)}.dgroup{transition:background .12s,outline-color .12s}.task .grip{touch-action:none}
 .sr-main{transition:padding-right .22s cubic-bezier(.2,.85,.25,1)}.sr-panel{will-change:transform,opacity;animation-duration:.22s}@media(prefers-reduced-motion:reduce){.sr-main{transition:none}}
+
+/* task panel: never scroll sideways */
+.sr-panel,.sr-pbody{overflow-x:hidden;box-sizing:border-box}.sr-pbody{min-width:0}
+.sr-ptitle{field-sizing:fixed!important;overflow:hidden}
+.sr-top{flex-wrap:wrap;gap:8px;min-width:0}.sr-where{min-width:0;flex:1 1 140px;max-width:100%}.sr-status{flex:0 0 auto}
+.sr-pbody .sr-top{margin:0 0 18px;padding:0;min-height:0;border:0}
+.sr-ptitle{flex:none}

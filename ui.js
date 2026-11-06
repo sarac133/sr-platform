@@ -604,7 +604,7 @@ window.SR = window.SR || {};
       return html`<${SR.TaskRow} key=${t.id} task=${t} selected=${!!sel[t.id]} active=${p.openId === t.id} just=${!!just[t.id]} showClient=${true} clientColor=${c.color} clientName=${c.name}
         dnd=${!!p.dnd} dropDate=${g ? g.date : undefined} onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} />`;
     };
-    var hl = function (on) { return function (e) { if (SR._drag != null) { e.currentTarget.classList.toggle('dover', on); } }; };
+    var hl = function (on) { return function (e) { if (SR._drag == null) return; var el = e.currentTarget; if (on) el.classList.add('dover'); else if (!e.relatedTarget || !el.contains(e.relatedTarget)) el.classList.remove('dover'); }; };
     var body;
     if (p.flat) {
       var fin = function (t) { return t.done && !(p.settling || {})[t.id]; };
@@ -674,7 +674,7 @@ window.SR = window.SR || {};
             <span class="sr-where"><i></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}${p.where ? ' · ' + p.where : ''}</span></span>
             <select class="sr-status" value=${status} onChange=${function (e) { var v = e.target.value; if (v === 'done') p.onPatch(t.id, { done: true }); else p.onPatch(t.id, { done: false, status: v }); }} aria-label="Status"><option value="planned">Planned</option><option value="doing">In progress</option><option value="done">Done</option></select>
           </div>
-          <textarea rows="1" ref=${function (el) { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }} value=${t.name} onChange=${function (e) { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; p.onPatch(t.id, { name: e.target.value }); }} aria-label="Task name" class="sr-ptitle" style="overflow:hidden;resize:none"></textarea>
+          <textarea rows=${Math.max(1, Math.ceil(t.name.length / 26))} style=${'height:' + (Math.max(1, Math.ceil(t.name.length / 26)) * 26.25 + 6) + 'px'} value=${t.name} onChange=${function (e) { p.onPatch(t.id, { name: e.target.value }); }} aria-label="Task name" class="sr-ptitle"></textarea>
 
           ${(t.how && t.how.length) || links.length ? html`<div class="sr-section">${t.how && t.how.length ? html`<div class="sr-lab">How</div><ol class="sr-steps">${t.how.map(function (h, i) { return html`<li key=${i}>${h}</li>`; })}</ol>` : null}
             ${links.length ? html`<div class="sr-lab" style="margin-top:6px">Quick links</div><div class="links">${links.map(function (l) { return html`<a key=${l[1]} href=${l[1]} target="_blank" rel="noopener"><span>${l[0]}</span><span aria-hidden="true">↗</span></a>`; })}</div>` : null}</div>` : null}
