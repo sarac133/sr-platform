@@ -908,7 +908,7 @@ h1,h2,h3,.sr-ptitle{letter-spacing:-.015em}
 .qbar .go{background:var(--primary);color:var(--onPrimary,#fff)}
 
 /* Finance */
-.fin{max-width:1180px}
+.fin:not(.task){max-width:1180px}
 .fin-card{background:var(--card);border:1px solid var(--border);border-radius:12px}
 .fin-ic{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;background:var(--accentBg);color:var(--accent)}
 .fin-ic.g{background:var(--greenBg);color:var(--green)}.fin-ic.o{background:color-mix(in srgb,var(--gold) 16%,transparent);color:var(--gold)}.fin-ic.b{background:var(--accentBg);color:var(--accent)}.fin-ic.n{background:var(--card2);color:var(--muted)}
