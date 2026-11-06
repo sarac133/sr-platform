@@ -1458,3 +1458,10 @@ button.nb{cursor:pointer}button.nb:hover{background:var(--ntHv)}
 .grip{touch-action:none;cursor:grab}.task{-webkit-user-select:none;user-select:none}.task .tt{-webkit-user-select:none}
 body.sr-pdragging,body.sr-pdragging *{cursor:grabbing!important;-webkit-user-select:none;user-select:none}
 .task.dragging{opacity:.3}
+
+/* battlefront sub-groups inside each day (Notion style) */
+.fgrp{margin-top:10px}.fgh{display:flex;align-items:center;gap:8px;height:30px;border-radius:6px;padding:0 4px;transition:background .12s}
+.fgh.fover{background:color-mix(in srgb,var(--accent) 12%,transparent);outline:2px dashed var(--accent);outline-offset:-2px}
+.fcar{all:unset;cursor:pointer;width:18px;height:18px;display:grid;place-items:center;font-size:8px;color:var(--muted);border-radius:4px}.fcar:hover{background:var(--hover,rgba(127,127,127,.15))}.fcar:focus-visible{outline:2px solid var(--accent)}
+.ftag{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:5px;font-size:13px;font-weight:500;line-height:1}.fdot{width:8px;height:8px;border-radius:50%;flex:none}
+.fcnt{font-size:13px;color:var(--muted)}.frows{padding-left:14px}

@@ -552,7 +552,7 @@ window.SR = window.SR || {};
     var t = p.task, sel = p.selected;
     var late = t.deadline && t.deadline < SR.TODAY && !t.done;
     var meta = [];
-    if (p.showClient) meta.push(html`<span key="c" class="chip"><span style=${'width:8px;height:8px;border-radius:3px;background:' + p.clientColor}></span>${p.clientName}</span>`);
+    if (p.showClient && !p.hideChip) meta.push(html`<span key="c" class="chip"><span style=${'width:8px;height:8px;border-radius:3px;background:' + p.clientColor}></span>${p.clientName}</span>`);
     if (t.repeat && !t.milestone) meta.push(html`<span key="r" class="chip" style=${'color:' + (t.date && t.date < SR.TODAY && !t.done ? 'var(--red)' : 'var(--accent)')}>${SR.Icon('repeat', 12)} ${t.repeat}${t.done && t.next ? ' · back ' + SR.fmtDay(t.next) : (t.date ? ' · ' + SR.dueText(t) : '')}</span>`);
     if ((t.est || t.spent) && !t.done) meta.push(html`<span key="e" class="chip">${t.spent ? SR.dur(t.spent) + ' / ' : ''}${SR.dur(SR.estOf(t))}${t.slots && t.slots.length > 1 ? ' · ' + t.slots.length + ' chunks' : ''}</span>`);
     var bk = SR.blockers ? SR.blockers(t) : [];
@@ -599,10 +599,32 @@ window.SR = window.SR || {};
     var rf = React.useRef(null); SR.useFlip(rf, '.task[data-tid]', 'data-tid');
     var bk = React.useState(false), bulkOn = bk[0], setBulkOn = bk[1];
     var sel = p.selected, just = p.just || {};
+    var cl = React.useState({}), colp = cl[0], setColp = cl[1];
+    var byFront = !p.lockFront && !p.flat;
     var row = function (t, g) {
       var c = SR.clientById(p.clients, t.clientId);
-      return html`<${SR.TaskRow} key=${t.id} task=${t} selected=${!!sel[t.id]} active=${p.openId === t.id} just=${!!just[t.id]} showClient=${true} clientColor=${c.color} clientName=${c.name}
+      return html`<${SR.TaskRow} key=${t.id} task=${t} selected=${!!sel[t.id]} active=${p.openId === t.id} just=${!!just[t.id]} showClient=${true} hideChip=${byFront} clientColor=${c.color} clientName=${c.name}
         dnd=${!!p.dnd} dropDate=${g ? g.date : undefined} onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} />`;
+    };
+    var subgroups = function (g, gi) {
+      var m = {}, ks = [];
+      g.items.forEach(function (t) { var k = t.clientId; if (!m[k]) { m[k] = []; ks.push(k); } m[k].push(t); });
+      var ids = (p.clients || []).map(function (c) { return c.id; });
+      var rank = function (k) { var i = ids.indexOf(k); return i < 0 ? 999 : i; };
+      ks.sort(function (a, b) { return rank(a) - rank(b); });
+      return ks.map(function (k) {
+        var c = SR.clientById(p.clients, k), key = gi + ':' + k, shut = !!colp[key], list = m[k], open = list.filter(function (t) { return !t.done; }).length;
+        var tint = 'color-mix(in srgb,' + c.color + ' 24%,transparent)', ink = 'color-mix(in srgb,' + c.color + ' 72%,var(--text))';
+        return html`<div key=${k} class="fgrp" onDragOver=${p.dnd ? function (e) { if (SR._drag != null) { e.preventDefault(); e.stopPropagation(); } } : null}>
+          <div class="fgh" onDragOver=${p.dnd ? function (e) { if (SR._drag != null) { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add('fover'); } } : null} onDragLeave=${function (e) { e.currentTarget.classList.remove('fover'); }}
+            onDrop=${p.dnd ? function (e) { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove('fover'); var d = e.currentTarget.closest('.dgroup'); d && d.classList.remove('dover'); var id = SR._drag; SR._drag = null; if (id != null) SR.dnd.dropOnClient(id, k); } : null}>
+            <button type="button" class="fcar" aria-expanded=${shut ? 'false' : 'true'} aria-label=${(shut ? 'Expand ' : 'Collapse ') + c.name} onClick=${function () { setColp(function (o) { var n = Object.assign({}, o); n[key] = !o[key]; return n; }); }}>${shut ? '\u25B6' : '\u25BC'}</button>
+            <span class="ftag" style=${'background:' + tint + ';color:' + ink}><span class="fdot" style=${'background:' + c.color}></span>${c.name}</span>
+            <span class="fcnt">${open}</span>
+          </div>
+          ${shut ? null : html`<div class="frows">${list.map(function (t) { return row(t, g); })}</div>`}
+        </div>`;
+      });
     };
     var hl = function (on) { return function (e) { if (SR._drag == null) return; var el = e.currentTarget; if (on) el.classList.add('dover'); else if (!e.relatedTarget || !el.contains(e.relatedTarget)) el.classList.remove('dover'); }; };
     var body;
@@ -619,7 +641,7 @@ window.SR = window.SR || {};
             <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:18px;padding-bottom:6px;border-bottom:1px solid var(--border)">
               <h3 style=${'margin:0;font-family:\'DM Sans\',system-ui,sans-serif;font-size:19px;color:' + (g.danger ? 'var(--red)' : 'var(--text)')}>${g.label}</h3>
               <span style="font-size:12px;color:var(--muted)">${g.open} open</span></div>
-            ${g.items.map(function (t) { return row(t, g); })}
+            ${byFront ? subgroups(g, gi) : g.items.map(function (t) { return row(t, g); })}
           </div>`;
         })}
       </div>`;
