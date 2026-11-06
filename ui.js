@@ -61,7 +61,7 @@ window.SR = window.SR || {};
       var root = ref.current; if (!root) return; var next = {}, y = window.scrollY || 0;
       root.querySelectorAll(sel).forEach(function (el) {
         var k = el.getAttribute(attr), top = el.getBoundingClientRect().top + y; next[k] = top; var o = prev.current[k];
-        if (o != null && Math.abs(o - top) > 2 && Math.abs(o - top) < 900 && el.animate && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) el.animate([{ transform: 'translateY(' + (o - top) + 'px)' }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        if (o != null && !SR._noFlip && Math.abs(o - top) > 2 && Math.abs(o - top) < 900 && el.animate && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) el.animate([{ transform: 'translateY(' + (o - top) + 'px)' }, { transform: 'none' }], { duration: 220, easing: 'cubic-bezier(.2,.8,.2,1)' });
       });
       prev.current = next;
     });
@@ -683,6 +683,7 @@ window.SR = window.SR || {};
     var finish = function (e, drop) {
       if (!st) return; var was = st.on;
       if (was) {
+        SR._noFlip = true; setTimeout(function () { SR._noFlip = false; }, 500);
         if (drop && cur) { fire('drop', cur, e); }
         else if (cur) fire('dragleave', cur, e, null);
         var swallow = function (ev) { ev.stopPropagation(); ev.preventDefault(); }; document.addEventListener('click', swallow, true); setTimeout(function () { document.removeEventListener('click', swallow, true); }, 60);
