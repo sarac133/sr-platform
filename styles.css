@@ -1465,3 +1465,11 @@ body.sr-pdragging,body.sr-pdragging *{cursor:grabbing!important;-webkit-user-sel
 .fcar{all:unset;cursor:pointer;width:18px;height:18px;display:grid;place-items:center;font-size:8px;color:var(--muted);border-radius:4px}.fcar:hover{background:var(--hover,rgba(127,127,127,.15))}.fcar:focus-visible{outline:2px solid var(--accent)}
 .ftag{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:5px;font-size:13px;font-weight:500;line-height:1}.fdot{width:8px;height:8px;border-radius:50%;flex:none}
 .fcnt{font-size:13px;color:var(--muted)}.frows{padding-left:14px}
+/* task rows tinted by battlefront (Home, By date and List) */
+.task.fr{border-left-width:5px;border-left-color:var(--fc);background:color-mix(in srgb,var(--fc) 9%,transparent);margin-bottom:2px;border-radius:0 8px 8px 0}
+.task.fr:hover{background:color-mix(in srgb,var(--fc) 15%,transparent)}
+.task.fr.sel,.task.fr.picked{background:var(--accentBg)}
+.task.fr:not(.fin) .cb:not(.done){border-color:color-mix(in srgb,var(--fc) 70%,var(--border))}
+.fname{flex:none;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0 10px 0 8px;font-size:12.5px;font-weight:600;color:color-mix(in srgb,var(--fc) 78%,var(--text))}
+.task.fr.fin .fname{opacity:.55}
+.sr-fcolor{-webkit-appearance:none;appearance:none;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer}.sr-fcolor::-webkit-color-swatch-wrapper{padding:0}.sr-fcolor::-webkit-color-swatch{border:0;border-radius:50%}.sr-fcolor::-moz-color-swatch{border:0;border-radius:50%}
