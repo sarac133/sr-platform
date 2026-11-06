@@ -503,6 +503,21 @@
        .concat([{ label: 'Duplicate client', fn: function () { duplicateClient(c.id); } }, { sep: true }, { label: 'Delete client', danger: true, fn: function () { ask('Delete ' + c.name + '?', 'The client, its projects, tasks and results are removed. This cannot be undone.', 'Delete client', function () { deleteClient(c.id); }); } }]));
     };
 
+    SR.frontMenu = function (e, f) {
+      var custom = f.kind === 'custom', edited = !!(((SR.uiprefs.frontEdits || {})[f.id]) && !custom);
+      var go = function () { setActiveFront(f.id); setScreen('front'); setOpenId(null); };
+      var items = [
+        { label: 'Open', fn: go },
+        { label: 'Rename', fn: function () { go(); setTimeout(function () { var h = document.querySelector('h1[contenteditable]'); if (h) { h.focus(); var r = document.createRange(); r.selectNodeContents(h); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } }, 120); } },
+        { sep: true }, { head: 'Colour' },
+        { sw: ['#E0674A', '#E0A33A', '#D9C441', '#3FA796', '#4B8BE0', '#7B6CF6', '#B07CE0', '#C45A9B', '#8F99AA'], cur: f.color, fn: function (c) { editFront(f.id, { color: c }); } },
+        { sep: true }
+      ];
+      if (custom) items.push({ label: 'Delete battlefront', danger: true, fn: function () { var n = tasks.filter(function (t) { return t.clientId === f.id; }).length; ask('Delete ' + f.name + '?', n ? 'Its ' + n + ' task' + (n === 1 ? '' : 's') + ' will move to Agency / Admin.' : 'This battlefront has no tasks.', 'Delete battlefront', function () { delFront(f.id); }); } });
+      else items.push({ label: 'Reset name and colour', disabled: !edited, fn: function () { var ed = Object.assign({}, SR.uiprefs.frontEdits || {}); delete ed[f.id]; SR.uiprefs.frontEdits = ed; SR.applyFrontEdits(); setClk(function (c) { return c + 1; }); } });
+      SR.openMenu(e, items);
+    };
+
     /* ---------- drag and drop, templates, palette ---------- */
     var moveTask = function (id, beforeId, date) {
       setTasks(function (ts) {
@@ -651,7 +666,7 @@
         ${clientsOpen ? html`${clients.map(function (c) { return clientRow(c, 'c'); })}${compact ? null : html`<button type="button" class="sr-onb" onClick=${startOnboard}>+ Onboard client</button>`}` : null}
       </div>
       ${compact ? null : html`<div style="display:flex;flex-direction:column;gap:1px"><div class="sr-navhd">Battlefronts</div>
-        ${SR.fronts([]).map(function (f) { var on = screen === 'front' && activeFront === f.id; return html`<div key=${f.id} class="sr-navrow" onDragOver=${function (e) { if (SR._drag != null) { e.preventDefault(); e.currentTarget.classList.add('tdrop'); } }} onDragLeave=${function (e) { e.currentTarget.classList.remove('tdrop'); }} onDrop=${function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._drag == null) return; e.preventDefault(); var tid = SR._drag; SR._drag = null; SR.dnd.dropOnClient(tid, f.id); }}><button type="button" onClick=${function () { setActiveFront(f.id); setScreen('front'); setOpenId(null); }} style=${navItem(on) + ';flex:1;min-width:0;min-height:28px'}><span class="sr-ib" style=${'background:' + f.color + ';width:20px;height:20px;border-radius:6px;flex:none'}></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span></button>${f.kind === 'custom' ? html`<button type="button" class="sr-navdel" aria-label=${'Remove ' + f.name} title="Remove battlefront" onClick=${function () { delFront(f.id); }}>${SR.Icon('close', 13)}</button>` : null}</div>`; })}
+        ${SR.fronts([]).map(function (f) { var on = screen === 'front' && activeFront === f.id; return html`<div key=${f.id} class="sr-navrow" onContextMenu=${function (e) { SR.frontMenu(e, f); }} onDragOver=${function (e) { if (SR._drag != null) { e.preventDefault(); e.currentTarget.classList.add('tdrop'); } }} onDragLeave=${function (e) { e.currentTarget.classList.remove('tdrop'); }} onDrop=${function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._drag == null) return; e.preventDefault(); var tid = SR._drag; SR._drag = null; SR.dnd.dropOnClient(tid, f.id); }}><button type="button" onClick=${function () { setActiveFront(f.id); setScreen('front'); setOpenId(null); }} style=${navItem(on) + ';flex:1;min-width:0;min-height:28px'}><span class="sr-ib" style=${'background:' + f.color + ';width:20px;height:20px;border-radius:6px;flex:none'}></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span></button>${f.kind === 'custom' ? html`<button type="button" class="sr-navdel" aria-label=${'Remove ' + f.name} title="Remove battlefront" onClick=${function () { delFront(f.id); }}>${SR.Icon('close', 13)}</button>` : null}</div>`; })}
         ${newFront === null ? html`<button type="button" class="sr-onb" onClick=${function () { setNewFront(''); }}>+ New battlefront</button>` : html`<input class="sr-navren" autofocus placeholder="Name it, press Enter" value=${newFront} ref=${function (el) { if (el && !el._f) { el._f = 1; el.focus(); } }} onInput=${function (e) { setNewFront(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter') { addFront(newFront); setNewFront(null); } else if (e.key === 'Escape') setNewFront(null); }} onBlur=${function () { if (newFront && newFront.trim()) addFront(newFront); setNewFront(null); }} />`}
       </div>`}
       <div class="sr-nfoot" style=${compact ? 'display:none' : ''}>${me} · ${saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Not saved, retrying' : (SR.store.mode === 'cloud' ? 'Saved' : 'Saved on this device')}</div>
@@ -684,7 +699,7 @@
     else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104r')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104s')}></iframe>`;
     else if (screen === 'finance') body = html`<${SR.Finance} clients=${clients} />`;
     else if (screen === 'drive') body = html`<${SR.Drive} />`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;

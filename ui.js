@@ -965,6 +965,7 @@ window.SR = window.SR || {};
       ${p.menu.items.map(function (it, i) {
         if (it.sep) return html`<div key=${i} class="ctx-sep" role="separator"></div>`;
         if (it.head) return html`<div key=${i} class="ctx-head">${it.head}</div>`;
+        if (it.sw) return html`<div key=${i} class="ctx-sw" role="group" aria-label="Colour">${it.sw.map(function (c) { return html`<button key=${c} type="button" class="ctx-dot" style=${'background:' + c} aria-label=${'Colour ' + c} aria-pressed=${String(it.cur || '').toLowerCase() === c.toLowerCase() ? 'true' : 'false'} onClick=${function () { p.onClose(); it.fn(c); }}></button>`; })}</div>`;
         return html`<button key=${i} type="button" role="menuitem" class=${'ctx-i' + (it.danger ? ' danger' : '')} disabled=${!!it.disabled} onClick=${function () { p.onClose(); it.fn(); }}><span>${it.label}</span>${it.hint ? html`<span class="ctx-k">${it.hint}</span>` : null}</button>`;
       })}
     </div>`;
