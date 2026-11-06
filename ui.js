@@ -103,9 +103,10 @@ window.SR = window.SR || {};
   SR.n0 = function (v) { return Math.round(v).toLocaleString('en-US'); };
   /* battlefronts: the built-in fronts plus every client */
   SR.FRONTS = { agency: { id: 'agency', name: 'Agency / Admin', color: '#8F99AA', kind: 'agency' }, sales: { id: 'sales', name: 'Sales', color: '#E0A33A', kind: 'sales' }, marketing: { id: 'marketing', name: 'Marketing', color: '#B07CE0', kind: 'marketing' } };
-  SR.clientById = function (clients, id) { for (var i = 0; i < clients.length; i++) if (clients[i].id === id) return clients[i]; if (id === '' || id == null) return { id: '', name: 'No battlefront yet', color: '#B0B6C2' }; return SR.FRONTS[id] || { id: 'agency', name: 'Agency', color: '#8F99AA' }; };
+  SR.customFronts = function () { var o = (SR.uiprefs && SR.uiprefs.fronts) || {}; return Object.keys(o).map(function (k) { return o[k]; }); };
+  SR.clientById = function (clients, id) { for (var i = 0; i < clients.length; i++) if (clients[i].id === id) return clients[i]; if (id === '' || id == null) return { id: '', name: 'No battlefront yet', color: '#B0B6C2' }; var cf = SR.uiprefs && SR.uiprefs.fronts && SR.uiprefs.fronts[id]; return SR.FRONTS[id] || cf || { id: 'agency', name: 'Agency', color: '#8F99AA' }; };
   SR.isLate = function (t, today) { return !t.done && ((t.deadline && t.deadline < today) || (t.date && t.date < today) || (t.rolled || 0) >= 2); };
-  SR.fronts = function (clients) { return Object.keys(SR.FRONTS).map(function (k) { return SR.FRONTS[k]; }).concat(clients); };
+  SR.fronts = function (clients) { return Object.keys(SR.FRONTS).map(function (k) { return SR.FRONTS[k]; }).concat(SR.customFronts(), clients); };
   SR.frontAlias = { admin: 'agency', ops: 'agency', operations: 'agency', agency: 'agency', internal: 'agency', hq: 'agency', sr: 'agency', sales: 'sales', outreach: 'sales', pipeline: 'sales', calls: 'sales', 'cold calling': 'sales', marketing: 'marketing', website: 'marketing', content: 'marketing', brand: 'marketing', social: 'marketing' };
   var nrm = function (x) { return String(x || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); };
   SR.matchFront = function (word, clients) {
@@ -561,13 +562,12 @@ window.SR = window.SR || {};
     if (t.rolled && !t.done) meta.push(html`<span key="r" class="chip" title=${'Carried over from ' + SR.fmtDeadline(t.was || t.date)} style="color:var(--muted)">\u21BB ${t.rolled}d</span>`);
     if (t.deadline && (p.showClient || late)) meta.push(html`<span key="d" class="chip" style=${'font-weight:600;color:' + (late ? 'var(--red)' : (t.deadline === SR.TODAY || t.deadline === SR.addDays(SR.TODAY, 1) ? 'var(--gold)' : 'var(--muted)'))}>Deadline ${SR.fmtDeadline(t.deadline)}</span>`);
     var cls = 'task' + (t.done ? ' fin' : '') + (p.active ? ' sel' : '') + (p.just ? ' just' : '') + (sel ? ' picked' : '');
-    var dnd = p.dnd && SR.dnd, ov = R.useState(false), over = ov[0], setOver = ov[1];
-    if (over) cls += ' over';
+    var dnd = p.dnd && SR.dnd;
+    var rowOver = function (on) { return function (e) { var el = e.currentTarget; if (on) { if (SR._drag != null && SR._drag !== t.id) { e.preventDefault(); el.classList.add('over'); } } else if (!e.relatedTarget || !el.contains(e.relatedTarget)) el.classList.remove('over'); }; };
     return html`<div class=${cls} data-tid=${t.id} onContextMenu=${function (e) { if (SR.taskMenu) SR.taskMenu(e, t); }}
-      onDragOver=${dnd ? function (e) { if (SR._drag != null && SR._drag !== t.id) { e.preventDefault(); if (!over) setOver(true); } } : null}
-      onDragLeave=${dnd ? function () { setOver(false); } : null}
-      onDrop=${dnd ? function (e) { e.preventDefault(); e.stopPropagation(); setOver(false); var id = SR._drag; SR._drag = null; if (id != null) SR.dnd.dropOnTask(id, t.id, p.dropDate); } : null}>
-      ${dnd ? html`<span class="grip" draggable="true" title="Drag to reorder or move" aria-hidden="true" onDragStart=${function (e) { SR._drag = t.id; var ms = sel && SR.selIds ? SR.selIds() : []; SR._dragMulti = ms.length > 1 && ms.indexOf(t.id) >= 0 ? ms : null; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(t.id)); var row = e.currentTarget.closest('.task'); e.dataTransfer.setDragImage(row, 20, 20); row.classList.add('dragging'); if (SR._dragMulti) document.querySelectorAll('.task.picked').forEach(function (r) { r.classList.add('dragging'); }); } catch (x) {} }} onDragEnd=${function (e) { SR._drag = null; SR._dragMulti = null; document.querySelectorAll('.task.dragging').forEach(function (r) { r.classList.remove('dragging'); }); }}>⋮⋮</span>` : null}
+      onDragEnter=${dnd ? rowOver(true) : null} onDragOver=${dnd ? rowOver(true) : null} onDragLeave=${dnd ? rowOver(false) : null}
+      onDrop=${dnd ? function (e) { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove('over'); var id = SR._drag; SR._drag = null; if (id != null) SR.dnd.dropOnTask(id, t.id, p.dropDate); } : null}>
+      ${dnd ? html`<span class="grip" draggable="true" title="Drag to reorder or move" aria-hidden="true" onDragStart=${function (e) { SR._drag = t.id; var ms = sel && SR.selIds ? SR.selIds() : []; SR._dragMulti = ms.length > 1 && ms.indexOf(t.id) >= 0 ? ms : null; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(t.id)); var row = e.currentTarget.closest('.task'); e.dataTransfer.setDragImage(row, 20, 20); setTimeout(function () { row.classList.add('dragging'); if (SR._dragMulti) document.querySelectorAll('.task.picked').forEach(function (r) { r.classList.add('dragging'); }); }, 0); } catch (x) {} }} onDragEnd=${function (e) { SR._drag = null; SR._dragMulti = null; document.querySelectorAll('.task.dragging').forEach(function (r) { r.classList.remove('dragging'); }); }}>⋮⋮</span>` : null}
       <button type="button" class=${'cb' + (t.done ? ' done' : '')} onClick=${function () { p.onToggle(t.id); }} aria-pressed=${t.done ? 'true' : 'false'} aria-label=${(t.done ? 'Mark not done: ' : 'Mark done: ') + t.name}><span>${t.done ? '✓' : ''}</span></button>
       <button type="button" class="tx" onClick=${function () { p.onOpen(t.id); }} aria-expanded=${p.active ? 'true' : 'false'}>
         ${p.num ? html`<span class="id">${p.num}</span>` : null}
@@ -580,12 +580,12 @@ window.SR = window.SR || {};
   };
 
   /* group tasks by day; completed sink to the bottom of each day (settling ones wait for their animation) */
-  SR.groupByDay = function (tasks, settling) {
+  SR.groupByDay = function (tasks, settling, noOver) {
     var g = {}, keys = [], tm = SR.addDays(SR.TODAY, 1), st = settling || {};
     var fin = function (t) { return t.done && !st[t.id]; };
     tasks.forEach(function (t) {
       var d = t.date || '9999';
-      var k = d < SR.TODAY ? '0' : d === SR.TODAY ? '1' : d === tm ? '2' : '3' + d;
+      var k = d < SR.TODAY && !noOver ? '0' : d < SR.TODAY || d === SR.TODAY ? '1' : d === tm ? '2' : '3' + d;
       var label = k === '0' ? 'Overdue' : k === '1' ? 'Today · ' + new Date(SR.TODAY + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : k === '2' ? 'Tomorrow · ' + new Date(tm + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : d === '9999' ? 'No date' : new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
       if (!g[k]) { g[k] = { label: label, danger: k === '0', items: [], open: 0, date: k === '0' ? null : k === '1' ? SR.TODAY : k === '2' ? tm : d === '9999' ? '' : d }; keys.push(k); }
       g[k].items.push(t); if (!t.done) g[k].open++;
@@ -611,7 +611,7 @@ window.SR = window.SR || {};
       var items = p.tasks.slice().sort(function (a, b) { return (fin(a) ? 1 : 0) - (fin(b) ? 1 : 0); });
       body = html`<div style="margin-top:14px">${items.map(function (t) { return row(t, null); })}</div>`;
     } else {
-      var groups = SR.groupByDay(p.tasks, p.settling);
+      var groups = SR.groupByDay(p.tasks, p.settling, p.noOver);
       body = html`<div>
         ${groups.map(function (g, gi) {
           return html`<div key=${gi} class="dgroup" onDragOver=${p.dnd && g.date !== null ? function (e) { if (SR._drag != null) e.preventDefault(); } : null} onDragEnter=${p.dnd ? hl(true) : null} onDragLeave=${p.dnd ? hl(false) : null}
@@ -674,7 +674,7 @@ window.SR = window.SR || {};
             <span class="sr-where"><i></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}${p.where ? ' · ' + p.where : ''}</span></span>
             <select class="sr-status" value=${status} onChange=${function (e) { var v = e.target.value; if (v === 'done') p.onPatch(t.id, { done: true }); else p.onPatch(t.id, { done: false, status: v }); }} aria-label="Status"><option value="planned">Planned</option><option value="doing">In progress</option><option value="done">Done</option></select>
           </div>
-          <textarea rows=${Math.max(1, Math.ceil(t.name.length / 30))} value=${t.name} onChange=${function (e) { p.onPatch(t.id, { name: e.target.value }); }} aria-label="Task name" class="sr-ptitle"></textarea>
+          <textarea rows="1" ref=${function (el) { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }} value=${t.name} onChange=${function (e) { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; p.onPatch(t.id, { name: e.target.value }); }} aria-label="Task name" class="sr-ptitle" style="overflow:hidden;resize:none"></textarea>
 
           ${(t.how && t.how.length) || links.length ? html`<div class="sr-section">${t.how && t.how.length ? html`<div class="sr-lab">How</div><ol class="sr-steps">${t.how.map(function (h, i) { return html`<li key=${i}>${h}</li>`; })}</ol>` : null}
             ${links.length ? html`<div class="sr-lab" style="margin-top:6px">Quick links</div><div class="links">${links.map(function (l) { return html`<a key=${l[1]} href=${l[1]} target="_blank" rel="noopener"><span>${l[0]}</span><span aria-hidden="true">↗</span></a>`; })}</div>` : null}</div>` : null}
@@ -687,7 +687,7 @@ window.SR = window.SR || {};
             <div class="sr-sub">Click again to unassign.</div></div>
 
           ${t.milestone ? null : html`<div class="sr-section">${lab('Frequency')}
-            <select value=${t.repeat || ''} onChange=${function (e) { p.onPatch(t.id, { repeat: e.target.value }); }} class="sr-field"><option value="">Does not repeat</option>${SR.CADENCES.map(function (x) { return html`<option key=${x}>${x}</option>`; })}</select>
+            <${SR.CadPick} value=${t.repeat || ''} onChange=${function (v) { p.onPatch(t.id, { repeat: v }); }} />
             <div class="sr-sub">${freqHelp}</div></div>`}
 
           <div class="sr-section">${lab('Attack date', 'When you plan to work on this.')}

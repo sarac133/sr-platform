@@ -303,69 +303,45 @@
       </sc-if>
       <sc-if value="{{ ovIsWeek }}" hint-placeholder-val="{{ false }}"><span style="font-size: 11px; color: var(--s-faint);">Weekly targets are the monthly plan for one week. Booked counts calls dated in this week.</span></sc-if>
     </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 16px;">
     <sc-for list="{{ ovLanes }}" as="lane" hint-placeholder-count="2">
-      <div style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <div style="width: 3px; height: 13px; background: {{ lane.bar }}; border-radius: 2px;"></div>
           <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: {{ lane.color }};">{{ lane.name }}</span>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
-          <sc-for list="{{ lane.boxes }}" as="c" hint-placeholder-count="6">
-            <div style="position: relative; overflow: hidden; background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, {{ c.glow }} 16%, transparent) 0%, transparent 60%), linear-gradient(180deg, var(--s-card2) 0%, var(--s-bg) 100%); border: 1px solid color-mix(in srgb, {{ c.glow }} 30%, var(--s-border)); border-radius: 14px; padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset, 0 8px 28px -12px color-mix(in srgb, {{ c.glow }} 45%, transparent); transition: transform 0.2s, box-shadow 0.2s;" style-hover="transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset, 0 12px 34px -10px color-mix(in srgb, {{ c.glow }} 65%, transparent);">
-              <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; min-height: 22px;">
-                <span style="display: flex; align-items: center; gap: 7px; min-width: 0;">
-                  <span style="width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: {{ c.glow }}; background: color-mix(in srgb, {{ c.glow }} 14%, transparent); border: 1px solid color-mix(in srgb, {{ c.glow }} 30%, transparent);">{{ c.icon }}</span>
-                  <span style="font-size: 10px; font-weight: 700; color: var(--s-muted); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">{{ c.label }}</span>
-                </span>
+        <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+          <div style="position: relative; width: 190px; height: 190px; flex-shrink: 0; border-radius: 50%; background: {{ lane.conic }};">
+            <div style="position: absolute; inset: 34px; border-radius: 50%; background: var(--s-card); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+              <span style="font-size: 30px; font-weight: 800; letter-spacing: -0.5px; color: var(--s-text); line-height: 1.05;">{{ lane.centerValue }}</span>
+              <span style="font-size: 11px; font-weight: 600; color: var(--s-muted);">{{ lane.centerLabel }}</span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 9px; flex: 1; min-width: 190px;">
+            <sc-for list="{{ lane.boxes }}" as="c" hint-placeholder-count="6">
+              <div style="display: flex; align-items: center; gap: 9px;">
+                <span style="width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; background: {{ c.segColor }};"></span>
+                <span style="font-size: 13px; font-weight: 600; color: var(--s-text2); flex: 1; min-width: 0;">{{ c.label }}</span>
                 <sc-if value="{{ c.hasList }}" hint-placeholder-val="{{ false }}">
                   <button onClick="{{ c.openList }}" title="See who was booked" style="flex-shrink: 0; font-family: inherit; font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 6px; cursor: pointer; background: rgba(140,187,232,0.1); border: 1px solid rgba(140,187,232,0.45); color: var(--s-blue);">☰</button>
                 </sc-if>
-              </div>
-              <div style="font-size: 38px; font-weight: 800; line-height: 1.05; letter-spacing: -1px; color: var(--s-text); text-shadow: 0 0 22px color-mix(in srgb, {{ c.glow }} 45%, transparent); margin-top: 6px;">{{ c.value }}</div>
-              <sc-if value="{{ c.hasRate }}" hint-placeholder-val="{{ false }}">
-                <span style="align-self: flex-start; font-size: 10px; font-weight: 700; white-space: nowrap; color: {{ c.rateColor }}; background: color-mix(in srgb, {{ c.rateColor }} 12%, transparent); padding: 2px 8px; border-radius: 10px; margin-top: 2px;">{{ c.rateLine }}</span>
-              </sc-if>
-              <div style="position: relative; height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; margin-top: 10px;">
-                <div style="position: absolute; left: 0; top: 0; bottom: 0; width: {{ c.pct }}; background: {{ c.statusDot }}; border-radius: 3px; box-shadow: 0 0 8px {{ c.statusDot }};"></div>
-                <sc-if value="{{ c.showPace }}" hint-placeholder-val="{{ false }}">
-                  <div title="Where you should be today" style="position: absolute; left: {{ c.paceLeft }}; top: -3px; width: 2px; height: 12px; background: var(--s-text); border-radius: 1px; transform: translateX(-1px); opacity: 0.8;"></div>
-                </sc-if>
-              </div>
-              <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap;">
-                <span style="display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: {{ c.statusColor }}; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{ c.statusDot }};"></span>{{ c.status }}</span>
-                <span style="font-size: 11px; color: var(--s-faint); white-space: nowrap;">{{ c.ofLine }}</span>
+                <span style="font-size: 11px; color: var(--s-faint); white-space: nowrap;">{{ c.targetLine }}</span>
+                <span style="font-size: 16px; font-weight: 800; color: var(--s-text); min-width: 44px; text-align: right;">{{ c.value }}</span>
               </div>
               <sc-if value="{{ c.note }}" hint-placeholder-val="{{ false }}">
-                <span style="font-size: 11px; color: var(--s-blue);">{{ c.note }}</span>
+                <span style="font-size: 11px; color: var(--s-blue); margin-left: 19px; margin-top: -6px;">{{ c.note }}</span>
               </sc-if>
-            </div>
-          </sc-for>
+            </sc-for>
+          </div>
         </div>
       </div>
     </sc-for>
-    <div style="font-size: 11px; color: var(--s-faint);">{{ ovLaneNote }} The white tick on each bar is where you should be by today.</div>
+    </div>
+    <div style="font-size: 11px; color: var(--s-faint);">{{ ovLaneNote }}</div>
   </div>
 
   <!-- SALES FUNNEL -->
   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 12px; margin-top: 20px;">
-    <div style="position: relative; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--s-green) 10%, var(--s-card)) 0%, var(--s-bg) 70%); border: 1px solid color-mix(in srgb, var(--s-green) 22%, var(--s-border)); border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 16px;">
-      <div style="position: absolute; right: -30px; top: -30px; width: 110px; height: 110px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--s-green) 22%, transparent) 0%, transparent 70%);"></div>
-      <div style="width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--s-green); background: color-mix(in srgb, var(--s-green) 14%, transparent); border: 1px solid color-mix(in srgb, var(--s-green) 35%, transparent); box-shadow: 0 0 18px -4px color-mix(in srgb, var(--s-green) 60%, transparent);">◉</div>
-      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; position: relative;">
-        <div style="font-size: 11px; font-weight: 600; color: var(--s-muted);">New leads</div>
-        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;"><span style="font-size: 30px; font-weight: 800; letter-spacing: -0.5px; color: var(--s-text);">{{ funnelLeads }}</span></div>
-        <div style="font-size: 11px; color: var(--s-faint);">{{ funnelLeadsSub }}</div>
-      </div>
-    </div>
-    <div style="position: relative; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--s-blue) 10%, var(--s-card)) 0%, var(--s-bg) 70%); border: 1px solid color-mix(in srgb, var(--s-blue) 22%, var(--s-border)); border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 16px;">
-      <div style="position: absolute; right: -30px; top: -30px; width: 110px; height: 110px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--s-blue) 22%, transparent) 0%, transparent 70%);"></div>
-      <div style="width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--s-blue); background: color-mix(in srgb, var(--s-blue) 14%, transparent); border: 1px solid color-mix(in srgb, var(--s-blue) 35%, transparent); box-shadow: 0 0 18px -4px color-mix(in srgb, var(--s-blue) 60%, transparent);">⇢</div>
-      <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0; position: relative;">
-        <div style="font-size: 11px; font-weight: 600; color: var(--s-muted);">Booked into pipeline</div>
-        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;"><span style="font-size: 30px; font-weight: 800; letter-spacing: -0.5px; color: var(--s-text);">{{ funnelPipeline }}</span><span style="font-size: 13px; font-weight: 700; color: var(--s-green);">{{ funnelPipelineValue }}</span></div>
-        <div style="font-size: 11px; color: var(--s-faint);">{{ funnelPipelineSub }}</div>
-      </div>
-    </div>
     <div style="position: relative; overflow: hidden; background: linear-gradient(135deg, color-mix(in srgb, var(--s-gold) 10%, var(--s-card)) 0%, var(--s-bg) 70%); border: 1px solid color-mix(in srgb, var(--s-gold) 22%, var(--s-border)); border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 16px;">
       <div style="position: absolute; right: -30px; top: -30px; width: 110px; height: 110px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--s-gold) 22%, transparent) 0%, transparent 70%);"></div>
       <div style="width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--s-gold); background: color-mix(in srgb, var(--s-gold) 14%, transparent); border: 1px solid color-mix(in srgb, var(--s-gold) 35%, transparent); box-shadow: 0 0 18px -4px color-mix(in srgb, var(--s-gold) 60%, transparent);">★</div>
@@ -382,25 +358,6 @@
         <div style="font-size: 11px; font-weight: 600; color: var(--s-muted);">Recycled</div>
         <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;"><span style="font-size: 30px; font-weight: 800; letter-spacing: -0.5px; color: var(--s-text);">{{ funnelRecycle }}</span></div>
         <div style="font-size: 11px; color: var(--s-faint);">{{ funnelRecycleSub }}</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- REVENUE OVERVIEW -->
-  <div style="background: var(--s-card); border: 1px solid var(--s-border); border-radius: 12px; padding: 20px; margin-top: 16px; animation: fadeIn 0.3s ease 0.2s both; display: flex; flex-direction: column; gap: 14px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-      <div style="font-size: 14px; font-weight: 600; color: var(--s-blue);">Revenue</div>
-      <button onClick="{{ setTabRevenue }}" style="padding: 6px 14px; background: transparent; color: var(--s-text2); border: 1px solid var(--s-border); border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;" style-hover="color: var(--s-text); border-color: #5A93C9;">Open Revenue →</button>
-    </div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px; align-items: center;">
-      <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
-          <span style="font-size: 32px; font-weight: 700; color: var(--s-green);">{{ t5Now }}</span>
-          <span style="font-size: 13px; color: var(--s-faint);">/ month · {{ t5NowClients }} clients</span>
-        </div>
-        <div style="height: 8px; background: var(--s-bg); border-radius: 4px; overflow: hidden;"><div style="height: 100%; width: {{ t5Pct }}; background: var(--s-green); border-radius: 4px;"></div></div>
-        <div style="font-size: 12px; color: var(--s-muted);">{{ t5PctLabel }}</div>
-        <div style="font-size: 13px; color: {{ t5DiagColor }}; background: {{ t5DiagBg }}; border-radius: 8px; padding: 10px 12px; line-height: 1.5;">{{ t5Diag }}</div>
       </div>
     </div>
   </div>
@@ -3043,7 +3000,16 @@ class Component extends DCLogic {
           rateColor: !r || r.actual === null ? 'var(--s-faint)' : r.actual >= r.kpi ? 'var(--s-green)' : 'var(--s-red)',
         });
       });
-      return { name: d.name, color: d.color, bar: d.bar, boxes };
+      const pal = ch === 'cold' ? ['#E3C777', '#C9A84C', '#A98A33', '#8A6F26', '#6E5820', '#4F4016'] : ['#9CC4EC', '#6FA6DC', '#4A8AC8', '#2F70B0', '#235789', '#18405F'];
+      const raw = boxes.map((b, i) => o.act[d.keys[i]] || 0), tot = raw.reduce((x, y) => x + y, 0);
+      let stops = [], at = 0;
+      if (tot > 0) {
+        const sh = raw.map(v => v > 0 ? Math.max(v / tot * 100, 4) : 0), ss = sh.reduce((x, y) => x + y, 0);
+        sh.forEach((w, i) => { if (!w) return; const len = w / ss * 100, gap = Math.min(0.8, len / 4); stops.push(pal[i] + ' ' + at.toFixed(2) + '% ' + (at + len - gap).toFixed(2) + '%'); stops.push('var(--s-card) ' + (at + len - gap).toFixed(2) + '% ' + (at + len).toFixed(2) + '%'); at += len; });
+      }
+      boxes.forEach((b, i) => { b.segColor = pal[i]; });
+      const conic = stops.length ? 'conic-gradient(' + stops.join(', ') + ')' : 'var(--s-border)';
+      return { name: d.name, color: d.color, bar: d.bar, boxes, conic, centerValue: this._fmtN(raw[0]), centerLabel: d.labels[0] };
     });
 
     return {

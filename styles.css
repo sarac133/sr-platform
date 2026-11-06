@@ -1443,3 +1443,7 @@ button.nb{cursor:pointer}button.nb:hover{background:var(--ntHv)}
 .gd-pvh{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);color:var(--text)}
 .gd-frame{flex:1;border:0;width:100%;background:#fff}
 @media (max-width:760px){.gd-rail{width:56px}.gd-rail .gd-nav span,.gd-rfoot{display:none}.gd-lh,.gd-row{grid-template-columns:minmax(0,1fr) 80px 40px}.gd-lh .c-own,.gd-row .c-own,.gd-lh .c-sz,.gd-row .c-sz{display:none}}
+
+/* smoother task dragging */
+.task{transition:background .12s,box-shadow .12s}.task.dragging{opacity:.35;transition:none}.task.over{box-shadow:0 -3px 0 var(--accent) inset;background:color-mix(in srgb,var(--accent) 6%,transparent)}.dgroup{transition:background .12s,outline-color .12s}.task .grip{touch-action:none}
+.sr-main{transition:padding-right .22s cubic-bezier(.2,.85,.25,1)}.sr-panel{will-change:transform,opacity;animation-duration:.22s}@media(prefers-reduced-motion:reduce){.sr-main{transition:none}}

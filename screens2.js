@@ -1040,7 +1040,7 @@ window.SR = window.SR || {};
           onContextMenu=${function (e) { if (!ck) return; SR.openMenu(e, [{ label: shut ? 'Expand section' : 'Collapse section', fn: function () { togCol(ck); } }, { label: 'Collapse all sections', fn: function () { var n = {}; groups.forEach(function (g) { g.steps.forEach(function (s) { n[pk + '/' + s.id] = 1; }); }); setColS(n); try { localStorage.setItem('sr_secol', JSON.stringify(n)); } catch (x) {} } }, { label: 'Expand all sections', fn: function () { setColS({}); try { localStorage.removeItem('sr_secol'); } catch (x) {} } }, { sep: true }, { label: 'Edit checklist and process', fn: function () { if (pt === 'seo') { SR.seoEdit && SR.seoEdit(c.id); } else setEditFor(pk); } }]); }}><span class="chv">${shut ? '▸' : '▾'}</span>${SR.Icon(icon, 18)}<span>${name}</span><span class="n">${d}/${t}</span></div>`;
       };
       var tasksBlock = function (on, clr) {
-        var order = ['One-off'].concat(SR.CADENCES, ['Milestones']);
+        var customCad = []; ongoingTasks.forEach(function (t) { if (t.repeat && !t.milestone && SR.CADENCES.indexOf(t.repeat) < 0 && customCad.indexOf(t.repeat) < 0) customCad.push(t.repeat); }); var order = ['One-off'].concat(SR.CADENCES, customCad, ['Milestones']);
         var og = order.map(function (label) {
           var ts = ongoingTasks.filter(function (t) { return label === 'Milestones' ? t.milestone : label === 'One-off' ? (!t.milestone && !t.repeat) : (!t.milestone && t.repeat === label); }).sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || (a.date || '').localeCompare(b.date || ''); });
           return { label: label, tasks: ts };
@@ -1894,7 +1894,7 @@ window.SR = window.SR || {};
           ${kpi('', 'trend', 'g', 'Money in', fm(moneyIn), syncTxt)}
           ${kpi('', 'wallet', 'o', 'Spend', fm(spendTot), lines.length + ' charge' + (lines.length === 1 ? '' : 's') + ' in ' + MS[+mo.slice(5, 7) - 1])}
           ${kpi('', 'shield', '', 'Set aside in pots', fm(aside), 'By your monthly rules')}
-          ${kpi('hl', 'coin', 'g', 'Free to pay out', fm(free), 'After spend and pots')}
+          ${kpi('hl', 'coin', moneyIn - spendTot < 0 ? 'o' : 'g', 'Monthly profit', fm(moneyIn - spendTot), 'Money in minus spend')}
         </div>
         <div class="fin-cols">
           <div class="fin-main">

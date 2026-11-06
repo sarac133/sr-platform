@@ -62,6 +62,12 @@
     var tsS = useState(''); var toastMsg = tsS[0], setToastMsg = tsS[1];
     var tuS = useState(null); var toastUndo = tuS[0], setToastUndo = tuS[1];
     var clkS = useState(0); var clk = clkS[0], setClk = clkS[1];
+    var afS = useState(''); var activeFront = afS[0], setActiveFront = afS[1];
+    var nfS = useState(null); var newFront = nfS[0], setNewFront = nfS[1];
+    var FCOL = ['#E0674A', '#3FA796', '#7B6CF6', '#D9A441', '#4B8BE0', '#C45A9B'];
+    var addFront = function (name) { name = String(name || '').trim(); if (!name) return; SR.uiprefs.fronts = SR.uiprefs.fronts || {}; var id = 'f_' + Date.now().toString(36), n = Object.keys(SR.uiprefs.fronts).length; SR.uiprefs.fronts[id] = { id: id, name: name, color: FCOL[n % FCOL.length], kind: 'custom' }; setClk(function (c) { return c + 1; }); setActiveFront(id); setScreen('front'); setOpenId(null); };
+    var delFront = function (id) { var f = SR.uiprefs.fronts && SR.uiprefs.fronts[id]; if (!f) return; var n = tasks.filter(function (t) { return t.clientId === id; }).length; var rest = Object.assign({}, SR.uiprefs.fronts); delete rest[id]; SR.uiprefs.fronts = rest; if (n) setTasks(function (ts) { return ts.map(function (t) { return t.clientId === id ? Object.assign({}, t, { clientId: 'agency' }) : t; }); }); if (screen === 'front' && activeFront === id) setScreen('home'); setClk(function (c) { return c + 1; }); toast(n ? '"' + f.name + '" removed. Its ' + n + ' task' + (n === 1 ? '' : 's') + ' moved to Agency / Admin.' : '"' + f.name + '" removed'); };
+    var renFront = function (id, name) { name = String(name || '').trim(); var f = SR.uiprefs.fronts && SR.uiprefs.fronts[id]; if (!f || !name || name === f.name) return; SR.uiprefs.fronts = Object.assign({}, SR.uiprefs.fronts, (function (o) { o[id] = Object.assign({}, f, { name: name }); return o; })({})); setClk(function (c) { return c + 1; }); };
     var plS = useState(false); var palOpen = plS[0], setPalOpen = plS[1];
     var mnS = useState(null); var ctxMenu = mnS[0], setCtxMenu = mnS[1];
     var cfS = useState(null); var cf = cfS[0], setCf = cfS[1];
@@ -79,7 +85,7 @@
     var glS = useState([]); var glist = glS[0], setGlist = glS[1];
     var syncing = React.useRef(false), syncAgain = React.useRef(false);
     var gmS = useState(''); var gmsg = gmS[0], setGmsg = gmS[1];
-    useEffect(function () { if (!me || !tasks.length) return; var tm = SR.TEAM || []; if (tm.indexOf(me) < 0) return; var bad = tasks.some(function (t) { return !t.done && tm.indexOf(t.owner) < 0; }); if (!bad) return; setTasks(function (ts) { return ts.map(function (t) { if (t.done || tm.indexOf(t.owner) > -1) return t; var c = SR.clientById(clients, t.clientId); return Object.assign({}, t, { owner: c && tm.indexOf(c.owner) > -1 ? c.owner : me }); }); }); }, [tasks.length, me]);
+    /* tasks keep their owner. Anyone not on the team list shows under Unassigned instead of being reassigned. */
     useEffect(function () { SR.store.onStatus(setSaveState); SR.store.subscribe(); }, []);
     useEffect(function () { SR.store.saveColl('tasks', tasks); SR.store.saveKV('order', tasks.map(function (t) { return t.id; })); }, [tasks]);
     useEffect(function () { SR.store.saveColl('events', events); }, [events]);
@@ -120,7 +126,7 @@
     };
     SR.store.onRemote(SR.remote);
     useEffect(function () {
-      var rs = function () { setTimeout(function () { SR._drag = null; SR._dragMulti = null; SR._dragC = null; if (SR._spr) { clearTimeout(SR._spr.t); SR._spr = null; } document.querySelectorAll('.tdrop').forEach(function (x) { x.classList.remove('tdrop'); }); }, 0); };
+      var rs = function () { setTimeout(function () { SR._drag = null; SR._dragMulti = null; SR._dragC = null; if (SR._spr) { clearTimeout(SR._spr.t); SR._spr = null; } document.querySelectorAll('.tdrop,.task.over').forEach(function (x) { x.classList.remove('tdrop'); x.classList.remove('over'); }); }, 0); };
       document.addEventListener('dragend', rs, true); document.addEventListener('drop', rs, false);
       SR.colResizer(document);
       return function () { document.removeEventListener('dragend', rs, true); document.removeEventListener('drop', rs, false); };
@@ -206,7 +212,7 @@
       var bl = openBlockers(cur);
       if (bl.length) { toast('Blocked by "' + bl[0].name + '". Finish that first.'); return; }
       var recur = cur.repeat && !cur.milestone, nxd = '';
-      if (recur) { var dd = SR.CADENCE_DAYS[cur.repeat] || 7; nxd = SR.addDays(cur.date && cur.date > SR.TODAY ? cur.date : SR.TODAY, dd); if (cur.date && cur.date <= SR.TODAY) { nxd = SR.addDays(cur.date, dd); while (nxd <= SR.TODAY) nxd = SR.addDays(nxd, dd); } }
+      if (recur) { var dd = SR.cadDays(cur.repeat); nxd = SR.addDays(cur.date && cur.date > SR.TODAY ? cur.date : SR.TODAY, dd); if (cur.date && cur.date <= SR.TODAY) { nxd = SR.addDays(cur.date, dd); while (nxd <= SR.TODAY) nxd = SR.addDays(nxd, dd); } }
       patch(id, { done: true, spent: Math.max(cur.spent || 0, SR.estOf(cur)), timer: '', slots: (cur.slots || []).map(function (s) { return Object.assign({}, s, { done: true }); }), next: nxd, ran: recur ? (cur.ran || 0) + 1 : cur.ran });
       SR.playTick();
       setSettling(function (o) { var n = Object.assign({}, o); n[id] = true; return n; });
@@ -265,7 +271,7 @@
       var dOwner = screen === 'mytasks' ? me : (SR.TEAM.indexOf(who) >= 0 ? who : me);
       var items = all.filter(function (x) { return x.include; });
       if (!items.length) { toast('Nothing new: ' + all.length + ' skipped (already ticked or duplicates)'); return; }
-      var dFront = screen === 'client' ? activeClient : '';
+      var dFront = screen === 'client' ? activeClient : screen === 'front' ? activeFront : '';
       var made = items.map(function (it, i) { return { id: seq + i, clientId: it.front || dFront, name: it.name, owner: it.owner || dOwner, date: SR.TODAY, subs: [], note: '' }; });
       undoable(made.length + ' task' + (made.length === 1 ? '' : 's') + ' added', function () { setTasks(tasks.concat(made)); setSeq(seq + made.length); });
       setNewTask('');
@@ -501,7 +507,7 @@
       dropOnClient: function (id, cid) { var ids = dragIds(id), c = SR.clientById(clients, cid); undoable((ids.length > 1 ? ids.length + ' tasks' : 'Task') + ' moved to ' + c.name, function () { ids.forEach(function (x) { patch(x, { clientId: cid, proj: c.type, step: undefined, ph: undefined, custom: true }); }); }); }
     };
     var addFromTemplate = function (tp) {
-      var t = { id: seq, clientId: screen === 'client' ? activeClient : 'agency', name: tp.name, owner: tp.owner || '', how: tp.how || [], repeat: tp.repeat || '', date: SR.TODAY, subs: (tp.subs || []).map(function (n) { return { name: n, done: false }; }), note: tp.note || '' };
+      var t = { id: seq, clientId: screen === 'client' ? activeClient : screen === 'front' ? activeFront : 'agency', name: tp.name, owner: tp.owner || '', how: tp.how || [], repeat: tp.repeat || '', date: SR.TODAY, subs: (tp.subs || []).map(function (n) { return { name: n, done: false }; }), note: tp.note || '' };
       setTasks(function (ts) { return ts.concat([t]); }); setSeq(seq + 1); setOpenId(t.id); toast('Task created from the template');
     };
     var saveTpl = function (t) { var arr = SR.customTpl(); arr.push({ name: t.name, how: t.how || [], repeat: t.repeat || '', owner: t.owner || '', subs: (t.subs || []).map(function (s) { return s.name; }), note: t.note || '' }); SR.saveCustomTpl(arr); toast('Saved as a template'); };
@@ -628,11 +634,15 @@
         ${compact ? html`<div style="height:1px;background:var(--border);margin:2px 6px"></div>` : null}<button type="button" style=${compact ? 'display:none' : ''} class="sr-navhd sr-navhdb" aria-expanded=${clientsOpen} title=${clientsOpen ? 'Hide clients' : 'Show clients'} onClick=${function () { setClientsOpen(!clientsOpen); }}>Clients</button>
         ${clientsOpen ? html`${clients.map(function (c) { return clientRow(c, 'c'); })}${compact ? null : html`<button type="button" class="sr-onb" onClick=${startOnboard}>+ Onboard client</button>`}` : null}
       </div>
+      ${compact ? null : html`<div style="display:flex;flex-direction:column;gap:1px"><div class="sr-navhd">Battlefronts</div>
+        ${SR.customFronts().map(function (f) { var on = screen === 'front' && activeFront === f.id; return html`<div key=${f.id} class="sr-navrow" onDragOver=${function (e) { if (SR._drag != null) { e.preventDefault(); e.currentTarget.classList.add('tdrop'); } }} onDragLeave=${function (e) { e.currentTarget.classList.remove('tdrop'); }} onDrop=${function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._drag == null) return; e.preventDefault(); var tid = SR._drag; SR._drag = null; SR.dnd.dropOnClient(tid, f.id); }}><button type="button" onClick=${function () { setActiveFront(f.id); setScreen('front'); setOpenId(null); }} style=${navItem(on) + ';flex:1;min-width:0;min-height:28px'}><span class="sr-ib" style=${'background:' + f.color + ';width:20px;height:20px;border-radius:6px;flex:none'}></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span></button><button type="button" class="sr-navdel" aria-label=${'Remove ' + f.name} title="Remove battlefront" onClick=${function () { delFront(f.id); }}>${SR.Icon('close', 13)}</button></div>`; })}
+        ${newFront === null ? html`<button type="button" class="sr-onb" onClick=${function () { setNewFront(''); }}>+ New battlefront</button>` : html`<input class="sr-navren" autofocus placeholder="Name it, press Enter" value=${newFront} ref=${function (el) { if (el && !el._f) { el._f = 1; el.focus(); } }} onInput=${function (e) { setNewFront(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter') { addFront(newFront); setNewFront(null); } else if (e.key === 'Escape') setNewFront(null); }} onBlur=${function () { if (newFront && newFront.trim()) addFront(newFront); setNewFront(null); }} />`}
+      </div>`}
       <div class="sr-nfoot" style=${compact ? 'display:none' : ''}>${me} · ${saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Not saved, retrying' : (SR.store.mode === 'cloud' ? 'Saved' : 'Saved on this device')}</div>
       <div class="sr-nresize" style=${compact ? 'display:none' : ''} title="Drag to resize, double-click to reset" onDoubleClick=${function () { setNavW(232); try { localStorage.setItem('sr_navw', '232'); } catch (x) {} }} onMouseDown=${function (e) { e.preventDefault(); var x0 = e.clientX, w0 = navW, last = w0; document.body.style.cursor = 'ew-resize'; var mv = function (ev) { last = Math.max(200, Math.min(420, w0 + ev.clientX - x0)); setNavW(last); }; var up = function () { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.style.cursor = ''; try { localStorage.setItem('sr_navw', String(last)); } catch (x) {} }; document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up); }}></div>
     </nav>`;
 
-    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', finance: 'Finance', drive: 'Drive', onboard: 'New client', sales: 'Sales', calendar: 'Calendar', mytasks: 'My tasks', war: 'Battlefronts' }[screen];
+    var crumb = screen === 'client' ? 'Clients › ' + SR.clientById(clients, activeClient).name : { home: 'Home', clients: 'Clients', results: 'Results', finance: 'Finance', drive: 'Drive', onboard: 'New client', sales: 'Sales', calendar: 'Calendar', mytasks: 'My tasks', war: 'Battlefronts', front: 'Battlefronts › ' + ((SR.uiprefs.fronts && SR.uiprefs.fronts[activeFront]) || {}).name }[screen];
     if (screen !== 'client' && (SR.uiprefs.labels || {})[screen]) crumb = SR.uiprefs.labels[screen];
     var topbar = html`<div class="sr-top" style="display:flex;justify-content:space-between;align-items:center;gap:12px">
       <div style="font-size:13px;color:var(--muted)">${crumb}</div>
@@ -644,16 +654,21 @@
     </div>`;
 
     SR.kb = { toggle: toggle, open: openFn, go: function (sc) { setScreen(sc); setOpenId(null); }, help: function () { setHelpOpen(function (o) { return !o; }); }, search: function () { setPalOpen(true); }, newTask: function () { setScreen('home'); setOpenId(null); setTimeout(function () { var t = document.querySelector('textarea[aria-label="Add tasks"]'); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); } }, 60); } };
-    var taskProps = { tasks: tasks, clients: clients, sel: selected, onToggle: toggle, onOpen: openFn, onSelect: onSelect, onClearSel: clearSel, onBulk: bulk, newTask: newTask, onNewTask: setNewTask, onAdd: addTask, qFront: screen === 'client' ? activeClient : qFront, onQFront: setQFront, lockFront: screen === 'client', qOwner: qOwner, onQOwner: setQOwner, autoOwner: screen === 'mytasks' ? me : (SR.TEAM.indexOf(who) >= 0 ? who : me), qNeed: qNeed, settling: settling, just: just, openId: openId };
+    var taskProps = { tasks: tasks, clients: clients, sel: selected, onToggle: toggle, onOpen: openFn, onSelect: onSelect, onClearSel: clearSel, onBulk: bulk, newTask: newTask, onNewTask: setNewTask, onAdd: addTask, qFront: screen === 'client' ? activeClient : screen === 'front' ? activeFront : qFront, onQFront: setQFront, lockFront: screen === 'client' || screen === 'front', qOwner: qOwner, onQOwner: setQOwner, autoOwner: screen === 'mytasks' ? me : (SR.TEAM.indexOf(who) >= 0 ? who : me), qNeed: qNeed, settling: settling, just: just, openId: openId };
 
     var body;
     if (screen === 'home') body = html`<${SR.Home} ...${taskProps} who=${who} setWho=${setWho} openClient=${openClient} me=${me} />`;
     else if (screen === 'war') body = html`<${SR.Battlefronts} tasks=${tasks} clients=${clients} me=${me} onQuick=${function (fid, nm) { var t = { id: seq, clientId: fid, name: nm, owner: me, date: SR.TODAY, subs: [], note: '' }; undoable('Task added', function () { setTasks(tasks.concat([t])); setSeq(seq + 1); }); }} onOpenClient=${openClient} onGo=${function (sc) { setScreen(sc); setOpenId(null); }} />`;
+    else if (screen === 'front') { var AF = SR.uiprefs.fronts && SR.uiprefs.fronts[activeFront]; body = !AF ? html`<div style="padding:24px;color:var(--muted)">This battlefront was removed.</div>` : html`<div style="display:flex;flex-direction:column;gap:6px">
+        <div><div style="font-size:13px;color:var(--muted)">Battlefront</div><div style="display:flex;align-items:center;gap:10px"><span style=${'width:14px;height:14px;border-radius:50%;background:' + AF.color}></span><h1 key=${AF.id} contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:32px;outline:none" onBlur=${function (e) { renFront(AF.id, e.currentTarget.textContent); }} onKeyDown=${function (e) { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}>${AF.name}</h1></div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">Tasks here are not tied to a client. Add one below, or drag any task onto this battlefront in the sidebar.</div></div>
+        <${SR.TaskList} ...${taskProps} selected=${selected} tasks=${tasks.filter(function (t) { return t.clientId === AF.id && (!t.done || settling[t.id] || t.doneDay === SR.TODAY); })} flat=${false} dnd=${true} showClient=${false} qFront=${AF.id} lockFront=${true} />
+      </div>`; }
     else if (screen === 'mytasks') body = html`<${SR.Home} ...${taskProps} who=${who} setWho=${setWho} openClient=${openClient} me=${me} />`;
     else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104k')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104l')}></iframe>`;
     else if (screen === 'finance') body = html`<${SR.Finance} clients=${clients} />`;
     else if (screen === 'drive') body = html`<${SR.Drive} />`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;
@@ -670,7 +685,7 @@
       else if (tpl && openTask.step) tpl.phases.forEach(function (ph) { ph.steps.forEach(function (st) { if (st[0] === openTask.step) where = ph.name + ' · ' + st[1]; }); });
     }
 
-    var ntOn = ['home', 'clients', 'client', 'onboard', 'war', 'finance', 'calendar', 'sales', 'drive'].indexOf(screen) > -1;
+    var ntOn = ['home', 'front', 'clients', 'client', 'onboard', 'war', 'finance', 'calendar', 'sales', 'drive'].indexOf(screen) > -1;
     return html`<div class=${'nsb' + (theme === 'dark' ? ' nsbd' : '') + (ntOn ? ' nt' + (theme === 'dark' ? ' ntd' : '') : '')} style="font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch">
       ${sidebar}
       <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "") + (dock ? " pdock" : "")} style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px 34px 120px 34px"}>

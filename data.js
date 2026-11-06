@@ -208,6 +208,17 @@ window.SR = window.SR || {};
   /* ---- cadence helpers ---- */
   SR.CADENCE_DAYS = { 'Daily': 1, 'Every 3 days': 3, 'Weekly': 7, 'Fortnightly': 14, 'Monthly': 30, 'Every 90 days': 90 };
   SR.CADENCES = ['Daily', 'Every 3 days', 'Weekly', 'Fortnightly', 'Monthly', 'Every 90 days'];
+  /* custom frequency: 'Every 10 days', 'Every 2 weeks', 'Every 3 months' */
+  SR.cadDays = function (r) { if (!r) return 7; if (SR.CADENCE_DAYS[r]) return SR.CADENCE_DAYS[r]; var m = /^Every (\d+) (day|week|month)s?$/i.exec(r); if (!m) return 7; var n = Math.max(1, parseInt(m[1], 10)); return n * (/^week/i.test(m[2]) ? 7 : /^month/i.test(m[2]) ? 30 : 1); };
+  SR.isCustomCad = function (r) { return !!r && SR.CADENCES.indexOf(r) < 0; };
+  SR.CadPick = function (p) {
+    var R = React, html = SR.html, v = p.value || '', custom = SR.isCustomCad(v), m = /^Every (\d+) (day|week|month)s?$/i.exec(v) || [0, '2', 'week'];
+    var set = function (n, u) { n = Math.max(1, parseInt(n, 10) || 1); p.onChange('Every ' + n + ' ' + u + (n === 1 ? '' : 's')); };
+    return html`<div style="display:flex;flex-direction:column;gap:6px">
+      <select value=${custom ? '__custom' : v} onChange=${function (e) { var x = e.target.value; if (x === '__custom') set(2, 'week'); else p.onChange(x); }} class=${p.cls || 'sr-field'} aria-label="Frequency"><option value="">Does not repeat</option>${SR.CADENCES.map(function (x) { return html`<option key=${x} value=${x}>${x}</option>`; })}<option value="__custom">Custom…</option></select>
+      ${custom ? html`<div style="display:flex;gap:6px;align-items:center"><span style="font-size:13px;color:var(--muted)">Every</span><input type="number" min="1" max="365" value=${m[1]} aria-label="Number" class=${p.cls || 'sr-field'} style="width:72px" onChange=${function (e) { set(e.target.value, m[2].toLowerCase()); }} /><select value=${m[2].toLowerCase()} class=${p.cls || 'sr-field'} aria-label="Unit" onChange=${function (e) { set(m[1], e.target.value); }}><option value="day">days</option><option value="week">weeks</option><option value="month">months</option></select></div>` : null}
+    </div>`;
+  };
   SR.addDays = function (d, n) { return new Date(new Date(d + 'T00:00:00Z').getTime() + n * 86400000).toISOString().slice(0, 10); };
   SR.item = function (it) { return typeof it === 'string' ? { name: it, how: [] } : { name: it[0], how: it[1] || [] }; };
   SR.setupTotal = function (type) { var n = 0; SR.TEMPLATES[type].phases.forEach(function (p) { p.steps.forEach(function (s) { n += s[2].length; }); }); return n; };

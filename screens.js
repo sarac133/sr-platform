@@ -37,11 +37,14 @@ window.SR = window.SR || {};
     var vws = useState(function () { try { return localStorage.getItem('sr_view') || 'list'; } catch (e) { return 'list'; } }), view = vws[0], setViewS = vws[1];
     var setView = function (v) { setViewS(v); try { localStorage.setItem('sr_view', v); } catch (e) {} };
     var dys = useState('all'), day = dys[0], setDay = dys[1];
+    var cfs = useState(function () { try { return localStorage.getItem('sr_hcf') || ''; } catch (e) { return ''; } }), cf = cfs[0], setCfS = cfs[1];
+    var setCf = function (v) { setCfS(v); try { localStorage.setItem('sr_hcf', v); } catch (e) {} };
+    var qs = useState(''), q = qs[0], setQ = qs[1];
     var dps = useState(''), dpick = dps[0], setDpick = dps[1];
     var T0 = SR.TODAY, T1 = SR.addDays(T0, 1), W7 = SR.addDays(T0, 7);
     var dayOk = function (t, k) { var d = t.date || ''; if (k === 'all') return true; if (k === 'over') return !!d && d < T0 && !t.done; if (k === 'today') return d === T0; if (k === 'tom') return d === T1; if (k === 'week') return !!d && d >= T0 && d <= W7; if (k === 'none') return !d; if (k === 'pick') return !dpick || d === dpick; return true; };
     var dayCount = function (k) { return p.tasks.filter(function (t) { return !t.done && dayOk(t, k); }).length; };
-    var filtered = p.tasks.filter(function (t) { return (showDone || !t.done || st0[t.id] || t.doneDay === SR.TODAY) && (who === 'all' || who === 'none' || t.owner === who) && dayOk(t, day); });
+    var filtered = p.tasks.filter(function (t) { return (showDone || !t.done || st0[t.id] || t.doneDay === SR.TODAY) && (who === 'all' || who === 'none' || t.owner === who) && dayOk(t, day) && (!cf || t.clientId === cf) && (!q.trim() || (String(t.name || '') + ' ' + String(t.owner || '')).toLowerCase().indexOf(q.trim().toLowerCase()) > -1); });
     var chipCount = function (w) { return p.tasks.filter(function (t) { return !t.done && (w === 'all' || (w === 'none' ? !t.owner : t.owner === w)); }).length; };
     var openTotal = p.tasks.filter(function (t) { return !t.done; }).length;
     var overdueN = p.tasks.filter(function (t) { return !t.done && !t.milestone && t.date && t.date < SR.TODAY; }).length;
@@ -53,11 +56,27 @@ window.SR = window.SR || {};
     return html`<div ref=${hr} class=${'home' + (narrow ? ' narrow' : '')} style="display:flex;flex-direction:column;gap:20px">
       <div><div style="font-size:14px;color:var(--muted);margin-bottom:6px">${(function () { var n = SR.nowParts(); return n.date + ' · ' + n.time + ' ' + n.zone; })()}</div>${H1((function () { var h = new Date().getHours(); return (h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening') + (p.me ? ', ' + String(p.me).split(' ')[0] : ''); })())}<${SR.Ed} tag="p" id="home.desc" def="" ph="Add a description" style="margin:6px 0 0;font-size:14px;color:var(--muted)" /></div>
       <section style="padding:4px 0">
-        <div class="ntabs hd-row" role="tablist" aria-label="View">${[['list', 'List'], ['date', 'By date'], ['people', 'Workload']].map(function (v) { return html`<button key=${v[0]} type="button" role="tab" aria-selected=${view === v[0]} class=${view === v[0] ? 'on' : ''} onClick=${function () { setView(v[0]); }}>${v[1]}</button>`; })}<span class="sp"></span>
+        <div class="ntabs hd-row" role="tablist" aria-label="View">${[['list', 'List'], ['date', 'By date'], ['people', 'Workload'], ['client', 'By client']].map(function (v) { return html`<button key=${v[0]} type="button" role="tab" aria-selected=${view === v[0]} class=${view === v[0] ? 'on' : ''} onClick=${function () { setView(v[0]); }}>${v[1]}</button>`; })}<span class="sp"></span>
           <div class="nfil hd-fil" role="group" aria-label="Filter by person" style="padding-bottom:5px">${[['all', 'Everyone']].concat(SR.TEAM.map(function (n) { return [n, n]; })).map(function (c) { return html`<button key=${c[0]} type="button" class=${'nchip' + (who === c[0] ? ' on' : '')} aria-pressed=${who === c[0]} onClick=${function () { p.setWho(c[0]); }}>${c[1]} <span style="opacity:.55">${chipCount(c[0])}</span></button>`; })}</div>
         </div>
+        <div class="hd-flt" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+          <select class="cal-in" aria-label="Filter by client" value=${cf} onChange=${function (e) { setCf(e.target.value); }} style="max-width:220px"><option value="">All clients</option>${p.clients.map(function (c) { return html`<option key=${c.id} value=${c.id}>${c.name}</option>`; })}${SR.fronts([]).map(function (f) { return html`<option key=${f.id} value=${f.id}>${f.name}</option>`; })}</select>
+          <input class="cal-in" type="search" placeholder="Search tasks" aria-label="Search tasks" value=${q} onInput=${function (e) { setQ(e.target.value); }} style="max-width:220px" />
+          ${(cf || q) ? html`<button type="button" class="nchip" onClick=${function () { setCf(''); setQ(''); }}>Clear filters</button>` : null}
+        </div>
         <div style="height:10px"></div>
-        ${view === 'people' ? html`<${SR.Workload} tasks=${filtered} clients=${p.clients} onOpen=${p.onOpen} openId=${p.openId} />` : html`<${SR.TaskList} tasks=${filtered} clients=${p.clients} showClient=${true} selected=${p.sel} flat=${view !== 'date'} dnd=${true}
+        ${view === 'client' ? (function () {
+          var ids = []; filtered.forEach(function (t) { if (ids.indexOf(t.clientId) < 0) ids.push(t.clientId); });
+          var order = p.clients.map(function (c) { return c.id; }); ids.sort(function (a, b) { var x = order.indexOf(a), y = order.indexOf(b); return (x < 0 ? 999 : x) - (y < 0 ? 999 : y); });
+          var sel = p.sel || {}, just = p.just || {};
+          if (!ids.length) return html`<div style="padding:16px 0;font-size:14px;color:var(--muted)">Nothing here.</div>`;
+          return html`<div>${ids.map(function (cid) {
+            var c = SR.clientById(p.clients, cid), list = filtered.filter(function (t) { return t.clientId === cid; }).sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || String(a.date || '9999').localeCompare(String(b.date || '9999')); });
+            return html`<div key=${cid} style="margin-top:18px"><div style="display:flex;justify-content:space-between;align-items:baseline;padding-bottom:6px;border-bottom:1px solid var(--border)"><h3 style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:19px;display:flex;align-items:center;gap:8px"><span style=${'width:10px;height:10px;border-radius:50%;background:' + c.color}></span>${c.name}</h3><span style="font-size:12px;color:var(--muted)">${list.filter(function (t) { return !t.done; }).length} open</span></div>
+              ${list.map(function (t) { return html`<${SR.TaskRow} key=${t.id} task=${t} selected=${!!sel[t.id]} active=${p.openId === t.id} just=${!!just[t.id]} showClient=${false} clientColor=${c.color} clientName=${c.name} dnd=${false} onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} />`; })}</div>`;
+          })}</div>`;
+        })() : null}
+        ${view === 'client' ? null : view === 'people' ? html`<${SR.Workload} tasks=${filtered} clients=${p.clients} onOpen=${p.onOpen} openId=${p.openId} />` : html`<${SR.TaskList} tasks=${filtered} clients=${p.clients} showClient=${true} selected=${p.sel} flat=${view !== 'date'} dnd=${true} noOver=${true}
           onToggle=${p.onToggle} onOpen=${p.onOpen} onSelect=${p.onSelect} onClearSel=${p.onClearSel} onBulk=${p.onBulk}
           newTask=${p.newTask} onNewTask=${p.onNewTask} onAdd=${p.onAdd} qFront=${p.qFront} onQFront=${p.onQFront} qOwner=${p.qOwner} onQOwner=${p.onQOwner} autoOwner=${p.autoOwner} qNeed=${p.qNeed} settling=${p.settling} just=${p.just} openId=${p.openId} />`}
       </section>
