@@ -109,11 +109,12 @@ window.SR = window.SR || {};
   SR.customFronts = function () { var o = (SR.uiprefs && SR.uiprefs.fronts) || {}; return Object.keys(o).map(function (k) { return o[k]; }); };
   SR.clientById = function (clients, id) { for (var i = 0; i < clients.length; i++) if (clients[i].id === id) return clients[i]; if (id === '' || id == null) return { id: '', name: 'No battlefront yet', color: '#B0B6C2' }; var cf = SR.uiprefs && SR.uiprefs.fronts && SR.uiprefs.fronts[id]; return SR.FRONTS[id] || cf || { id: 'agency', name: 'Agency', color: '#8F99AA' }; };
   SR.isLate = function (t, today) { return !t.done && ((t.deadline && t.deadline < today) || (t.date && t.date < today) || (t.rolled || 0) >= 2); };
-  SR.fronts = function (clients) { return Object.keys(SR.FRONTS).map(function (k) { return SR.FRONTS[k]; }).concat(SR.customFronts(), clients); };
+  SR.frontGone = function (id) { return !!(SR.uiprefs && SR.uiprefs.frontsHidden && SR.uiprefs.frontsHidden[id]); };
+  SR.fronts = function (clients) { return Object.keys(SR.FRONTS).filter(function (k) { return !SR.frontGone(k); }).map(function (k) { return SR.FRONTS[k]; }).concat(SR.customFronts(), clients); };
   SR.frontAlias = { admin: 'agency', ops: 'agency', operations: 'agency', agency: 'agency', internal: 'agency', hq: 'agency', sr: 'agency', sales: 'sales', outreach: 'sales', pipeline: 'sales', calls: 'sales', 'cold calling': 'sales', marketing: 'marketing', website: 'marketing', content: 'marketing', brand: 'marketing', social: 'marketing' };
   var nrm = function (x) { return String(x || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim(); };
   SR.matchFront = function (word, clients) {
-    var w = nrm(word); if (!w) return null; if (SR.frontAlias[w]) return SR.frontAlias[w];
+    var w = nrm(word); if (!w) return null; if (SR.frontAlias[w]) return SR.frontGone(SR.frontAlias[w]) ? null : SR.frontAlias[w];
     for (var i = 0; i < clients.length; i++) { var c = clients[i], n = nrm(c.name), d = nrm(String(c.domain || '').split('.')[0]); if (n === w || d === w || (w.length >= 3 && (n.indexOf(w) === 0 || (n.length >= 3 && w.indexOf(n) === 0)))) return c.id; }
     return null;
   };
