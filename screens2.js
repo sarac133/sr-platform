@@ -2183,11 +2183,21 @@ window.SR = window.SR || {};
     var daysLeft = function (m) { return m.due ? Math.round((new Date(m.due + 'T12:00:00') - new Date(SR.TODAY + 'T12:00:00')) / 864e5) : null; };
     var addMission = function (name) { name = String(name || '').trim(); if (!name) return; var m = { id: 'm' + Date.now().toString(36), front: F.id, name: name, why: '', start: SR.TODAY, due: '', targets: [], habits: [] }; G.missions = (G.missions || []).concat([m]); setSel(m.id); setAdding(''); save(); };
     var delMission = function (m) { SR.undoable('Mission "' + m.name + '" deleted. Ctrl+Z to undo', function () { (p.allTasks || []).forEach(function (t) { if (t.mission === m.id) p.onPatch(t.id, { mission: '' }); }); G.missions = G.missions.filter(function (x) { return x !== m; }); setSel(''); save(); }); };
+    var dupMission = function (m) { var c = JSON.parse(JSON.stringify(m)), u = Date.now().toString(36); c.id = 'm' + u; c.name = m.name + ' (copy)'; c.targets = (c.targets || []).map(function (t, i) { t.id = 't' + u + i; return t; }); c.habits = (c.habits || []).map(function (h, i) { h.id = 'h' + u + i; return h; }); var at = G.missions.indexOf(m); G.missions = G.missions.slice(); G.missions.splice(at + 1, 0, c); setSel(c.id); save(); };
+    var mMenu = function (e, m) {
+      var others = SR.fronts([]).filter(function (f) { return f.id !== F.id; });
+      var items = [{ label: 'Open', fn: function () { setSel(m.id); } },
+        { label: 'Rename', fn: function () { setSel(m.id); setTimeout(function () { var h = document.querySelector('.gl-hm h2'); if (h) { h.focus(); var r = document.createRange(); r.selectNodeContents(h); var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); } }, 60); } },
+        { label: 'Duplicate', fn: function () { dupMission(m); } }];
+      if (others.length) { items.push({ sep: true }, { head: 'Move to battlefront' }); others.forEach(function (f) { items.push({ label: f.name, fn: function () { SR.undoable('Mission moved to ' + f.name + '. Ctrl+Z to undo', function () { m.front = f.id; setSel(''); save(); }); } }); }); }
+      items.push({ sep: true }, { label: 'Delete mission', danger: true, fn: function () { delMission(m); } });
+      SR.openMenu(e, items);
+    };
     var color = F.color || '#6aa5ff';
     var lc = function (m) { var pc = prog(m), d = daysLeft(m); return (d != null && d < 0 && pc < 100) ? '#E5534B' : pc >= 100 ? '#4ade80' : color; };
 
     var left = html`<div class="gl-left"><div class="gl-sec">MISSIONS</div>
-      ${ms.map(function (m) { var pc = prog(m), d = daysLeft(m); return html`<button type="button" key=${m.id} class=${'gl-mi' + (M && M.id === m.id ? ' on' : '')} onClick=${function () { setSel(m.id); }}><${Ring} size=${38} pct=${pc} color=${lc(m)} /><span class="gl-mt"><b>${m.name}</b><small>${m.due ? ('Due ' + m.due + (d != null && d < 0 ? ' · overdue' : '')) : 'No date'}</small></span></button>`; })}
+      ${ms.map(function (m) { var pc = prog(m), d = daysLeft(m); return html`<button type="button" key=${m.id} class=${'gl-mi' + (M && M.id === m.id ? ' on' : '')} onClick=${function () { setSel(m.id); }} onContextMenu=${function (e) { mMenu(e, m); }}><${Ring} size=${38} pct=${pc} color=${lc(m)} /><span class="gl-mt"><b>${m.name}</b><small>${m.due ? ('Due ' + m.due + (d != null && d < 0 ? ' · overdue' : '')) : 'No date'}</small></span></button>`; })}
       ${adding !== '' || ms.length === 0 ? html`<input class="gl-in" autofocus placeholder="Name the mission, press Enter" value=${adding} onInput=${function (e) { setAdding(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter') addMission(e.target.value); if (e.key === 'Escape') setAdding(''); }} />` : html`<button type="button" class="gl-new" onClick=${function () { setAdding(' '); }}>+ New mission</button>`}
     </div>`;
 
