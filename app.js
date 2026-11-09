@@ -113,6 +113,13 @@
     }, [tasks, clients]);
     useEffect(function () { SR.store.saveColl('tasks', tasks); SR.store.saveKV('order', tasks.map(function (t) { return t.id; })); }, [tasks]);
     useEffect(function () { SR.store.saveColl('events', events); }, [events]);
+    /* rolling local backups of the calendar: one snapshot per 10 minutes at most, last 12 kept */
+    useEffect(function () {
+      if (!events.length) return;
+      try { var bk = JSON.parse(localStorage.getItem('sr_ev_bak') || '[]'), last = bk[0], now = Date.now(); if (last && now - last.t < 600000) { last.n = events.length; last.ev = events; } else bk.unshift({ t: now, n: events.length, ev: events }); localStorage.setItem('sr_ev_bak', JSON.stringify(bk.slice(0, 12))); } catch (e) {}
+    }, [events]);
+    /* remember each person's timezone so the others see their meetings in the right hour */
+    useEffect(function () { if (!me) return; var m = SR.uiprefs.tzOf || {}; if (m[me] !== SR.tz) { var n = Object.assign({}, m); n[me] = SR.tz; SR.uiprefs.tzOf = n; setClk(function (c) { return c + 1; }); } }, [me, SR.tz]);
     useEffect(function () { SR.store.saveColl('notifs', notifs.slice(-100)); }, [notifs]);
     useEffect(function () { SR.store.saveKV('rules', rules); }, [rules]);
     useEffect(function () { SR.store.saveKV('clients', clients); }, [clients]);
@@ -240,7 +247,7 @@
       var bl = openBlockers(cur);
       if (bl.length) { toast('Blocked by "' + bl[0].name + '". Finish that first.'); return; }
       var recur = cur.repeat && !cur.milestone, nxd = '';
-      if (recur) { var dd = SR.cadDays(cur.repeat); nxd = SR.addDays(cur.date && cur.date > SR.TODAY ? cur.date : SR.TODAY, dd); if (cur.date && cur.date <= SR.TODAY) { nxd = SR.addDays(cur.date, dd); while (nxd <= SR.TODAY) nxd = SR.addDays(nxd, dd); } }
+      if (recur) { if (SR.parseCad(cur.repeat)) { nxd = SR.nextDue(cur.repeat, SR.TODAY); } else { var dd = SR.cadDays(cur.repeat); nxd = SR.addDays(cur.date && cur.date > SR.TODAY ? cur.date : SR.TODAY, dd); if (cur.date && cur.date <= SR.TODAY) { nxd = SR.addDays(cur.date, dd); while (nxd <= SR.TODAY) nxd = SR.addDays(nxd, dd); } } }
       patch(id, { done: true, spent: Math.max(cur.spent || 0, SR.estOf(cur)), timer: '', slots: (cur.slots || []).map(function (s) { return Object.assign({}, s, { done: true }); }), next: nxd, ran: recur ? (cur.ran || 0) + 1 : cur.ran });
       SR.playTick();
       setSettling(function (o) { var n = Object.assign({}, o); n[id] = true; return n; });
@@ -711,7 +718,7 @@
     else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104v')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104w')}></iframe>`;
     else if (screen === 'finance') body = html`<${SR.Finance} clients=${clients} />`;
     else if (screen === 'drive') body = html`<${SR.Drive} />`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;

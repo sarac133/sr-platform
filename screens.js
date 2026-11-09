@@ -178,7 +178,13 @@ window.SR = window.SR || {};
     var ns = useState(''), nt = ns[0], setNt = ns[1];
     var addOpen = useState(false), adding = addOpen[0], setAdding = addOpen[1];
     var bodyRef = R.useRef(null), scrollRef = R.useRef(null), fileRef = R.useRef(null);
-    var events = p.events, setEvents = p.setEvents, gacc = p.gacc, tasks = p.tasks, clients = p.clients;
+    var rawEvents = p.events, setEvents = p.setEvents, gacc = p.gacc, tasks = p.tasks, clients = p.clients;
+    /* events are stored with the zone they were made in and shown in the viewer's zone */
+    var events = rawEvents.map(function (e) {
+      if (!e.tz || e.tz === SR.tz || e.allDay || !e.start) return e;
+      var s = SR.convWall(e.date, e.start, e.tz, SR.tz), en = e.end ? SR.convWall(e.date, e.end, e.tz, SR.tz) : null;
+      return Object.assign({}, e, { date: s.date, start: s.time, end: en ? (en.date === s.date ? en.time : '23:59') : '', tz: SR.tz, _was: e.tz });
+    });
     var people = SR.TEAM.slice(), visible = {};
     people.forEach(function (n) { visible[n] = visSaved ? !!visSaved[n] : n === me; }); visible[''] = true;
     var toggleVis = function (n) { var o = {}; people.forEach(function (x) { o[x] = visible[x]; }); o[n] = !o[n]; setVisSaved(o); SR.jset('sr_calvis', o); };
@@ -213,7 +219,7 @@ window.SR = window.SR || {};
 
     var openPop = function (e, ev) { var w = window.innerWidth, h = window.innerHeight; setPop({ ev: ev, x: Math.max(8, Math.min(e.clientX + 8, w - 396)), y: Math.max(8, Math.min(e.clientY - 20, h - 340)) }); };
     R.useEffect(function () { if (!pop) return; var k = function (e) { if (e.key === 'Escape') setPop(null); }; document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, [!!pop]);
-    var patchEv = function (id, o) { setEvents(function (es) { return es.map(function (x) { return x.id === id ? Object.assign({}, x, o) : x; }); }); };
+    var patchEv = function (id, o) { var v = events.filter(function (x) { return x.id === id; })[0] || {}, base = v.allDay || !v.start ? {} : { date: v.date, start: v.start, end: v.end, tz: SR.tz }; setEvents(function (es) { return es.map(function (x) { if (x.id !== id) return x; var r = Object.assign({}, x, base, o); if (r.start && !r.allDay) r.tz = SR.tz; return r; }); }); };
     var colAt = function (x, y) {
       var cs = bodyRef.current ? bodyRef.current.querySelectorAll('.cal-col') : [], hit = -1, k;
       for (k = 0; k < cs.length; k++) { var r0 = cs[k].getBoundingClientRect(); if (x >= r0.left && x < r0.right) hit = k; }
@@ -250,10 +256,10 @@ window.SR = window.SR || {};
       track(e, function (ev) { var q = colAt(ev.clientX, ev.clientY), lo = Math.min(a, q.min), hi = Math.max(a, q.min); if (hi - lo < 15) hi = lo + 15; cur = { start: Math.max(lo, H0 * 60), end: Math.min(hi, H1 * 60) }; setGhost({ date: d, start: cur.start, end: cur.end, title: '(new event)', color: SR.personColor(me) }); },
         function (ev, moved) { var st = moved && cur ? cur.start : a0, en = moved && cur ? cur.end : a0 + 60; setForm({ id: '', title: '', date: d, start: SR.hm(Math.max(H0 * 60, Math.min(st, H1 * 60 - 15))), end: SR.hm(Math.min(en, H1 * 60)), who: me }); });
     };
-    var submit = function () { if (!form.title.trim()) return; var ad = !!form.allDay || !form.start; var ev = { id: form.id || 'e' + Date.now(), title: form.title.trim(), date: form.date, start: ad ? '' : form.start, end: ad ? '' : form.end, allDay: ad, who: form.who, desc: form.desc || '', loc: form.loc || '', rem: form.rem == null ? '' : form.rem, gcolor: form.gcolor || '', color: form.color || '' }; setEvents(function (es) { return form.id ? es.map(function (x) { return x.id === form.id ? Object.assign({}, x, ev) : x; }) : es.concat([ev]); }); setForm(null); };
-    var delEv = function (ev) { var prev = events; setEvents(function (es) { return es.filter(function (x) { return x.id !== ev.id; }); }); SR.toast('Event deleted', function () { setEvents(prev); }); };
+    var submit = function () { if (!form.title.trim()) return; var ad = !!form.allDay || !form.start; var ev = { id: form.id || 'e' + Date.now(), title: form.title.trim(), date: form.date, start: ad ? '' : form.start, end: ad ? '' : form.end, allDay: ad, who: form.who, tz: ad ? '' : (form.tz || SR.tz), desc: form.desc || '', loc: form.loc || '', rem: form.rem == null ? '' : form.rem, gcolor: form.gcolor || '', color: form.color || '' }; setEvents(function (es) { return form.id ? es.map(function (x) { return x.id === form.id ? Object.assign({}, x, ev) : x; }) : es.concat([ev]); }); setForm(null); };
+    var delEv = function (ev) { var prev = rawEvents; setEvents(function (es) { return es.filter(function (x) { return x.id !== ev.id; }); }); SR.toast('Event deleted', function () { setEvents(prev); }); };
     var evMenu = function (e, ev) { e.preventDefault(); e.stopPropagation(); SR.openMenu(e, [{ label: 'Edit event', fn: function () { setForm(Object.assign({}, ev)); } }, { sep: true }, { label: 'Delete event', danger: true, fn: function () { delEv(ev); } }]); };
-    var onFile = function (e) { var f = e.target.files && e.target.files[0]; if (!f) return; var r = new FileReader(); r.onload = function () { var add = SR.parseICS(String(r.result)).map(function (x) { x.who = me; return x; }); setEvents(function (es) { return es.concat(add); }); if (add[0]) setAnchor(add[0].date); SR.toast(add.length + (add.length === 1 ? ' event imported' : ' events imported')); }; r.readAsText(f); e.target.value = ''; };
+    var onFile = function (e) { var f = e.target.files && e.target.files[0]; if (!f) return; var r = new FileReader(); r.onload = function () { var add = SR.parseICS(String(r.result)).map(function (x) { x.who = me; if (x.start && !x.allDay) x.tz = SR.tz; return x; }); setEvents(function (es) { return es.concat(add); }); if (add[0]) setAnchor(add[0].date); SR.toast(add.length + (add.length === 1 ? ' event imported' : ' events imported')); }; r.readAsText(f); e.target.value = ''; };
     var done = function (it) { if (it.t.slots && it.t.slots.length && !it.b.done) p.onPatch(it.id, SR.logTime(it.t, it.b.min)); else p.onToggle(it.id); };
     var taskDragged = function (dg) { if (typeof dg !== 'string' || dg.indexOf('task:') !== 0) return null; var id = dg.slice(5); return tasks.filter(function (x) { return String(x.id) === id; })[0] || null; };
     var dropDay = function (e, d) { e.preventDefault(); var dg = SR._drag; SR._drag = null; setGhost(null); if (typeof dg === 'string' && dg.indexOf('ev:') === 0) patchEv(dg.slice(3), { date: d }); var tk = taskDragged(dg); if (tk) { p.onPatch(tk.id, { date: d, time: tk.time || '09:00', owner: tk.owner || me, auto: false }); SR.toast && SR.toast('Scheduled "' + tk.name + '" on ' + d); } };
@@ -285,6 +291,14 @@ window.SR = window.SR || {};
         ${pr ? html`<div class="tk-pr" style=${'width:' + pr + '%'}></div>` : null}<i class="cal-rz" onMouseDown=${function (e) { press(e, it, 'resize'); }}></i></div>`;
     };
     var modeSel = html`<div class="cal-seg" role="tablist" aria-label="Calendar view">${[['day', 'Day'], ['week', 'Week'], ['month', 'Month']].map(function (m) { return html`<button key=${m[0]} type="button" role="tab" aria-selected=${mode === m[0]} class=${mode === m[0] ? 'on' : ''} onClick=${function () { setMode(m[0]); }}>${m[1]}</button>`; })}</div>`;
+    var tzOpts = function (cur) { var l = SR.TZS.slice(); [cur, SR.tz].forEach(function (z) { if (z && !l.some(function (x) { return x[0] === z; })) l.push([z, SR.tzName(z)]); }); return l.map(function (x) { return html`<option key=${x[0]} value=${x[0]}>${x[1]}</option>`; }); };
+    var teamTimes = function (date, time, zone) { var o = []; SR.TEAM.forEach(function (n) { var z = SR.tzOf(n); if (!z || z === zone || n === me) return; var c = SR.convWall(date, time, zone, z); o.push({ n: n, t: c.time, d: c.date !== date ? c.date : '', z: SR.tzName(z) }); }); return o; };
+    var exportAll = function () { var b = new Blob([SR.eventsICS(rawEvents)], { type: 'text/calendar' }), u = URL.createObjectURL(b), a = document.createElement('a'); a.href = u; a.download = 'eclipse-calendar.ics'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(u); }, 2000); SR.toast('Exported ' + rawEvents.length + ' events'); };
+    var backups = function (e) {
+      var bk = []; try { bk = JSON.parse(localStorage.getItem('sr_ev_bak') || '[]'); } catch (x) {}
+      if (!bk.length) { SR.toast('No backups yet. One is saved automatically as you use the calendar.'); return; }
+      SR.openMenu(e, [{ head: 'Add back events from a backup' }].concat(bk.map(function (b) { var have = {}; rawEvents.forEach(function (x) { have[x.id] = 1; }); var miss = b.ev.filter(function (x) { return !have[x.id]; }); return { label: new Date(b.t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' · ' + b.n + ' events', hint: miss.length ? miss.length + ' missing' : 'nothing missing', fn: function () { if (!miss.length) { SR.toast('Nothing missing from this backup'); return; } var prev = rawEvents; setEvents(function (es) { return es.concat(miss); }); SR.toast('Added back ' + miss.length + ' events', function () { setEvents(prev); }); } }; })));
+    };
     var anyAllday = days.some(function (d) { return alldayOn(d).length; });
     return html`<div class=${"cpg" + (p.drawerOpen || !railOpen ? " nor" : "") + (leftOpen ? "" : " nol")}>
       ${leftOpen ? html`<aside class="cp-l">
@@ -294,11 +308,11 @@ window.SR = window.SR || {};
         <input class="cp-search" placeholder="Search teammates" aria-label="Search teammates" value=${tq} onInput=${function (e) { setTq(e.target.value); }} />
         <div class="cp-h">My calendars</div>
         ${shownPeople.map(function (n) { var pf = SR.PROFILES[n], g = pf ? (n === me ? gacc : (SR.GACCS || {})[pf.user_id]) : null, cloud = SR.store.mode === 'cloud';
-          return html`<label key=${n} class="cp-person"><input type="checkbox" checked=${!!visible[n]} onChange=${function () { toggleVis(n); }} style=${'accent-color:' + SR.personColor(n)} />${SR.Avatar(n, 22)}<span class="cp-pn"><b>${n}${n === me ? ' (you)' : ''}</b>${cloud ? html`<em class=${'cp-gs' + (g ? ' on' : '')}>${g ? 'Google · ' + (g.google_email || 'connected') : 'Google not connected'}</em>` : null}</span></label>`; })}
+          return html`<label key=${n} class="cp-person"><input type="checkbox" checked=${!!visible[n]} onChange=${function () { toggleVis(n); }} style=${'accent-color:' + SR.personColor(n)} />${SR.Avatar(n, 22)}<span class="cp-pn"><b>${n}${n === me ? ' (you)' : ''}</b>${SR.tzOf(n) ? html`<em class="cp-gs">${SR.tzName(SR.tzOf(n)) + ' · ' + new Date().toLocaleTimeString('en-GB', { timeZone: SR.tzOf(n), hour: '2-digit', minute: '2-digit' })}</em>` : html`<em class="cp-gs">Timezone not known yet</em>`}</span></label>`; })}
         ${shownPeople.length ? null : html`<div class="cal-note">No one matches.</div>`}
         <div class="cp-h">Accounts</div>
         <div class="cal-note">Google Calendar sync is paused. Events and tasks stay in this calendar only. You can import a Google .ics file below.</div>
-        <input ref=${fileRef} type="file" accept=".ics,text/calendar" style="display:none" onChange=${onFile} /><button type="button" class="edbtn" style="margin-top:8px" onClick=${function () { fileRef.current && fileRef.current.click(); }}>Import .ics file</button>
+        <input ref=${fileRef} type="file" accept=".ics,text/calendar" style="display:none" onChange=${onFile} /><button type="button" class="edbtn" style="margin-top:8px" onClick=${function () { fileRef.current && fileRef.current.click(); }}>Import .ics file</button><button type="button" class="edbtn" style="margin-top:6px" onClick=${exportAll}>Export all events (.ics)</button><button type="button" class="edbtn" style="margin-top:6px" onClick=${backups}>Restore from backup</button>
       </aside>` : null}
       <section class="cp-c">
         <div class="cal-bar"><button type="button" class="edbtn" onClick=${function () { setAnchor(T0); setTimeout(scrollTo, 0); }}>Today</button>
@@ -344,7 +358,7 @@ window.SR = window.SR || {};
         var line = function (ic, body) { return html`<div class="evp-l">${SR.Icon(ic, 16)}<div>${body}</div></div>`; };
         return html`<div class="evp-bg" onMouseDown=${function () { setPop(null); }}></div><div class="evp" role="dialog" aria-label=${'Event: ' + ev.title} style=${'left:' + pop.x + 'px;top:' + pop.y + 'px'}>
           <div class="evp-tools"><button type="button" aria-label="Edit event" title="Edit" onClick=${function () { setForm(Object.assign({ desc: '', loc: '', rem: '', gcolor: '', color: '' }, ev)); setPop(null); }}>${SR.Icon('pencil', 16)}</button><button type="button" aria-label="Delete event" title="Delete" onClick=${function () { delEv(ev); setPop(null); }}>${SR.Icon('trash', 16)}</button><button type="button" aria-label="Close" title="Close" onClick=${function () { setPop(null); }}>${SR.Icon('close', 16)}</button></div>
-          <div class="evp-h"><i style=${'background:' + col}></i><div><h3>${ev.title}</h3><div class="evp-d">${dl} · ${tm}</div>${ev.rec ? html`<div class="evp-d">Repeating event. Changes here affect only this one.</div>` : null}</div></div>
+          <div class="evp-h"><i style=${'background:' + col}></i><div><h3>${ev.title}</h3><div class="evp-d">${dl} · ${tm}${ev.start ? ' (' + SR.tzName(SR.tz) + ')' : ''}</div>${ev.start ? teamTimes(ev.date, ev.start, SR.tz).map(function (x) { return html`<div key=${x.n} class="evp-d">${x.n}: ${x.t}${x.d ? ' (' + x.d.slice(5) + ')' : ''} · ${x.z}</div>`; }) : null}${ev._was ? html`<div class="evp-d">Made in ${SR.tzName(ev._was)} time</div>` : null}${ev.rec ? html`<div class="evp-d">Repeating event. Changes here affect only this one.</div>` : null}</div></div>
           ${ev.loc ? line('pin', ev.loc) : null}
           ${ev.meet ? line('link', html`<a href=${ev.meet} target="_blank" rel="noopener">Join with Google Meet</a>`) : null}
           ${ev.desc ? line('doc', html`<div class="evp-desc">${ev.desc}</div>`) : null}
@@ -356,6 +370,7 @@ window.SR = window.SR || {};
         <h2 style="margin:0 0 12px">${form.id ? 'Edit event' : 'New event'}</h2>
         <input class="cal-in" autofocus placeholder="Event title" aria-label="Event title" value=${form.title} onInput=${function (e) { setForm(Object.assign({}, form, { title: e.target.value })); }} onKeyDown=${function (e) { if (e.key === 'Enter') submit(); }} />
         <div class="cal-row"><input class="cal-in" type="date" aria-label="Date" value=${form.date} onChange=${function (e) { setForm(Object.assign({}, form, { date: e.target.value })); }} />${form.allDay || !form.start && form.id ? null : html`<input class="cal-in" type="time" aria-label="Start" value=${form.start} onChange=${function (e) { setForm(Object.assign({}, form, { start: e.target.value })); }} /><input class="cal-in" type="time" aria-label="End" value=${form.end} onChange=${function (e) { setForm(Object.assign({}, form, { end: e.target.value })); }} />`}</div>
+        ${form.allDay || (!form.start && form.id) ? null : html`<div><select class="cal-in" aria-label="Time zone" value=${form.tz || SR.tz} onChange=${function (e) { setForm(Object.assign({}, form, { tz: e.target.value })); }}>${tzOpts(form.tz)}</select>${teamTimes(form.date, form.start, form.tz || SR.tz).map(function (x) { return html`<div key=${x.n} class="cal-note" style="margin-top:4px">${x.n}: ${x.t}${x.d ? ' (' + x.d.slice(5) + ')' : ''} in ${x.z}</div>`; })}</div>`}
         <label class="evf-ck"><input type="checkbox" checked=${!!form.allDay || (!form.start && !!form.id)} onChange=${function (e) { setForm(Object.assign({}, form, e.target.checked ? { allDay: true, start: '', end: '' } : { allDay: false, start: '09:00', end: '10:00' })); }} /> All day</label>
         <input class="cal-in" placeholder="Add location" aria-label="Location" value=${form.loc || ''} onInput=${function (e) { setForm(Object.assign({}, form, { loc: e.target.value })); }} />
         <textarea class="cal-in" rows="3" style="padding:8px 10px;resize:vertical" placeholder="Add description" aria-label="Description" value=${form.desc || ''} onInput=${function (e) { setForm(Object.assign({}, form, { desc: e.target.value })); }}></textarea>

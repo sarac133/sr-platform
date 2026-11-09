@@ -14,6 +14,35 @@ window.SR = window.SR || {};
   SR.TODAY = SR.todayIn(SR.tz);
   /* setTz('') goes back to automatic: the time zone of this device */
   SR.setTz = function (z) { SR.tzManual = z || ''; try { if (z) localStorage.setItem('sr_tzm', z); else localStorage.removeItem('sr_tzm'); } catch (e) {} SR.tz = z || SR.detectTz(); SR.TODAY = SR.todayIn(SR.tz); };
+  /* ---- timezone maths: events keep their own zone, every viewer sees them in their own ---- */
+  SR.TZS = [['Europe/Oslo', 'Oslo'], ['Europe/London', 'London'], ['Europe/Madrid', 'Madrid, Marbella'], ['Europe/Vilnius', 'Vilnius'], ['Europe/Athens', 'Athens'], ['Asia/Dubai', 'Dubai'], ['Asia/Hong_Kong', 'Hong Kong'], ['Asia/Singapore', 'Singapore'], ['Australia/Sydney', 'Sydney'], ['America/New_York', 'New York'], ['America/Chicago', 'Chicago'], ['America/Los_Angeles', 'Los Angeles'], ['UTC', 'UTC']];
+  SR.tzName = function (z) { for (var i = 0; i < SR.TZS.length; i++) if (SR.TZS[i][0] === z) return SR.TZS[i][1]; return String(z || '').split('/').pop().replace(/_/g, ' '); };
+  SR.tzOffMin = function (tz, ms) {
+    var P = {}; new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).formatToParts(new Date(ms)).forEach(function (x) { P[x.type] = x.value; });
+    return Math.round((Date.UTC(+P.year, +P.month - 1, +P.day, +P.hour, +P.minute, +P.second) - Math.floor(ms / 1000) * 1000) / 60000);
+  };
+  SR.wallToUtc = function (date, time, tz) {
+    var a = String(date).split('-'), b = String(time || '00:00').split(':'), g = Date.UTC(+a[0], +a[1] - 1, +a[2], +b[0], +b[1] || 0), o = SR.tzOffMin(tz, g), t = g - o * 60000, o2 = SR.tzOffMin(tz, t);
+    return o2 === o ? t : g - o2 * 60000;
+  };
+  SR.utcToWall = function (ms, tz) {
+    var P = {}; new Intl.DateTimeFormat('en-CA', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(ms)).forEach(function (x) { P[x.type] = x.value; });
+    return { date: P.year + '-' + P.month + '-' + P.day, time: P.hour + ':' + P.minute };
+  };
+  SR.convWall = function (date, time, from, to) { try { if (!date || !time || !from || !to || from === to) return { date: date, time: time }; return SR.utcToWall(SR.wallToUtc(date, time, from), to); } catch (e) { return { date: date, time: time }; } };
+  /* a person's own timezone, learned when they sign in (browser timezone) */
+  SR.tzOf = function (name) { var m = SR.uiprefs && SR.uiprefs.tzOf; return (m && m[name]) || ''; };
+  SR.eventsICS = function (events) {
+    var z = function (ms) { return new Date(ms).toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''); }, esc = function (s) { return String(s || '').replace(/\\/g, '\\\\').replace(/,/g, '\\,').replace(/;/g, '\;').replace(/\r?\n/g, '\\n'); };
+    var L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Sarac Ramsay Eclipse//EN'];
+    events.forEach(function (e) {
+      if (!e.date) return; L.push('BEGIN:VEVENT', 'UID:' + e.id + '@eclipse', 'DTSTAMP:' + z(Date.now()), 'SUMMARY:' + esc(e.title));
+      if (e.allDay || !e.start) L.push('DTSTART;VALUE=DATE:' + e.date.replace(/-/g, ''));
+      else { var tz = e.tz || SR.tz, s = SR.wallToUtc(e.date, e.start, tz), en = e.end ? SR.wallToUtc(e.date, e.end, tz) : s + 3600000; L.push('DTSTART:' + z(s), 'DTEND:' + z(Math.max(en, s + 900000))); }
+      if (e.loc) L.push('LOCATION:' + esc(e.loc)); if (e.desc) L.push('DESCRIPTION:' + esc(e.desc)); L.push('END:VEVENT');
+    });
+    L.push('END:VCALENDAR'); return L.join('\r\n');
+  };
   SR.nowParts = function () {
     var d = new Date(), f = function (o) { try { return new Intl.DateTimeFormat('en-GB', Object.assign({ timeZone: SR.tz }, o)).format(d); } catch (e) { return ''; } };
     return { date: f({ weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), time: f({ hour: '2-digit', minute: '2-digit' }), zone: (f({ timeZoneName: 'short' }).split(', ').pop() || '') };
@@ -209,14 +238,50 @@ window.SR = window.SR || {};
   SR.CADENCE_DAYS = { 'Daily': 1, 'Every 3 days': 3, 'Weekly': 7, 'Fortnightly': 14, 'Monthly': 30, 'Every 90 days': 90 };
   SR.CADENCES = ['Daily', 'Every 3 days', 'Weekly', 'Fortnightly', 'Monthly', 'Every 90 days'];
   /* custom frequency: 'Every 10 days', 'Every 2 weeks', 'Every 3 months' */
-  SR.cadDays = function (r) { if (!r) return 7; if (SR.CADENCE_DAYS[r]) return SR.CADENCE_DAYS[r]; var m = /^Every (\d+) (day|week|month)s?$/i.exec(r); if (!m) return 7; var n = Math.max(1, parseInt(m[1], 10)); return n * (/^week/i.test(m[2]) ? 7 : /^month/i.test(m[2]) ? 30 : 1); };
+  SR.cadDays = function (r) { if (!r) return 7; var ru = SR.parseCad(r); if (ru) return ru.wk ? 28 / Math.max(1, ru.wk.length) / Math.max(1, ru.days.length) : Math.max(1, Math.round(7 * ru.every / ru.days.length)); if (SR.CADENCE_DAYS[r]) return SR.CADENCE_DAYS[r]; var m = /^Every (\d+) (day|week|month)s?$/i.exec(r); if (!m) return 7; var n = Math.max(1, parseInt(m[1], 10)); return n * (/^week/i.test(m[2]) ? 7 : /^month/i.test(m[2]) ? 30 : 1); };
   SR.isCustomCad = function (r) { return !!r && SR.CADENCES.indexOf(r) < 0; };
+
+  /* weekday rules: "On Mon, Wed", "On Tue every 2 weeks", "On Mon, Thu weeks 1, 3", "On Fri last week" */
+  SR.WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  SR.parseCad = function (r) {
+    var m = /^On ((?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)(?:, (?:Mon|Tue|Wed|Thu|Fri|Sat|Sun))*)(?: (?:every (\d+) weeks|weeks? ([\d, ]+)|(last) week))?$/.exec(String(r || ''));
+    if (!m) return null;
+    var days = m[1].split(', ').map(function (x) { return SR.WD.indexOf(x); }).sort(function (a, b) { return a - b; });
+    var ru = { days: days, every: m[2] ? Math.max(1, parseInt(m[2], 10)) : 1, wk: null };
+    if (m[3]) ru.wk = m[3].split(',').map(function (x) { return parseInt(x, 10); }).filter(function (x) { return x >= 1 && x <= 4; });
+    if (m[4]) ru.wk = ['L'];
+    return ru;
+  };
+  SR.makeCad = function (days, wkMode) { var s = 'On ' + days.slice().sort(function (a, b) { return a - b; }).map(function (i) { return SR.WD[i]; }).join(', '); return s + (wkMode ? ' ' + wkMode : ''); };
+  var wdow = function (s) { return (new Date(s + 'T00:00:00Z').getUTCDay() + 6) % 7; };
+  var cadHit = function (ru, s) {
+    if (ru.days.indexOf(wdow(s)) < 0) return false;
+    if (!ru.wk) return true;
+    var dt = new Date(s + 'T00:00:00Z'), dom = dt.getUTCDate(), dim = new Date(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() + 1, 0)).getUTCDate();
+    return ru.wk.some(function (w) { return w === 'L' ? dom + 7 > dim : Math.ceil(dom / 7) === w; });
+  };
+  /* first date on or after "from" that the rule allows */
+  SR.cadFirst = function (r, from) { var ru = SR.parseCad(r); if (!ru) return from; for (var i = 0; i < 400; i++) { var s = SR.addDays(from, i); if (cadHit(ru, s)) return s; } return from; };
+  /* next due date after finishing on "from" */
+  SR.nextDue = function (r, from) {
+    var ru = SR.parseCad(r); if (!ru) return SR.addDays(from, SR.cadDays(r));
+    if (ru.every > 1 && !ru.wk) { var cur = wdow(from), later = ru.days.filter(function (x) { return x > cur; })[0]; if (later != null) return SR.addDays(from, later - cur); return SR.addDays(SR.addDays(from, -cur), ru.every * 7 + ru.days[0]); }
+    for (var i = 1; i <= 400; i++) { var s = SR.addDays(from, i); if (cadHit(ru, s)) return s; }
+    return SR.addDays(from, 7);
+  };
   SR.CadPick = function (p) {
-    var R = React, html = SR.html, v = p.value || '', custom = SR.isCustomCad(v), m = /^Every (\d+) (day|week|month)s?$/i.exec(v) || [0, '2', 'week'];
+    var R = React, html = SR.html, v = p.value || '', rule = SR.parseCad(v), custom = SR.isCustomCad(v), m = /^Every (\d+) (day|week|month)s?$/i.exec(v) || [0, '2', 'week'];
     var set = function (n, u) { n = Math.max(1, parseInt(n, 10) || 1); p.onChange('Every ' + n + ' ' + u + (n === 1 ? '' : 's')); };
+    var WEEKS = [['', 'Every week'], ['every 2 weeks', 'Every 2 weeks'], ['every 3 weeks', 'Every 3 weeks'], ['every 4 weeks', 'Every 4 weeks'], ['weeks 1, 3', '1st and 3rd week of the month'], ['weeks 2, 4', '2nd and 4th week of the month'], ['week 1', '1st week of the month'], ['week 2', '2nd week of the month'], ['week 3', '3rd week of the month'], ['week 4', '4th week of the month'], ['last week', 'Last week of the month']];
+    var wkMode = rule ? v.replace(/^On (?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)(?:, (?:Mon|Tue|Wed|Thu|Fri|Sat|Sun))*\s*/, '') : '';
+    var toggle = function (i) { var ds = rule ? rule.days.slice() : [], k = ds.indexOf(i); if (k >= 0) { if (ds.length > 1) ds.splice(k, 1); } else ds.push(i); p.onChange(SR.makeCad(ds, wkMode)); };
+    var sel = custom ? (rule ? '__days' : '__every') : '';
     return html`<div style="display:flex;flex-direction:column;gap:6px">
-      <select value=${custom ? '__custom' : v} onChange=${function (e) { var x = e.target.value; if (x === '__custom') set(2, 'week'); else p.onChange(x); }} class=${p.cls || 'sr-field'} aria-label="Frequency"><option value="">Does not repeat</option>${SR.CADENCES.map(function (x) { return html`<option key=${x} value=${x}>${x}</option>`; })}<option value="__custom">Custom…</option></select>
-      ${custom ? html`<div style="display:flex;gap:6px;align-items:center"><span style="font-size:13px;color:var(--muted)">Every</span><input type="number" min="1" max="365" value=${m[1]} aria-label="Number" class=${p.cls || 'sr-field'} style="width:72px" onChange=${function (e) { set(e.target.value, m[2].toLowerCase()); }} /><select value=${m[2].toLowerCase()} class=${p.cls || 'sr-field'} aria-label="Unit" onChange=${function (e) { set(m[1], e.target.value); }}><option value="day">days</option><option value="week">weeks</option><option value="month">months</option></select></div>` : null}
+      <select value=${custom ? '__custom' : v} onChange=${function (e) { var x = e.target.value; if (x === '__custom') set(2, 'week'); else if (x === '__wd') p.onChange('On Mon, Tue, Wed, Thu, Fri'); else p.onChange(x); }} class=${p.cls || 'sr-field'} aria-label="Frequency"><option value="">Does not repeat</option>${SR.CADENCES.map(function (x) { return html`<option key=${x} value=${x}>${x}</option>`; })}<option value="__wd">Every weekday (Mon to Fri)</option><option value="__custom">Custom…</option></select>
+      ${custom ? html`<select value=${sel} class=${p.cls || 'sr-field'} aria-label="Repeat by" onChange=${function (e) { if (e.target.value === '__days') p.onChange('On Mon'); else set(2, 'week'); }}><option value="__every">Every N days, weeks or months</option><option value="__days">On specific days of the week</option></select>` : null}
+      ${custom && !rule ? html`<div style="display:flex;gap:6px;align-items:center"><span style="font-size:13px;color:var(--muted)">Every</span><input type="number" min="1" max="365" value=${m[1]} aria-label="Number" class=${p.cls || 'sr-field'} style="width:72px" onChange=${function (e) { set(e.target.value, m[2].toLowerCase()); }} /><select value=${m[2].toLowerCase()} class=${p.cls || 'sr-field'} aria-label="Unit" onChange=${function (e) { set(m[1], e.target.value); }}><option value="day">days</option><option value="week">weeks</option><option value="month">months</option></select></div>` : null}
+      ${rule ? html`<div style="display:flex;flex-direction:column;gap:8px"><div role="group" aria-label="Days of the week" style="display:flex;gap:4px">${SR.WD.map(function (n, i) { var on = rule.days.indexOf(i) >= 0; return html`<button key=${n} type="button" aria-pressed=${on ? 'true' : 'false'} title=${n} onClick=${function () { toggle(i); }} style=${'width:34px;height:30px;border-radius:6px;border:1px solid ' + (on ? 'var(--accent)' : 'var(--border)') + ';background:' + (on ? 'var(--accent)' : 'transparent') + ';color:' + (on ? 'var(--accentInk,#fff)' : 'var(--text)') + ';font-size:12px;font-weight:600;cursor:pointer'}>${n.slice(0, 2)}</button>`; })}</div>
+        <select value=${wkMode} class=${p.cls || 'sr-field'} aria-label="Which weeks" onChange=${function (e) { p.onChange(SR.makeCad(rule.days, e.target.value)); }}>${WEEKS.map(function (w) { return html`<option key=${w[0]} value=${w[0]}>${w[1]}</option>`; })}</select></div>` : null}
     </div>`;
   };
   /* when a milestone becomes due: "After month N" = start + 30N days, "in N days" = start + N. Conditional ones (goal hit, CPA target) have no date. */

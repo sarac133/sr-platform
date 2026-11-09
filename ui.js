@@ -606,6 +606,7 @@ window.SR = window.SR || {};
     var sel = p.selected, just = p.just || {};
     var cl = React.useState({}), colp = cl[0], setColp = cl[1];
     var rail = !p.lockFront;
+    var fids = SR.fronts(p.clients || []).map(function (c) { return c.id; }), frank = function (t) { var i = fids.indexOf(t.clientId); return i < 0 ? 999 : i; };
     var row = function (t, g) {
       var c = SR.clientById(p.clients, t.clientId);
       return html`<${SR.TaskRow} key=${t.id} task=${t} selected=${!!sel[t.id]} active=${p.openId === t.id} just=${!!just[t.id]} showClient=${true} hideChip=${rail} rail=${rail} clientColor=${c.color} clientName=${c.name}
@@ -615,10 +616,11 @@ window.SR = window.SR || {};
     var body;
     if (p.flat) {
       var fin = function (t) { return t.done && !(p.settling || {})[t.id]; };
-      var items = p.tasks.slice().sort(function (a, b) { return (fin(a) ? 1 : 0) - (fin(b) ? 1 : 0); });
+      var items = p.tasks.slice().sort(function (a, b) { return (fin(a) ? 1 : 0) - (fin(b) ? 1 : 0) || (rail ? frank(a) - frank(b) : 0); });
       body = html`<div style="margin-top:14px">${items.map(function (t) { return row(t, null); })}</div>`;
     } else {
       var groups = SR.groupByDay(p.tasks, p.settling, p.noOver);
+      if (rail) groups.forEach(function (g) { var ix = g.items.map(function (t, i) { return [t, i]; }); ix.sort(function (a, b) { return (a[0].done ? 1 : 0) - (b[0].done ? 1 : 0) || frank(a[0]) - frank(b[0]) || a[1] - b[1]; }); g.items = ix.map(function (x) { return x[0]; }); });
       body = html`<div>
         ${groups.map(function (g, gi) {
           return html`<div key=${gi} class="dgroup" onDragOver=${p.dnd && g.date !== null ? function (e) { if (SR._drag != null) e.preventDefault(); } : null} onDragEnter=${p.dnd ? hl(true) : null} onDragLeave=${p.dnd ? hl(false) : null}
@@ -731,7 +733,7 @@ window.SR = window.SR || {};
     var lab = function (txt, sub) { return html`<div><div class="sr-lab">${txt}</div>${sub ? html`<div class="sr-sub" style="margin-top:4px">${sub}</div>` : null}</div>`; };
     var chip = function (txt, on, fn) { return html`<button type="button" class=${'sr-chip' + (on ? ' on' : '')} onClick=${fn}>${txt}</button>`; };
     var links = SR.taskLinks(t, c);
-    var freqHelp = t.repeat ? 'Comes back ' + t.repeat.toLowerCase() + ' once you tick it.' : 'Happens once.';
+    var freqHelp = t.repeat ? (SR.parseCad(t.repeat) ? 'Next one after you tick it: ' + SR.nextDue(t.repeat, SR.TODAY) + '.' : 'Comes back ' + t.repeat.toLowerCase() + ' once you tick it.') : 'Happens once.';
     return html`<div>
       <aside aria-label="Task details" class="sr-panel"><div class="sr-pgrip" title="Drag to resize, double-click to reset" onDoubleClick=${function () { document.documentElement.style.removeProperty("--panelw"); try { localStorage.removeItem("sr_panelw"); } catch (x) {} }} onMouseDown=${function (e) { e.preventDefault(); var x0 = e.clientX, w0 = e.currentTarget.parentNode.getBoundingClientRect().width; var mv = function (ev) { var w = Math.max(340, Math.min(window.innerWidth - 80, w0 + (x0 - ev.clientX))); document.documentElement.style.setProperty("--panelw", Math.round(w) + "px"); window.dispatchEvent(new Event("resize")); }; var up = function () { document.removeEventListener("mousemove", mv); document.removeEventListener("mouseup", up); try { localStorage.setItem("sr_panelw", document.documentElement.style.getPropertyValue("--panelw")); } catch (x) {} }; document.addEventListener("mousemove", mv); document.addEventListener("mouseup", up); }}></div>
         <div class="sr-phead"><span class="sr-plabel0">TASK</span>
@@ -758,7 +760,7 @@ window.SR = window.SR || {};
             <div class="sr-sub">Click again to unassign.</div></div>
 
           ${t.milestone ? null : html`<div class="sr-section">${lab('Frequency')}
-            <${SR.CadPick} value=${t.repeat || ''} onChange=${function (v) { p.onPatch(t.id, { repeat: v }); }} />
+            <${SR.CadPick} value=${t.repeat || ''} onChange=${function (v) { var pt = { repeat: v }; if (SR.parseCad(v)) { var f = SR.cadFirst(v, t.date && t.date > SR.TODAY ? t.date : SR.TODAY); if (!t.date || t.date < SR.TODAY || f !== t.date) pt.date = f; } p.onPatch(t.id, pt); }} />
             <div class="sr-sub">${freqHelp}</div></div>`}
 
           <div class="sr-section">${lab('Attack date', 'When you plan to work on this.')}
