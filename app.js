@@ -69,6 +69,7 @@
     var delFront = function (id) {
       var f = SR.FRONTS[id] || (SR.uiprefs.fronts && SR.uiprefs.fronts[id]); if (!f) return;
       var gone = SR.FRONTS[id] ? true : false;
+      undoable('"' + f.name + '" deleted', function () {
       if (gone) SR.uiprefs.frontsHidden = Object.assign({}, SR.uiprefs.frontsHidden || {}, (function (o) { o[id] = true; return o; })({}));
       else { var rest = Object.assign({}, SR.uiprefs.fronts); delete rest[id]; SR.uiprefs.fronts = rest; }
       var left = SR.fronts([]).filter(function (x) { return x.id !== id; })[0], to = left ? left.id : '', toName = left ? left.name : 'No battlefront yet';
@@ -76,9 +77,8 @@
       if (n) setTasks(function (ts) { return ts.map(function (t) { return t.clientId === id ? Object.assign({}, t, { clientId: to }) : t; }); });
       if (screen === 'front' && activeFront === id) setScreen('home');
       setClk(function (c) { return c + 1; });
-      toast('"' + f.name + '" removed' + (n ? '. Its ' + n + ' task' + (n === 1 ? '' : 's') + ' moved to ' + toName + '.' : ''));
+      });
     };
-    var restoreFronts = function () { SR.uiprefs.frontsHidden = {}; setClk(function (c) { return c + 1; }); toast('Battlefronts restored'); };
     SR.applyFrontEdits();
     var editFront = function (id, patch) {
       if (SR.FRONTS[id]) { var e = Object.assign({}, SR.uiprefs.frontEdits || {}); e[id] = Object.assign({}, e[id] || {}, patch); SR.uiprefs.frontEdits = e; }
@@ -215,10 +215,12 @@
       setTasks(function (ts) { return ts.map(function (t) { if (t.id !== id) return t; var o = typeof obj === 'function' ? obj(t) : obj; var n = Object.assign({}, t, o); if (o && o.done === true && !t.done) n.doneDay = SR.TODAY; else if (o && o.done === false) n.doneDay = ''; return n; }); }); };
     var toast = function (m, undo) { setToastMsg(m); setToastUndo(undo ? { fn: undo } : null); clearTimeout(SR._tt); SR._tt = setTimeout(function () { setToastMsg(''); setToastUndo(null); }, undo ? 8000 : 3500); };
     /* undo: snapshot before a delete, put it back from the toast or with Ctrl/Cmd+Z */
-    var snapshot = function () { return { clients: clients, tasks: tasks, seq: seq, projSel: projSel, res: JSON.stringify({ p: SR.periods || {}, o: SR.orgP || {}, t: SR.orgT || {}, m: SR.metaReal || {}, a: SR.acct || {} }) }; };
+    var UIK = ['fronts', 'frontEdits', 'frontsHidden', 'goals'];
+    var snapshot = function () { return { clients: clients, tasks: tasks, seq: seq, projSel: projSel, ui: JSON.stringify(UIK.reduce(function (o, k) { if (SR.uiprefs && SR.uiprefs[k] !== undefined) o[k] = SR.uiprefs[k]; return o; }, {})), res: JSON.stringify({ p: SR.periods || {}, o: SR.orgP || {}, t: SR.orgT || {}, m: SR.metaReal || {}, a: SR.acct || {} }) }; };
     var restore = function (snap) {
       setClients(snap.clients); setTasks(snap.tasks); setSeq(snap.seq); setProjSel(snap.projSel);
       var r = JSON.parse(snap.res);
+      if (snap.ui) { var ui = JSON.parse(snap.ui); UIK.forEach(function (k) { if (ui[k] !== undefined) SR.uiprefs[k] = ui[k]; else delete SR.uiprefs[k]; }); SR.applyFrontEdits(); setClk(function (c) { return c + 1; }); }
       [['periods', 'p'], ['orgP', 'o'], ['orgT', 't'], ['metaReal', 'm'], ['acct', 'a']].forEach(function (k) { var tgt = SR[k[0]] = SR[k[0]] || {}; Object.keys(tgt).forEach(function (x) { delete tgt[x]; }); Object.assign(tgt, r[k[1]] || {}); });
       toast('Restored');
     };
@@ -227,6 +229,7 @@
       var u = function () { restore(snap); }; st.push(u); if (st.length > 30) st.shift();
       toast(msg, function () { var i = st.indexOf(u); if (i >= 0) st.splice(i, 1); u(); });
     };
+    SR.pushUndo = function (msg, fn) { var st = SR._undoStack = SR._undoStack || []; var u = function () { fn(); toast('Restored'); }; st.push(u); if (st.length > 30) st.shift(); toast(msg, function () { var i = st.indexOf(u); if (i >= 0) st.splice(i, 1); u(); }); };
     SR.undoable = undoable; SR.toast = toast;
     var openBlockers = function (t) { return (t.blockedBy || []).map(function (b) { for (var i = 0; i < tasks.length; i++) if (tasks[i].id === b) return tasks[i]; return null; }).filter(function (x) { return x && !x.done; }); };
     SR.blockers = openBlockers;
@@ -564,7 +567,7 @@
     SR.templateMenu = function (x, y) {
       var cust = SR.customTpl();
       var items = [{ head: 'Create a task from' }].concat(SR.BUILTIN_TPL.concat(cust).map(function (tp) { return { label: tp.name, hint: tp.repeat || '', fn: function () { addFromTemplate(tp); } }; }));
-      if (cust.length) { items.push({ sep: true }, { head: 'Remove a saved template' }); cust.forEach(function (tp, i) { items.push({ label: tp.name, danger: true, fn: function () { var arr = SR.customTpl(); arr.splice(i, 1); SR.saveCustomTpl(arr); toast('Template removed'); } }); }); }
+      if (cust.length) { items.push({ sep: true }, { head: 'Remove a saved template' }); cust.forEach(function (tp, i) { items.push({ label: tp.name, danger: true, fn: function () { var arr = SR.customTpl(), old = arr.slice(); arr.splice(i, 1); SR.saveCustomTpl(arr); SR.pushUndo('Template removed', function () { SR.saveCustomTpl(old); setClk(function (c) { return c + 1; }); }); } }); }); }
       SR.openMenuAt(x, y, items);
     };
     var palItems = function () {
@@ -686,7 +689,7 @@
       </div>
       ${compact ? null : html`<div style="display:flex;flex-direction:column;gap:1px"><div class="sr-navhd">Battlefronts</div>
         ${SR.fronts([]).map(function (f) { var on = screen === 'front' && activeFront === f.id; return html`<div key=${f.id} class="sr-navrow" onContextMenu=${function (e) { SR.frontMenu(e, f); }} onDragOver=${function (e) { if (SR._drag != null) { e.preventDefault(); e.currentTarget.classList.add('tdrop'); } }} onDragLeave=${function (e) { e.currentTarget.classList.remove('tdrop'); }} onDrop=${function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._drag == null) return; e.preventDefault(); var tid = SR._drag; SR._drag = null; SR.dnd.dropOnClient(tid, f.id); }}><button type="button" onClick=${function () { setActiveFront(f.id); setScreen('front'); setOpenId(null); }} style=${navItem(on) + ';flex:1;min-width:0;min-height:28px'}><span class="sr-ib" style=${'background:' + f.color + ';width:20px;height:20px;border-radius:6px;flex:none'}></span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.name}</span></button>${true ? html`<button type="button" class="sr-navdel" aria-label=${'Remove ' + f.name} title="Delete battlefront" onClick=${function () { var n = tasks.filter(function (t) { return t.clientId === f.id; }).length; ask('Delete ' + f.name + '?', n ? 'Its ' + n + ' task' + (n === 1 ? '' : 's') + ' will move to another battlefront.' : 'This battlefront has no tasks.', 'Delete battlefront', function () { delFront(f.id); }); }}>${SR.Icon('close', 13)}</button>` : null}</div>`; })}
-        ${Object.keys(SR.uiprefs.frontsHidden || {}).length ? html`<button type="button" class="sr-onb" onClick=${restoreFronts}>Restore deleted (${Object.keys(SR.uiprefs.frontsHidden).length})</button>` : null}${newFront === null ? html`<button type="button" class="sr-onb" onClick=${function () { setNewFront(''); }}>+ New battlefront</button>` : html`<input class="sr-navren" autofocus placeholder="Name it, press Enter" value=${newFront} ref=${function (el) { if (el && !el._f) { el._f = 1; el.focus(); } }} onInput=${function (e) { setNewFront(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter') { addFront(newFront); setNewFront(null); } else if (e.key === 'Escape') setNewFront(null); }} onBlur=${function () { if (newFront && newFront.trim()) addFront(newFront); setNewFront(null); }} />`}
+        ${newFront === null ? html`<button type="button" class="sr-onb" onClick=${function () { setNewFront(''); }}>+ New battlefront</button>` : html`<input class="sr-navren" autofocus placeholder="Name it, press Enter" value=${newFront} ref=${function (el) { if (el && !el._f) { el._f = 1; el.focus(); } }} onInput=${function (e) { setNewFront(e.target.value); }} onKeyDown=${function (e) { if (e.key === 'Enter') { addFront(newFront); setNewFront(null); } else if (e.key === 'Escape') setNewFront(null); }} onBlur=${function () { if (newFront && newFront.trim()) addFront(newFront); setNewFront(null); }} />`}
       </div>`}
       <div class="sr-nfoot" style=${compact ? 'display:none' : ''}>${me} · ${saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Not saved, retrying' : (SR.store.mode === 'cloud' ? 'Saved' : 'Saved on this device')}</div>
       <div class="sr-nresize" style=${compact ? 'display:none' : ''} title="Drag to resize, double-click to reset" onDoubleClick=${function () { setNavW(232); try { localStorage.setItem('sr_navw', '232'); } catch (x) {} }} onMouseDown=${function (e) { e.preventDefault(); var x0 = e.clientX, w0 = navW, last = w0; document.body.style.cursor = 'ew-resize'; var mv = function (ev) { last = Math.max(200, Math.min(420, w0 + ev.clientX - x0)); setNavW(last); }; var up = function () { document.removeEventListener('mousemove', mv); document.removeEventListener('mouseup', up); document.body.style.cursor = ''; try { localStorage.setItem('sr_navw', String(last)); } catch (x) {} }; document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up); }}></div>
@@ -712,12 +715,12 @@
     else if (screen === 'front') { var AF = SR.FRONTS[activeFront] || (SR.uiprefs.fronts && SR.uiprefs.fronts[activeFront]); body = !AF ? html`<div style="padding:24px;color:var(--muted)">This battlefront was removed.</div>` : html`<div style="display:flex;flex-direction:column;gap:6px">
         <div><div style="font-size:13px;color:var(--muted)">Battlefront</div><div style="display:flex;align-items:center;gap:10px"><input type="color" class="sr-fcolor" value=${/^#[0-9a-f]{6}$/i.test(AF.color) ? AF.color : '#8F99AA'} title="Change colour" aria-label="Battlefront colour" onInput=${function (e) { editFront(AF.id, { color: e.target.value }); }} /><h1 key=${AF.id} contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:32px;outline:none" onBlur=${function (e) { renFront(AF.id, e.currentTarget.textContent); }} onKeyDown=${function (e) { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}>${AF.name}</h1><button type="button" class="nchip" style="margin-left:8px" onClick=${function () { ask('Delete ' + AF.name + '?', 'Its tasks move to another battlefront.', 'Delete battlefront', function () { delFront(AF.id); }); }}>Delete</button></div>
         <div style="font-size:13px;color:var(--muted);margin-top:4px">Rename it by clicking the title, change the colour with the dot. Tasks here are not tied to a client. Add one below, or drag any task onto this battlefront in the sidebar.</div></div>
-        <${SR.FrontTabs} front=${AF} me=${me} allTasks=${tasks} onToggle=${toggle} onOpen=${openFn} onPatch=${patch} tasksNode=${html`<${SR.TaskList} ...${taskProps} selected=${selected} tasks=${tasks.filter(function (t) { return t.clientId === AF.id && (!t.done || settling[t.id] || t.doneDay === SR.TODAY); })} flat=${false} dnd=${true} showClient=${false} qFront=${AF.id} lockFront=${true} />`} />
+        <${SR.FrontTabs} front=${AF} me=${me} clients=${clients} allTasks=${tasks} onToggle=${toggle} onOpen=${openFn} onPatch=${patch} tasksNode=${html`<${SR.TaskList} ...${taskProps} selected=${selected} tasks=${tasks.filter(function (t) { return t.clientId === AF.id && (!t.done || settling[t.id] || t.doneDay === SR.TODAY); })} flat=${false} dnd=${true} showClient=${false} qFront=${AF.id} lockFront=${true} />`} />
       </div>`; }
     else if (screen === 'mytasks') body = html`<${SR.Home} ...${taskProps} who=${who} setWho=${setWho} openClient=${openClient} me=${me} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104x')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104y')}></iframe>`;
     else if (screen === 'finance') body = html`<${SR.Finance} clients=${clients} />`;
     else if (screen === 'drive') body = html`<${SR.Drive} />`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;

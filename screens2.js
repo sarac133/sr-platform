@@ -2022,22 +2022,66 @@ window.SR = window.SR || {};
   var who = function (h) { return h.mode === 'owned' && h.owner ? [h.owner] : SR.TEAM.slice(); };
   SR.streak = function (n, h) { var d = SR.TODAY, c = 0, guard = 0; while (guard++ < 400) { if (sched(h, d)) { if (ticked(n, h.id, d)) c++; else if (d !== SR.TODAY) break; } d = addD(d, -1); } return c; };
   SR.teamStreak = function (h) { var P = who(h), d = SR.TODAY, c = 0, guard = 0; while (guard++ < 400) { if (sched(h, d)) { var all = P.length && P.every(function (n) { return ticked(n, h.id, d); }); if (all) c++; else if (d !== SR.TODAY) break; } d = addD(d, -1); } return c; };
-  /* numbers logged in Eclipse Sales (cold-call tracker), read from the Sales page's own saved copy */
-  SR.salesDaily = function () {
-    var out = {}; try {
-      var s = JSON.parse(localStorage.getItem('sr_dashboard_v2') || '{}'), names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-      Object.keys(s.callingByCampaign || {}).forEach(function (c) { var camp = s.callingByCampaign[c] || {}; Object.keys(camp).forEach(function (k) {
-        var wk = k.split('_')[1]; if (!wk || !/^\d{4}-\d{2}-\d{2}$/.test(wk)) return;
-        names.forEach(function (dn, i) { var r = (camp[k] || {})[dn]; if (!r) return; var di = addD(wk, i), o = out[di] = out[di] || { dials: 0, pickups: 0, owners: 0, booked: 0 };
-          o.dials += r.callsMade || 0; o.pickups += r.pickUps || 0; o.owners += r.owners || 0; o.booked += r.booked || 0; });
-      }); });
-    } catch (e) {}
-    return out;
+  /* ---- numbers from other parts of the platform. Sales data is read live from the same database the Sales page uses (cached copy as fallback). ---- */
+  SR.SALES_DB = 'https://sales-dashboard-90e7f-default-rtdb.europe-west1.firebasedatabase.app/dashboard/data/';
+  var arr = function (x) { return Array.isArray(x) ? x : Object.keys(x || {}).map(function (k) { return x[k]; }); };
+  SR.salesData = function (cb) {
+    var d = SR._sd = SR._sd || { calling: null, crm: null, t: 0, loading: false, src: '' };
+    if (!d.calling) { try { var s = JSON.parse(localStorage.getItem('sr_dashboard_v2') || '{}'); d.calling = s.callingByCampaign || {}; d.crm = s.crmData || {}; d.src = 'cache'; } catch (e) { d.calling = {}; d.crm = {}; } }
+    if (Date.now() - d.t > 30000 && !d.loading && window.fetch) {
+      d.loading = true;
+      Promise.all(['callingByCampaign', 'crmData'].map(function (k) { return fetch(SR.SALES_DB + k + '.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }))
+        .then(function (v) { d.calling = v[0] || {}; d.crm = v[1] || {}; d.src = 'live'; d.t = Date.now(); d.loading = false; if (cb) cb(); })
+        .catch(function () { d.t = Date.now(); d.loading = false; });
+    }
+    return d;
   };
-  var SYNC = { dials: 'Calls made', pickups: 'Pick-ups', owners: 'Owners reached', booked: 'Calls booked' };
-  var tval = function (t, daily) {
+  var inR = function (day, r) { return !!day && day >= r[0] && day <= r[1]; };
+  var callSum = function (d, r, key) {
+    var n = 0, names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    Object.keys(d.calling || {}).forEach(function (c) { var camp = d.calling[c] || {}; Object.keys(camp).forEach(function (k) {
+      var wk = k.split('_')[1]; if (!wk || !/^\d{4}-\d{2}-\d{2}$/.test(wk)) return;
+      names.forEach(function (dn, i) { var x = (camp[k] || {})[dn]; if (!x || !inR(addD(wk, i), r)) return; n += +x[key] || 0; });
+    }); });
+    return n;
+  };
+  var wonSum = function (d, r, money) {
+    var n = 0, seen = {};
+    Object.keys(d.crm || {}).forEach(function (c) { arr((d.crm[c] || {}).pipeline).forEach(function (l) {
+      if (!l || (l.pipelineStage || l.dealStage) !== 'Closed Won' || !inR(String(l.closedWonDate || '').slice(0, 10), r)) return;
+      var id = String(l.name || l.id || '').toLowerCase().trim(); if (id && seen[id]) return; if (id) seen[id] = 1;
+      n += money ? (+l.value || 0) : 1;
+    }); });
+    return n;
+  };
+  /* what a target can be synced to. "now" ones have no date range. */
+  var SYNC = {
+    dials: { l: 'Calls made', g: 'Cold calls · Sales tracker' }, pickups: { l: 'Pick-ups', g: 'Cold calls · Sales tracker' }, owners: { l: 'Owners reached', g: 'Cold calls · Sales tracker' }, booked: { l: 'Calls booked', g: 'Cold calls · Sales tracker' },
+    won: { l: 'Deals closed won', g: 'Deals · Sales pipeline' }, wonval: { l: 'Value of deals closed won', g: 'Deals · Sales pipeline' },
+    clients: { l: 'Active clients', g: 'Platform', now: true }, mrr: { l: 'MRR (monthly retainers)', g: 'Platform', now: true },
+    revenue: { l: 'Revenue collected', g: 'Platform · Finance payments' }, tasksdone: { l: 'Tasks completed here', g: 'Platform · this battlefront' }
+  };
+  var RM = [['month', 'This month'], ['week', 'This week'], ['last', 'Last N days'], ['mission', 'Whole mission'], ['custom', 'Custom dates']];
+  var rangeOf = function (t, M) {
+    var T = SR.TODAY, m = t.rm || 'month', d = new Date(T + 'T12:00:00');
+    if (m === 'week') { var w = wkDays(); return [w[0], w[6]]; }
+    if (m === 'last') { var n = Math.max(1, +t.rn || 30); return [addD(T, -(n - 1)), T]; }
+    if (m === 'mission') return [M.start || T, M.due || T];
+    if (m === 'custom') return [t.rf || T, t.rt || T];
+    var f = new Date(d.getFullYear(), d.getMonth(), 1, 12), l = new Date(d.getFullYear(), d.getMonth() + 1, 0, 12); return [iso(f), iso(l)];
+  };
+  var short = function (x) { return new Date(x + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); };
+  var tval = function (t, ctx) {
     if (!SYNC[t.kind]) return +t.cur || 0;
-    var pre = SR.TODAY.slice(0, 7), n = 0; Object.keys(daily).forEach(function (d) { if (d.slice(0, 7) === pre) n += daily[d][t.kind] || 0; }); return n;
+    var r = rangeOf(t, ctx.M), k = t.kind;
+    if (k === 'dials' || k === 'pickups' || k === 'owners' || k === 'booked') return callSum(ctx.sd, r, { dials: 'callsMade', pickups: 'pickUps', owners: 'owners', booked: 'booked' }[k]);
+    if (k === 'won') return wonSum(ctx.sd, r, false);
+    if (k === 'wonval') return wonSum(ctx.sd, r, true);
+    if (k === 'clients') return (ctx.clients || []).length;
+    if (k === 'mrr') return (ctx.clients || []).reduce(function (a, c) { var A = SR.acct && SR.acct[c.id]; return a + (A ? (+A.retainer || 0) : (+c.retainer || 0)); }, 0);
+    if (k === 'revenue') return (ctx.clients || []).reduce(function (a, c) { var A = SR.acct && SR.acct[c.id]; return a + arr(A && A.payments).filter(function (x) { return x.paid && inR(String(x.date || '').slice(0, 10), r); }).reduce(function (b, x) { return b + (+x.amount || 0); }, 0); }, 0);
+    if (k === 'tasksdone') return (ctx.tasks || []).filter(function (x) { return x.clientId === ctx.F.id && x.done && inR(x.doneDay, r); }).length;
+    return 0;
   };
   var pct = function (a, b) { return b > 0 ? Math.max(0, Math.min(100, Math.round(a / b * 100))) : 0; };
   var Ring = function (p) {
@@ -2059,23 +2103,25 @@ window.SR = window.SR || {};
     var F = p.front, me = p.me, rs = useState(0), re = function () { rs[1](rs[0] + 1); rs[0]++; };
     var sel = useState(''), selId = sel[0], setSel = sel[1];
     var ad = useState(''), adding = ad[0], setAdding = ad[1];
+    React.useEffect(function () { var iv = setInterval(function () { SR.salesData(re); }, 20000); return function () { clearInterval(iv); }; }, []);
     var G = SR.uiprefs.goals = SR.uiprefs.goals || { missions: [] };
     var save = function () { SR.uiprefs.goals = Object.assign({}, G); re(); };
     var ms = (G.missions || []).filter(function (m) { return m.front === F.id; });
     var M = ms.filter(function (m) { return m.id === selId; })[0] || ms[0];
-    var daily = SR.salesDaily();
-    var tasksOf = function (m) { return (p.allTasks || []).filter(function (t) { return t.clientId === F.id && t.mission === m.id; }); };
+    var sd = SR.salesData(re);
+    var ctxFor = function (m) { return { sd: sd, M: m, F: F, clients: p.clients, tasks: p.allTasks }; };
+    /* tasks on this battlefront show up on their own. A task can be pinned to one mission, otherwise it counts for all. */
+    var tasksOf = function (m) { return (p.allTasks || []).filter(function (t) { return t.clientId === F.id && (!t.mission || t.mission === m.id) && (!t.done || t.doneDay === SR.TODAY || (t.doneDay && t.doneDay >= (m.start || ''))); }); };
     var prog = function (m) {
-      var parts = []; (m.targets || []).forEach(function (t) { parts.push(pct(tval(t, daily), t.goal)); });
+      var parts = []; (m.targets || []).forEach(function (t) { parts.push(pct(tval(t, ctxFor(m)), t.goal)); });
       var ts = tasksOf(m); if (ts.length) parts.push(pct(ts.filter(function (t) { return t.done; }).length, ts.length));
       return parts.length ? Math.round(parts.reduce(function (a, b) { return a + b; }, 0) / parts.length) : 0;
     };
     var upd = function (m, patch) { Object.assign(m, patch); save(); };
     var daysLeft = function (m) { return m.due ? Math.round((new Date(m.due + 'T12:00:00') - new Date(SR.TODAY + 'T12:00:00')) / 864e5) : null; };
-    var addMission = function (name) { name = String(name || '').trim(); if (!name) return; var m = { id: 'm' + Date.now().toString(36), front: F.id, name: name, why: '', due: '', targets: [], habits: [] }; G.missions = (G.missions || []).concat([m]); setSel(m.id); setAdding(''); save(); };
-    var delMission = function (m) { if (!confirm('Delete the mission "' + m.name + '" with its targets and habits? Linked tasks stay, only the link is removed.')) return; (p.allTasks || []).forEach(function (t) { if (t.mission === m.id) p.onPatch(t.id, { mission: '' }); }); G.missions = G.missions.filter(function (x) { return x !== m; }); setSel(''); save(); };
+    var addMission = function (name) { name = String(name || '').trim(); if (!name) return; var m = { id: 'm' + Date.now().toString(36), front: F.id, name: name, why: '', start: SR.TODAY, due: '', targets: [], habits: [] }; G.missions = (G.missions || []).concat([m]); setSel(m.id); setAdding(''); save(); };
+    var delMission = function (m) { SR.undoable('Mission "' + m.name + '" deleted. Ctrl+Z to undo', function () { (p.allTasks || []).forEach(function (t) { if (t.mission === m.id) p.onPatch(t.id, { mission: '' }); }); G.missions = G.missions.filter(function (x) { return x !== m; }); setSel(''); save(); }); };
     var color = F.color || '#6aa5ff';
-    var P = M ? M : null;
     var lc = function (m) { var pc = prog(m), d = daysLeft(m); return (d != null && d < 0 && pc < 100) ? '#E5534B' : pc >= 100 ? '#4ade80' : color; };
 
     var left = html`<div class="gl-left"><div class="gl-sec">MISSIONS</div>
@@ -2086,22 +2132,28 @@ window.SR = window.SR || {};
     var detail = null;
     if (M) {
       var pc = prog(M), d = daysLeft(M), ts = tasksOf(M), open = ts.filter(function (t) { return !t.done; }), done = ts.filter(function (t) { return t.done; });
-      var free = (p.allTasks || []).filter(function (t) { return t.clientId === F.id && !t.mission && !t.done; });
-      var people = SR.TEAM.slice();
+      var people = SR.TEAM.slice(), cx = ctxFor(M), groups = {};
+      Object.keys(SYNC).forEach(function (k) { (groups[SYNC[k].g] = groups[SYNC[k].g] || []).push(k); });
       detail = html`<div class="gl-right" key=${M.id}>
         <div class="gl-hero"><${Ring} size=${124} pct=${pc} color=${lc(M)} label=${true} />
           <div class="gl-hm"><h2 contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" onBlur=${function (e) { var v = e.currentTarget.textContent.trim(); if (v && v !== M.name) upd(M, { name: v }); }} onKeyDown=${function (e) { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}>${M.name}</h2>
             <input class="gl-why" placeholder="Why does this matter? (click to write)" value=${M.why || ''} onChange=${function (e) { upd(M, { why: e.target.value }); }} />
-            <div class="gl-stats"><span><b>${done.length}</b> <i>of ${ts.length} tasks done</i></span><span><b>${d == null ? '–' : d}</b> <i>${d != null && d < 0 ? 'days late' : 'days left'}</i></span><label class="gl-due"><i>Due</i><input type="date" value=${M.due || ''} onChange=${function (e) { upd(M, { due: e.target.value }); }} /></label><button type="button" class="gl-x" onClick=${function () { delMission(M); }}>Delete mission</button></div></div></div>
+            <div class="gl-stats"><span><b>${done.length}</b> <i>of ${ts.length} tasks done</i></span><span><b>${d == null ? '–' : Math.abs(d)}</b> <i>${d != null && d < 0 ? 'days late' : 'days left'}</i></span>
+              <label class="gl-due"><i>Start</i><input type="date" value=${M.start || ''} onChange=${function (e) { upd(M, { start: e.target.value }); }} /></label>
+              <label class="gl-due"><i>Due</i><input type="date" value=${M.due || ''} onChange=${function (e) { upd(M, { due: e.target.value }); }} /></label><button type="button" class="gl-x" onClick=${function () { delMission(M); }}>Delete mission</button></div></div></div>
 
         <div class="gl-sec">TARGETS</div>
-        ${(M.targets || []).map(function (t) { var v = tval(t, daily), pcT = pct(v, t.goal), sy = !!SYNC[t.kind]; return html`<div class="gl-tr" key=${t.id}>
+        ${(M.targets || []).map(function (t) { var v = tval(t, cx), pcT = pct(v, t.goal), sy = SYNC[t.kind], r = sy && !sy.now ? rangeOf(t, M) : null; return html`<div class="gl-tw" key=${t.id}><div class="gl-tr">
           <input class="gl-tn" value=${t.name} onChange=${function (e) { t.name = e.target.value; save(); }} />
           <div class="gl-bar"><i style=${'width:' + pcT + '%;background:' + (pcT >= 100 ? '#4ade80' : color)}></i></div>
-          <span class="gl-nums">${sy ? html`<b>${v}</b>` : html`<input class="gl-num" type="number" value=${t.cur || 0} onChange=${function (e) { t.cur = +e.target.value || 0; save(); }} />`} / <input class="gl-num" type="number" value=${t.goal || 0} onChange=${function (e) { t.goal = +e.target.value || 0; save(); }} /> ${t.unit || ''}</span>
-          ${sy ? html`<span class="gl-sy" title="Counts this month from the cold-call tracker in Sales">⟳ Sales</span>` : html`<span class="gl-sy none"></span>`}
-          <button type="button" class="gl-rm" title="Remove" onClick=${function () { M.targets = M.targets.filter(function (x) { return x !== t; }); save(); }}>×</button></div>`; })}
-        <div class="gl-add"><select class="gl-sel" value="" onChange=${function (e) { var k = e.target.value; if (!k) return; var nm = k === 'manual' ? 'New target' : SYNC[k]; M.targets = (M.targets || []).concat([{ id: 't' + Date.now().toString(36), name: nm, kind: k, cur: 0, goal: k === 'dials' ? 1050 : 10, unit: '' }]); save(); }}><option value="">+ Add target</option><option value="manual">Manual number</option><optgroup label="Synced from Sales (this month)">${Object.keys(SYNC).map(function (k) { return html`<option value=${k}>${SYNC[k]}</option>`; })}</optgroup></select></div>
+          <span class="gl-nums">${sy ? html`<b>${v.toLocaleString()}</b>` : html`<input class="gl-num" type="number" value=${t.cur || 0} onChange=${function (e) { t.cur = +e.target.value || 0; save(); }} />`} / <input class="gl-num" type="number" value=${t.goal || 0} onChange=${function (e) { t.goal = +e.target.value || 0; save(); }} /></span>
+          <button type="button" class="gl-rm" title="Remove target" onClick=${function () { SR.undoable('Target removed. Ctrl+Z to undo', function () { M.targets = M.targets.filter(function (x) { return x !== t; }); save(); }); }}>×</button></div>
+          ${sy ? html`<div class="gl-rg"><span class="gl-sy">⟳ Synced</span><span class="gl-src">${sy.g}</span>
+            ${sy.now ? html`<span class="gl-src">right now</span>` : html`<select class="gl-sel" value=${t.rm || 'month'} onChange=${function (e) { t.rm = e.target.value; save(); }}>${RM.map(function (o) { return html`<option value=${o[0]}>${o[1]}</option>`; })}</select>
+            ${(t.rm === 'last') ? html`<input class="gl-num" type="number" min="1" value=${t.rn || 30} onChange=${function (e) { t.rn = +e.target.value || 30; save(); }} /><span class="gl-src">days</span>` : null}
+            ${(t.rm === 'custom') ? html`<input type="date" class="gl-dt2" value=${t.rf || ''} onChange=${function (e) { t.rf = e.target.value; save(); }} /><span class="gl-src">to</span><input type="date" class="gl-dt2" value=${t.rt || ''} onChange=${function (e) { t.rt = e.target.value; save(); }} />` : null}
+            <span class="gl-src">${short(r[0])} to ${short(r[1])}</span>`}</div>` : null}</div>`; })}
+        <div class="gl-add"><select class="gl-sel" value="" onChange=${function (e) { var k = e.target.value; if (!k) return; var nm = k === 'manual' ? 'New target' : SYNC[k].l; M.targets = (M.targets || []).concat([{ id: 't' + Date.now().toString(36), name: nm, kind: k, cur: 0, goal: k === 'dials' ? 1050 : 10, rm: 'month', rn: 30 }]); save(); }}><option value="">+ Add target</option><option value="manual">Manual number</option>${Object.keys(groups).map(function (g) { return html`<optgroup label=${'Synced: ' + g}>${groups[g].map(function (k) { return html`<option value=${k}>${SYNC[k].l}</option>`; })}</optgroup>`; })}</select></div>
 
         <div class="gl-sec" style="margin-top:26px">HABITS · THIS WEEK <span class="gl-hint">each person ticks their own</span></div>
         ${(M.habits || []).map(function (h) { var P2 = who(h), days = wkDays(); return html`<div class="gl-hr" key=${h.id}>
@@ -2109,13 +2161,14 @@ window.SR = window.SR || {};
           <div class="gl-wk">${days.map(function (dy) { return html`<${Dot} key=${dy} h=${h} day=${dy} people=${P2} />`; })}</div>
           <div class="gl-hr2"><div class="gl-st">${P2.map(function (n) { return html`<span key=${n} title=${n + ' streak'}>${SR.Avatar(n, 20)} <em>🔥 ${SR.streak(n, h)}</em></span>`; })}</div>
             <div class="gl-tks"><small>Today</small>${P2.map(function (n) { return html`<${Tick} key=${n} n=${n} h=${h} me=${me} re=${re} />`; })}</div></div>
-          <button type="button" class="gl-rm" title="Remove habit" onClick=${function () { if (!confirm('Remove the habit "' + h.name + '"? Its ticks stay saved.')) return; M.habits = M.habits.filter(function (x) { return x !== h; }); save(); }}>×</button></div>`; })}
+          <button type="button" class="gl-rm" title="Remove habit" onClick=${function () { SR.undoable('Habit "' + h.name + '" removed. Ctrl+Z to undo', function () { M.habits = M.habits.filter(function (x) { return x !== h; }); save(); }); }}>×</button></div>`; })}
         <div class="gl-add"><select class="gl-sel" value="" onChange=${function (e) { var k = e.target.value; if (!k) return; var o = k === 'shared' ? '' : k.slice(2); M.habits = (M.habits || []).concat([{ id: 'h' + Date.now().toString(36), name: 'New habit', mode: o ? 'owned' : 'shared', owner: o, days: [1, 2, 3, 4, 5] }]); save(); }}><option value="">+ Add habit</option><option value="shared">Shared, everyone ticks</option>${people.map(function (n) { return html`<option value=${'o:' + n}>Owned by ${n}</option>`; })}</select></div>
 
-        <div class="gl-sec" style="margin-top:26px">TASKS</div>
-        ${open.concat(done).map(function (t) { return html`<div class="gl-tk2" key=${t.id}><button type="button" class=${'gl-cb' + (t.done ? ' d' : '')} aria-label="Tick task" onClick=${function () { p.onToggle(t.id); setTimeout(re, 50); }}>${t.done ? '✓' : ''}</button><span class=${t.done ? 'dn' : ''} onClick=${function () { p.onOpen(t.id); }}>${t.name}</span><span class="gl-sp"></span><span class="gl-dt">${t.date || ''}</span>${t.owner ? SR.Avatar(t.owner, 22) : null}<button type="button" class="gl-rm" title="Unlink from mission" onClick=${function () { p.onPatch(t.id, { mission: '' }); setTimeout(re, 50); }}>×</button></div>`; })}
-        ${ts.length === 0 ? html`<div class="gl-empty">No tasks linked yet.</div>` : null}
-        <div class="gl-add"><select class="gl-sel" value="" onChange=${function (e) { var id = e.target.value; if (!id) return; p.onPatch(+id || id, { mission: M.id }); setTimeout(re, 50); }}><option value="">+ Link a task from this battlefront</option>${free.slice(0, 80).map(function (t) { return html`<option value=${t.id}>${t.name}</option>`; })}</select></div>
+        <div class="gl-sec" style="margin-top:26px">TASKS <span class="gl-hint">every task on this battlefront shows up here on its own</span></div>
+        ${open.concat(done).map(function (t) { return html`<div class="gl-tk2" key=${t.id}><button type="button" class=${'gl-cb' + (t.done ? ' d' : '')} aria-label="Tick task" onClick=${function () { p.onToggle(t.id); setTimeout(re, 50); }}>${t.done ? '✓' : ''}</button><span class=${t.done ? 'dn' : ''} onClick=${function () { p.onOpen(t.id); }}>${t.name}</span><span class="gl-sp"></span>
+          ${ms.length > 1 ? html`<select class="gl-sel gl-ms" value=${t.mission || ''} title="Which mission this task counts for" onChange=${function (e) { p.onPatch(t.id, { mission: e.target.value }); setTimeout(re, 50); }}><option value="">All missions</option>${ms.map(function (x) { return html`<option value=${x.id}>${x.name}</option>`; })}</select>` : null}
+          <span class="gl-dt">${t.date || ''}</span>${t.owner ? SR.Avatar(t.owner, 22) : null}</div>`; })}
+        ${ts.length === 0 ? html`<div class="gl-empty">No tasks on this battlefront yet. Add one on the Tasks tab.</div>` : null}
       </div>`;
     }
     return html`<div class="gl">${left}${detail || html`<div class="gl-right"><div class="gl-empty" style="padding:40px 0">Create your first mission on the left. A mission is one goal for this battlefront, with targets, habits and tasks under it.</div></div>`}</div>`;
@@ -2126,7 +2179,7 @@ window.SR = window.SR || {};
     var t = useState(function () { try { return localStorage.getItem('sr_fronttab') || 'missions'; } catch (e) { return 'missions'; } }), tab = t[0], setTab = t[1];
     var go = function (k) { setTab(k); try { localStorage.setItem('sr_fronttab', k); } catch (e) {} };
     return html`<div><div class="gl-tabs">${[['missions', 'Missions'], ['tasks', 'Tasks']].map(function (x) { return html`<button type="button" key=${x[0]} class=${tab === x[0] ? 'on' : ''} onClick=${function () { go(x[0]); }}>${x[1]}</button>`; })}</div>
-      ${tab === 'missions' ? html`<${SR.Goals} front=${p.front} me=${p.me} allTasks=${p.allTasks} onToggle=${p.onToggle} onOpen=${p.onOpen} onPatch=${p.onPatch} />` : p.tasksNode}</div>`;
+      ${tab === 'missions' ? html`<${SR.Goals} front=${p.front} me=${p.me} clients=${p.clients} allTasks=${p.allTasks} onToggle=${p.onToggle} onOpen=${p.onOpen} onPatch=${p.onPatch} />` : p.tasksNode}</div>`;
   };
 
 })(window.SR);

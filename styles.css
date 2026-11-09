@@ -1530,3 +1530,7 @@ body.sr-pdragging,body.sr-pdragging *{cursor:grabbing!important;-webkit-user-sel
 .gl-sp{flex:1}.gl-dt{color:var(--muted);font-size:13px}
 .gl-cb{width:20px;height:20px;border-radius:6px;border:2px solid var(--cbline);background:var(--card);color:#fff;font-size:12px;font-weight:800;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex:none}.gl-cb.d{background:var(--accent);border-color:var(--accent)}
 .gl-empty{color:var(--muted);font-size:14px;padding:6px 0}
+.gl-tw{padding:6px 0}.gl-rg{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;padding:0 8px 4px;font-size:12px}
+.gl-src{color:var(--muted);font-size:12px}.gl-rg .gl-sel{font-size:12px;color:var(--text);background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:2px 6px}
+.gl-rg .gl-num{width:52px;background:var(--card2);border:1px solid var(--border);font-size:12px}.gl-dt2{background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font:inherit;font-size:12px;padding:2px 6px}
+.gl-ms{font-size:12px;max-width:150px}.gl-tw:hover .gl-rm{opacity:1}
