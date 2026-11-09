@@ -1534,3 +1534,5 @@ body.sr-pdragging,body.sr-pdragging *{cursor:grabbing!important;-webkit-user-sel
 .gl-src{color:var(--muted);font-size:12px}.gl-rg .gl-sel{font-size:12px;color:var(--text);background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:2px 6px}
 .gl-rg .gl-num{width:52px;background:var(--card2);border:1px solid var(--border);font-size:12px}.gl-dt2{background:var(--card2);border:1px solid var(--border);border-radius:6px;color:var(--text);font:inherit;font-size:12px;padding:2px 6px}
 .gl-ms{font-size:12px;max-width:150px}.gl-tw:hover .gl-rm{opacity:1}
+.gl-tg{margin-left:auto;background:none;border:0;color:var(--muted);font:inherit;font-size:12px;letter-spacing:0;font-weight:400;cursor:pointer}.gl-tg:hover{color:var(--text)}
+.gl-sec .gl-tg{order:3}
