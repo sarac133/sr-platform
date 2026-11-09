@@ -138,7 +138,7 @@
       };
       var tm = setTimeout(go, 600); return function () { clearTimeout(tm); };
     }, []);
-    useEffect(function () { var iv = setInterval(function () { RES.forEach(function (k) { if (SR[k[0]]) SR.store.saveKV(k[1], SR[k[0]]); }); }, 1500); return function () { clearInterval(iv); }; }, []);
+    useEffect(function () { var iv = setInterval(function () { RES.forEach(function (k) { if (SR[k[0]]) SR.store.saveKV(k[1], SR[k[0]]); }); if (me && SR['gt_' + me]) SR.store.saveKV('gt_' + me, SR['gt_' + me]); }, 1500); return function () { clearInterval(iv); }; }, []);
     SR.remote = {
       coll: function (name, row) {
         var d = row.data, same = function (x) { return String(x.id) === String(row.id); };
@@ -148,7 +148,7 @@
       kv: function (key, val) {
         if (key === 'clients') setClients(val); else if (key === 'rules') setRules(val); else if (key === 'seq') setSeq(function (q) { return Math.max(q, val); });
         else if (key === 'order') setTasks(function (ts) { var ix = {}; val.forEach(function (id, i) { ix[id] = i; }); return ts.slice().sort(function (a, b) { return (ix[a.id] == null ? 1e9 : ix[a.id]) - (ix[b.id] == null ? 1e9 : ix[b.id]); }); });
-        else if (SR[key] && typeof val === 'object') { Object.keys(SR[key]).forEach(function (x) { delete SR[key][x]; }); Object.assign(SR[key], val); setClk(function (c) { return c + 1; }); }
+        else if ((SR[key] || key.indexOf('gt_') === 0) && val && typeof val === 'object') { SR[key] = SR[key] || {}; Object.keys(SR[key]).forEach(function (x) { delete SR[key][x]; }); Object.assign(SR[key], val); setClk(function (c) { return c + 1; }); }
       },
       gacc: function () {},
       gaccReload: function () {},
@@ -569,7 +569,7 @@
     };
     var palItems = function () {
       var it = [], edits = [];
-      [['home', 'Home'], ['clients', 'Clients'], ['calendar', 'Calendar'], ['finance', 'Finance'], ['drive', 'Drive']].forEach(function (n) { it.push({ g: 'Go to', label: n[1], sub: 'Page', fn: function () { setScreen(n[0]); setOpenId(null); } }); });
+      [['home', 'Home'], ['clients', 'Clients'], ['finance', 'Finance'], ['drive', 'Drive']].forEach(function (n) { it.push({ g: 'Go to', label: n[1], sub: 'Page', fn: function () { setScreen(n[0]); setOpenId(null); } }); });
       it.push({ g: 'Actions', label: 'Open settings', fn: function () { setSettingsOpen(true); } });
       it.push({ g: 'Actions', label: 'Open automations and connections', fn: function () { setAutoOpen(true); } });
       it.push({ g: 'Actions', label: 'Onboard a new client', fn: startOnboard });
@@ -590,7 +590,7 @@
         if (!typ0 && !e.metaKey && !e.ctrlKey && !e.altKey && !document.querySelector('.mdl-bg, .sr-pal') && SR.kb) {
           var rows = function () { return Array.prototype.slice.call(document.querySelectorAll('.task[data-tid]')); };
           var cur = function () { var r = rows(); for (var i = 0; i < r.length; i++) if (r[i].getAttribute('data-kb') === '1') return i; return -1; };
-          var go = { h: 'home', m: 'home', c: 'calendar', s: 'sales' };
+          var go = { h: 'home', m: 'home', s: 'sales' };
           if (SR._g && Date.now() - SR._g < 1200 && go[k]) { e.preventDefault(); SR._g = 0; SR.kb.go(go[k]); return; }
           if (k === 'g') { SR._g = Date.now(); return; }
           if (k === '?') { e.preventDefault(); SR.kb.help(); return; }
@@ -629,14 +629,14 @@
     var favs = clients.filter(function (c) { return c.fav; });
     var myDue = tasks.filter(function (t) { return !t.done && t.owner === me && t.date && t.date <= SR.TODAY; }).length;
     var NAMES0 = { war: 'Battlefronts', home: 'Home', sales: 'Sales', mytasks: 'My tasks', clients: 'Clients', results: 'Results', finance: 'Finance', calendar: 'Calendar', drive: 'Drive' };
-    var NAVKEYS = ['home', 'sales', 'clients', 'finance', 'calendar', 'drive'];
+    var NAVKEYS = ['home', 'sales', 'clients', 'finance', 'drive'];
     var navOrder = function () { var o = (SR.uiprefs.order || []).filter(function (k) { return NAVKEYS.indexOf(k) > -1; }); NAVKEYS.forEach(function (k) { if (o.indexOf(k) < 0) o.push(k); }); return o; };
     var navMove = function (k, to) { var o = navOrder(), i = o.indexOf(k); if (i < 0) return; o.splice(i, 1); o.splice(Math.max(0, Math.min(o.length, to)), 0, k); SR.uiprefs.order = o; setUb(function (x) { return x + 1; }); };
     var navBtn = function (k) {
       var label = (SR.uiprefs.labels || {})[k] || NAMES0[k];
       var emo = (SR.uiprefs.icons || {})[k];
       var on = screen === k || (k === 'clients' && screen === 'client');
-      var tdp = (k === 'mytasks' || k === 'home' || k === 'calendar' || k === 'war') ? {
+      var tdp = (k === 'mytasks' || k === 'home' || k === 'war') ? {
         onDragOver: function (e) { if (SR._drag == null) return; e.preventDefault(); e.currentTarget.classList.add('tdrop'); if (k !== 'mytasks' && screen !== k && (!SR._spr || SR._spr.k !== k)) { if (SR._spr) clearTimeout(SR._spr.t); SR._spr = { k: k, t: setTimeout(function () { setScreen(k); setOpenId(null); SR._spr = null; }, 650) }; } },
         onDragLeave: function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._spr && SR._spr.k === k) { clearTimeout(SR._spr.t); SR._spr = null; } },
         onDrop: function (e) { e.currentTarget.classList.remove('tdrop'); if (SR._spr) { clearTimeout(SR._spr.t); SR._spr = null; } if (SR._drag == null) return; e.preventDefault(); var id = SR._drag; SR._drag = null; if (k === 'mytasks') SR.dnd.dropOnMine(id); }
@@ -712,13 +712,12 @@
     else if (screen === 'front') { var AF = SR.FRONTS[activeFront] || (SR.uiprefs.fronts && SR.uiprefs.fronts[activeFront]); body = !AF ? html`<div style="padding:24px;color:var(--muted)">This battlefront was removed.</div>` : html`<div style="display:flex;flex-direction:column;gap:6px">
         <div><div style="font-size:13px;color:var(--muted)">Battlefront</div><div style="display:flex;align-items:center;gap:10px"><input type="color" class="sr-fcolor" value=${/^#[0-9a-f]{6}$/i.test(AF.color) ? AF.color : '#8F99AA'} title="Change colour" aria-label="Battlefront colour" onInput=${function (e) { editFront(AF.id, { color: e.target.value }); }} /><h1 key=${AF.id} contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:32px;outline:none" onBlur=${function (e) { renFront(AF.id, e.currentTarget.textContent); }} onKeyDown=${function (e) { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}>${AF.name}</h1><button type="button" class="nchip" style="margin-left:8px" onClick=${function () { ask('Delete ' + AF.name + '?', 'Its tasks move to another battlefront.', 'Delete battlefront', function () { delFront(AF.id); }); }}>Delete</button></div>
         <div style="font-size:13px;color:var(--muted);margin-top:4px">Rename it by clicking the title, change the colour with the dot. Tasks here are not tied to a client. Add one below, or drag any task onto this battlefront in the sidebar.</div></div>
-        <${SR.TaskList} ...${taskProps} selected=${selected} tasks=${tasks.filter(function (t) { return t.clientId === AF.id && (!t.done || settling[t.id] || t.doneDay === SR.TODAY); })} flat=${false} dnd=${true} showClient=${false} qFront=${AF.id} lockFront=${true} />
+        <${SR.FrontTabs} front=${AF} me=${me} allTasks=${tasks} onToggle=${toggle} onOpen=${openFn} onPatch=${patch} tasksNode=${html`<${SR.TaskList} ...${taskProps} selected=${selected} tasks=${tasks.filter(function (t) { return t.clientId === AF.id && (!t.done || settling[t.id] || t.doneDay === SR.TODAY); })} flat=${false} dnd=${true} showClient=${false} qFront=${AF.id} lockFront=${true} />`} />
       </div>`; }
     else if (screen === 'mytasks') body = html`<${SR.Home} ...${taskProps} who=${who} setWho=${setWho} openClient=${openClient} me=${me} />`;
-    else if (screen === 'calendar') body = html`<${SR.CalendarPage} tasks=${tasks} clients=${clients} events=${events} setEvents=${setEvents} me=${me} gacc=${gacc} glist=${glist} gmsg=${gmsg} syncNow=${syncNow} gPrimary=${function (a) { SR.store.gPrimary(a).then(function () { toast('Primary account changed'); }, function (e) { toast(e.message); }); }} gDisconnect=${function (a) { SR.store.gDisconnect(a).then(function () { toast('Google account disconnected'); }, function (e) { toast(e.message); }); }} onOpen=${openFn} onToggle=${toggle} onPatch=${patch} onAddTask=${addTaskScheduled} onSchedule=${scheduleTasks} drawerOpen=${!!openId} justDone=${just} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104w')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1104x')}></iframe>`;
     else if (screen === 'finance') body = html`<${SR.Finance} clients=${clients} />`;
     else if (screen === 'drive') body = html`<${SR.Drive} />`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;
@@ -735,7 +734,7 @@
       else if (tpl && openTask.step) tpl.phases.forEach(function (ph) { ph.steps.forEach(function (st) { if (st[0] === openTask.step) where = ph.name + ' · ' + st[1]; }); });
     }
 
-    var ntOn = ['home', 'front', 'clients', 'client', 'onboard', 'war', 'finance', 'calendar', 'sales', 'drive'].indexOf(screen) > -1;
+    var ntOn = ['home', 'front', 'clients', 'client', 'onboard', 'war', 'finance', 'sales', 'drive'].indexOf(screen) > -1;
     return html`<div class=${'nsb' + (theme === 'dark' ? ' nsbd' : '') + (ntOn ? ' nt' + (theme === 'dark' ? ' ntd' : '') : '')} style="font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch">
       ${sidebar}
       <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "") + (dock ? " pdock" : "")} style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px 34px 120px 34px"}>
@@ -776,6 +775,7 @@
         var k = d.kv || {};
         Object.keys(k).forEach(function (n) { if (n.indexOf('seo:') === 0) { try { localStorage.setItem('srseo:' + n.slice(4), JSON.stringify(k[n])); } catch (e) {} } });
         ['periods', 'orgP', 'orgT', 'metaReal', 'acct', 'templates', 'warmap', 'game', 'fin', 'agoals', 'uiprefs'].forEach(function (n) { if (k[n] && SR[n]) { Object.keys(SR[n]).forEach(function (x) { delete SR[n][x]; }); Object.assign(SR[n], k[n]); } });
+        Object.keys(k).forEach(function (n) { if (n.indexOf('gt_') === 0 && typeof k[n] === 'object') { SR[n] = SR[n] || {}; Object.keys(SR[n]).forEach(function (x) { delete SR[n][x]; }); Object.assign(SR[n], k[n]); } });
         var tasks = d.tasks; if (tasks && k.order) { var ix = {}; k.order.forEach(function (id, i) { ix[id] = i; }); tasks = tasks.slice().sort(function (a, b) { return (ix[a.id] == null ? 1e9 : ix[a.id]) - (ix[b.id] == null ? 1e9 : ix[b.id]); }); }
         if (tasks) { var MH = {}; Object.keys(SR.TEMPLATES || {}).forEach(function (tk) { ((SR.TEMPLATES[tk] || {}).milestones || []).forEach(function (m) { if (m[2]) MH[m[0] + ': ' + m[1]] = m[2]; }); }); tasks = tasks.map(function (t) { return t.milestone && MH[t.name] ? Object.assign({}, t, { how: MH[t.name] }) : t; }); }
         var ev = d.events; if (!ev && SR.store.mode === 'local') { var old = SR.jget('sr_events', null); if (old) ev = old; }
