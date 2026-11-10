@@ -572,7 +572,7 @@
     };
     var palItems = function () {
       var it = [], edits = [];
-      [['home', 'Home'], ['clients', 'Clients'], ['finance', 'Finance'], ['drive', 'Drive']].forEach(function (n) { it.push({ g: 'Go to', label: n[1], sub: 'Page', fn: function () { setScreen(n[0]); setOpenId(null); } }); });
+      [['home', 'Home'], ['overview', 'Overview'], ['clients', 'Clients'], ['finance', 'Finance'], ['drive', 'Drive']].forEach(function (n) { it.push({ g: 'Go to', label: n[1], sub: 'Page', fn: function () { setScreen(n[0]); setOpenId(null); } }); });
       it.push({ g: 'Actions', label: 'Open settings', fn: function () { setSettingsOpen(true); } });
       it.push({ g: 'Actions', label: 'Open automations and connections', fn: function () { setAutoOpen(true); } });
       it.push({ g: 'Actions', label: 'Onboard a new client', fn: startOnboard });
@@ -593,7 +593,7 @@
         if (!typ0 && !e.metaKey && !e.ctrlKey && !e.altKey && !document.querySelector('.mdl-bg, .sr-pal') && SR.kb) {
           var rows = function () { return Array.prototype.slice.call(document.querySelectorAll('.task[data-tid]')); };
           var cur = function () { var r = rows(); for (var i = 0; i < r.length; i++) if (r[i].getAttribute('data-kb') === '1') return i; return -1; };
-          var go = { h: 'home', m: 'home', s: 'sales' };
+          var go = { h: 'home', m: 'home', s: 'sales', o: 'overview' };
           if (SR._g && Date.now() - SR._g < 1200 && go[k]) { e.preventDefault(); SR._g = 0; SR.kb.go(go[k]); return; }
           if (k === 'g') { SR._g = Date.now(); return; }
           if (k === '?') { e.preventDefault(); SR.kb.help(); return; }
@@ -625,15 +625,15 @@
     /* sidebar */
     var navItem = function (on) { return 'min-height:30px;display:flex;align-items:center;gap:8px;padding:0 8px;border:0;border-radius:6px;font-family:inherit;font-size:14px;text-align:left;cursor:pointer;' + (on ? 'background:rgba(255,255,255,0.12);color:#FFF;font-weight:500' : 'background:transparent;color:#C9D2E0'); };
     var compact = navMin && vw > 860;
-    var NAVI = { war: 'compass', home: 'house', clients: 'briefcase', calendar: 'clock', results: 'chart', finance: 'wallet', sales: 'trend', mytasks: 'check', drive: 'drive' };
+    var NAVI = { overview: 'compass', war: 'compass', home: 'house', clients: 'briefcase', calendar: 'clock', results: 'chart', finance: 'wallet', sales: 'trend', mytasks: 'check', drive: 'drive' };
     var logoOf = function (c) { if (c.logo) return c.logo; var d = String(c.domain || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '').trim(); return d && d.indexOf('.') > 0 ? 'https://www.google.com/s2/favicons?sz=128&domain=' + encodeURIComponent(d) : ''; };
     var ini = function (n) { return String(n || '?').split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase(); };
     var toggleBtn = html`<button type="button" class="navtog" aria-label=${compact ? 'Expand the menu' : 'Tuck the menu in'} title=${compact ? 'Expand the menu' : 'Tuck the menu in'} onClick=${function () { if (navMin) setNavMin(false); else if (compact) { setNavAuto(false); setNavMin(false); } else setNavMin(true); }}>${compact ? '»' : '«'}</button>`;
     var favs = clients.filter(function (c) { return c.fav; });
     var myDue = tasks.filter(function (t) { return !t.done && t.owner === me && t.date && t.date <= SR.TODAY; }).length;
-    var NAMES0 = { war: 'Battlefronts', home: 'Home', sales: 'Sales', mytasks: 'My tasks', clients: 'Clients', results: 'Results', finance: 'Finance', calendar: 'Calendar', drive: 'Drive' };
-    var NAVKEYS = ['home', 'sales', 'clients', 'finance', 'drive'];
-    var navOrder = function () { var o = (SR.uiprefs.order || []).filter(function (k) { return NAVKEYS.indexOf(k) > -1; }); NAVKEYS.forEach(function (k) { if (o.indexOf(k) < 0) o.push(k); }); return o; };
+    var NAMES0 = { overview: 'Overview', war: 'Battlefronts', home: 'Home', sales: 'Sales', mytasks: 'My tasks', clients: 'Clients', results: 'Results', finance: 'Finance', calendar: 'Calendar', drive: 'Drive' };
+    var NAVKEYS = ['home', 'overview', 'sales', 'clients', 'finance', 'drive'];
+    var navOrder = function () { var o = (SR.uiprefs.order || []).filter(function (k) { return NAVKEYS.indexOf(k) > -1; }); NAVKEYS.forEach(function (k) { if (o.indexOf(k) < 0) o.push(k); }); var oi = o.indexOf('overview'); if (!(SR.uiprefs.order || []).length || (SR.uiprefs.order || []).indexOf('overview') < 0) { o.splice(oi, 1); o.splice(Math.max(0, o.indexOf('home')) + 1, 0, 'overview'); } return o; };
     var navMove = function (k, to) { var o = navOrder(), i = o.indexOf(k); if (i < 0) return; o.splice(i, 1); o.splice(Math.max(0, Math.min(o.length, to)), 0, k); SR.uiprefs.order = o; setUb(function (x) { return x + 1; }); };
     var navBtn = function (k) {
       var label = (SR.uiprefs.labels || {})[k] || NAMES0[k];
@@ -711,6 +711,7 @@
 
     var body;
     if (screen === 'home') body = html`<${SR.Home} ...${taskProps} who=${who} setWho=${setWho} openClient=${openClient} me=${me} />`;
+    else if (screen === 'overview') body = html`<${SR.Hub} tasks=${tasks} clients=${clients} me=${me} openFront=${function (id) { setActiveFront(id); setScreen('front'); setOpenId(null); try { localStorage.setItem('sr_fronttab', 'missions'); } catch (e) {} }} />`;
     else if (screen === 'war') body = html`<${SR.Battlefronts} tasks=${tasks} clients=${clients} me=${me} onQuick=${function (fid, nm) { var t = { id: seq, clientId: fid, name: nm, owner: me, date: SR.TODAY, subs: [], note: '' }; undoable('Task added', function () { setTasks(tasks.concat([t])); setSeq(seq + 1); }); }} onOpenClient=${openClient} onGo=${function (sc) { setScreen(sc); setOpenId(null); }} />`;
     else if (screen === 'front') { var AF = SR.FRONTS[activeFront] || (SR.uiprefs.fronts && SR.uiprefs.fronts[activeFront]); body = !AF ? html`<div style="padding:24px;color:var(--muted)">This battlefront was removed.</div>` : html`<div style="display:flex;flex-direction:column;gap:6px">
         <div><div style="font-size:13px;color:var(--muted)">Battlefront</div><div style="display:flex;align-items:center;gap:10px"><input type="color" class="sr-fcolor" value=${/^#[0-9a-f]{6}$/i.test(AF.color) ? AF.color : '#8F99AA'} title="Change colour" aria-label="Battlefront colour" onInput=${function (e) { editFront(AF.id, { color: e.target.value }); }} /><h1 key=${AF.id} contentEditable="true" suppressContentEditableWarning=${true} spellcheck="false" style="margin:0;font-family:'DM Sans',system-ui,sans-serif;font-size:32px;outline:none" onBlur=${function (e) { renFront(AF.id, e.currentTarget.textContent); }} onKeyDown=${function (e) { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}>${AF.name}</h1><button type="button" class="nchip" style="margin-left:8px" onClick=${function () { ask('Delete ' + AF.name + '?', 'Its tasks move to another battlefront.', 'Delete battlefront', function () { delFront(AF.id); }); }}>Delete</button></div>
@@ -720,7 +721,7 @@
     else if (screen === 'mytasks') body = html`<${SR.Home} ...${taskProps} who=${who} setWho=${setWho} openClient=${openClient} me=${me} />`;
     else if (screen === 'clients') body = html`<${SR.Clients} tasks=${tasks} clients=${clients} openClient=${openClient} go=${startOnboard} />`;
     else if (screen === 'onboard') body = html`<${SR.Onboarding} draft=${draft} step=${step} proj=${proj} setProj=${setProj} setField=${setField} next=${onbNext} back=${onbBack} reset=${onbReset} doneClient=${doneClient} openClient=${openClient} />`;
-    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1105a')}></iframe>`;
+    else if (screen === 'sales') body = html`<iframe class="sales-frame" title="Sales dashboard" src=${'./sales/index.html?v=' + (SR.BUILD || '1105b')}></iframe>`;
     else if (screen === 'finance') body = html`<${SR.Finance} clients=${clients} />`;
     else if (screen === 'drive') body = html`<${SR.Drive} />`;
     else if (screen === 'results') body = html`<${SR.Results} clients=${clients} resPick=${resPick} setResPick=${setResPick} period=${period} setPeriod=${setPeriod} imported=${imported} doImport=${function (id) { setImported(function (o) { var n = Object.assign({}, o); n[id] = true; return n; }); }} />`;
@@ -737,7 +738,7 @@
       else if (tpl && openTask.step) tpl.phases.forEach(function (ph) { ph.steps.forEach(function (st) { if (st[0] === openTask.step) where = ph.name + ' · ' + st[1]; }); });
     }
 
-    var ntOn = ['home', 'front', 'clients', 'client', 'onboard', 'war', 'finance', 'sales', 'drive'].indexOf(screen) > -1;
+    var ntOn = ['home', 'overview', 'front', 'clients', 'client', 'onboard', 'war', 'finance', 'sales', 'drive'].indexOf(screen) > -1;
     return html`<div class=${'nsb' + (theme === 'dark' ? ' nsbd' : '') + (ntOn ? ' nt' + (theme === 'dark' ? ' ntd' : '') : '')} style="font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-wrap:wrap;align-items:stretch">
       ${sidebar}
       <main class=${"sr-main" + (screen === "sales" ? " on-sales" : "") + (dock ? " pdock" : "")} style=${"flex:999 1 640px;min-width:0;position:relative;box-sizing:border-box;padding:22px 34px 120px 34px"}>

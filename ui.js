@@ -858,7 +858,7 @@ window.SR = window.SR || {};
   SR.ShortcutHelp = function (p) {
     R.useEffect(function () { var k = function (e) { if (e.key === 'Escape' || e.key === '?') { e.preventDefault(); p.onClose(); } }; document.addEventListener('keydown', k); return function () { document.removeEventListener('keydown', k); }; }, []);
     var mac = /Mac|iPhone|iPad/.test(navigator.platform || ''), M = mac ? '⌘' : 'Ctrl';
-    var L = [['C', 'New task'], ['J / K', 'Move down / up the task list'], ['X', 'Tick the highlighted task'], ['E or Enter', 'Open the highlighted task'], ['/ or ' + M + ' K', 'Search and commands'], [M + ' Z', 'Undo'], ['G then H', 'Go to Home'], ['G then M', 'Go to My tasks'], ['G then S', 'Go to Sales'], ['Esc', 'Close a panel or menu'], ['?', 'This list']];
+    var L = [['C', 'New task'], ['J / K', 'Move down / up the task list'], ['X', 'Tick the highlighted task'], ['E or Enter', 'Open the highlighted task'], ['/ or ' + M + ' K', 'Search and commands'], [M + ' Z', 'Undo'], ['G then H', 'Go to Home'], ['G then O', 'Go to Overview'], ['G then M', 'Go to My tasks'], ['G then S', 'Go to Sales'], ['Esc', 'Close a panel or menu'], ['?', 'This list']];
     return html`<div class="mdl-bg" onMouseDown=${function (e) { if (e.target === e.currentTarget) p.onClose(); }}><div class="mdl st-mdl" role="dialog" aria-label="Keyboard shortcuts" style="max-width:420px">
       <div class="mdl-top"><h2>Keyboard shortcuts</h2><button type="button" class="edbtn" onClick=${p.onClose} aria-label="Close">${SR.Icon('close', 14)}</button></div>
       <div class="mdl-body">${L.map(function (x) { return html`<div key=${x[0]} class="st-row"><div class="st-t"><b>${x[1]}</b></div><div class="st-c"><kbd class="kbk">${x[0]}</kbd></div></div>`; })}</div></div></div>`;

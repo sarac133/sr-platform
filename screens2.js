@@ -2160,7 +2160,7 @@ window.SR = window.SR || {};
 
   SR.Goals = function (p) {
     var F = p.front, me = p.me, rs = useState(0), re = function () { rs[1](rs[0] + 1); rs[0]++; };
-    var sel = useState(''), selId = sel[0], setSel = sel[1];
+    var sel = useState(function () { var v = SR._pickM || ''; SR._pickM = ''; return v; }), selId = sel[0], setSel = sel[1];
     var ad = useState(''), adding = ad[0], setAdding = ad[1];
     var kindsRef = React.useRef({ k: [] });
     React.useEffect(function () { var iv = setInterval(function () { SR.salesData(re, kindsRef.current.k); }, 20000); return function () { clearInterval(iv); }; }, []);
@@ -2252,6 +2252,217 @@ window.SR = window.SR || {};
     var go = function (k) { setTab(k); try { localStorage.setItem('sr_fronttab', k); } catch (e) {} };
     return html`<div><div class="gl-tabs">${[['missions', 'Missions'], ['tasks', 'Tasks']].map(function (x) { return html`<button type="button" key=${x[0]} class=${tab === x[0] ? 'on' : ''} onClick=${function () { go(x[0]); }}>${x[1]}</button>`; })}</div>
       ${tab === 'missions' ? html`<${SR.Goals} front=${p.front} me=${p.me} clients=${p.clients} allTasks=${p.allTasks} onToggle=${p.onToggle} onOpen=${p.onOpen} onPatch=${p.onPatch} />` : p.tasksNode}</div>`;
+  };
+
+  /* ---- Overview hub: every battlefront as a planet around the Eclipse orb ---- */
+  SR.missionProg = function (m, F, ctx) {
+    var G = SR.uiprefs.goals || {}, c = { sd: ctx.sd, M: m, F: F, clients: ctx.clients, tasks: ctx.tasks }, parts = [];
+    (m.targets || []).forEach(function (t) { parts.push(pct(tval(t, c), t.goal)); });
+    if ((G.showTasks || {})[F.id]) {
+      var ts = (ctx.tasks || []).filter(function (t) { return t.clientId === F.id && (!t.mission || t.mission === m.id) && (!t.done || t.doneDay === SR.TODAY || (t.doneDay && t.doneDay >= (m.start || ''))); });
+      if (ts.length) parts.push(pct(ts.filter(function (t) { return t.done; }).length, ts.length));
+    }
+    return parts.length ? Math.round(parts.reduce(function (a, b) { return a + b; }, 0) / parts.length) : 0;
+  };
+  var hexRgb = function (h) { var m = /^#([0-9a-f]{6})$/i.exec(h || ''); return m ? [parseInt(m[1].slice(0, 2), 16), parseInt(m[1].slice(2, 4), 16), parseInt(m[1].slice(4, 6), 16)] : [154, 163, 181]; };
+  var rgba = function (c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; };
+  var mixc = function (c, t, to) { return c.map(function (v) { return Math.round(v + (to - v) * t); }); };
+  var TILT = 0.6;
+
+  SR.hubEngine = function (cv, box, api) {
+    var ctx = cv.getContext('2d'), W = 0, H = 0, dpr = 1, fit = 1, T = 0, drag = null, hover = null, sel = null, alive = true;
+    var RMo = false; try { RMo = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    var MS = RMo ? 0.15 : 1, FF = 'system-ui,sans-serif', MONO = 'ui-monospace,Menlo,monospace';
+    try { FF = getComputedStyle(box).fontFamily || FF; } catch (e) {}
+    var cam = { x: 0, y: 0, z: 1, tx: 0, ty: 0, tz: 1, follow: null }, st = {}, list = [], all = [];
+    var stars = [], dust = [], i;
+    for (i = 0; i < 240; i++) stars.push({ x: Math.random(), y: Math.random(), l: Math.random() < 0.6 ? 0 : Math.random() < 0.6 ? 1 : 2, s: Math.random() * 1.2 + 0.3, t: Math.random() * 6.28, k: Math.random() * 1.5 + 0.5 });
+    for (i = 0; i < 44; i++) dust.push({ a: Math.random() * 6.28, d: 1.25 + Math.random() * 0.7, s: Math.random() * 1.4 + 0.4, v: (Math.random() * 0.08 + 0.02) * (Math.random() < 0.5 ? -1 : 1) });
+    var pw = function () { return W > 700 ? 350 : 0; };
+    var maxR = function () { var m = 0; list.forEach(function (f) { m = Math.max(m, st[f.id] ? st[f.id].R : 0); }); return Math.max(m, 300); };
+    var resize = function () {
+      var r = box.getBoundingClientRect(); dpr = Math.min(2, window.devicePixelRatio || 1); W = Math.max(300, r.width); H = Math.max(300, r.height);
+      cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+      var f0 = fit; var mg = W < 700 ? 70 : 150; fit = Math.min(W / (2 * (maxR() + mg)), H / (2 * (maxR() * TILT + 150)));
+      if (!f0 || !sel) { cam.tz = fit; if (!f0) cam.z = fit; }
+    };
+    var sync = function () {
+      list = api.data(); all = [];
+      list.forEach(function (f, i) {
+        var s = st[f.id];
+        if (!s) { var sv = (SR.uiprefs.hub || {})[f.id]; s = st[f.id] = { R: sv ? sv.R : 255 + i * 92, a: sv ? sv.a : -0.7 + i * 2.4, sp: 0.05 / (1 + i * 0.35), x: 0, y: 0, dy: 0, bob: 0 }; s.x = Math.cos(s.a) * s.R; s.y = Math.sin(s.a) * s.R * TILT; }
+        f.s = s; f.r = 32 + Math.min(5, f.ms.length) * 4; f.ms.forEach(function (m, j) { m.f = f; m.j = j; if (m.x == null) { m.x = 0; m.y = 0; m.z = 0; m.ox = 1; } all.push(m); });
+      });
+      if (sel && !list.some(function (f) { return f.id === sel; })) { sel = null; cam.follow = null; api.onSelect(null); }
+    };
+    var sdep = function (f) { return 1 + Math.max(-1, Math.min(1, f.s.y / 260)) * 0.08; };
+    var layout = function () {
+      list.forEach(function (f) {
+        var s = f.s, n = f.ms.length; s.bob = RMo ? 0 : Math.sin(T * 0.8 + s.R) * 3; s.dy = s.y + s.bob;
+        f.ms.forEach(function (m, j) {
+          var d = f.r + 36 + (j % 2) * 14, ang = T * 0.45 * MS * (j % 2 ? -1 : 1) + j * 6.283 / n + s.R;
+          m.ox = Math.cos(ang) * d; m.oy = Math.sin(ang) * d * 0.55; m.z = Math.sin(ang); m.x = s.x + m.ox; m.y = s.dy + m.oy;
+        });
+      });
+    };
+    var byId = function (id) { for (var k = 0; k < list.length; k++) if (list[k].id === id) return list[k]; return null; };
+    var update = function (dt) {
+      T += dt; sync();
+      list.forEach(function (f) {
+        var s = f.s;
+        if (drag && drag.f === f) { var k = 1 - Math.exp(-dt * 14); s.x += (drag.tx - s.x) * k; s.y += (drag.ty - s.y) * k; }
+        else { s.a += s.sp * dt * MS; s.x = Math.cos(s.a) * s.R; s.y = Math.sin(s.a) * s.R * TILT; }
+      });
+      layout();
+      if (cam.follow) { var f = byId(cam.follow); if (f) { var p = pw(); cam.tx = f.s.x + (p ? p / 2 / cam.tz : 0); cam.ty = f.s.dy + (p ? 0 : H * 0.22 / cam.tz); } }
+      var k2 = 1 - Math.exp(-dt * (RMo ? 30 : 5.5));
+      cam.x += (cam.tx - cam.x) * k2; cam.y += (cam.ty - cam.y) * k2; cam.z += (cam.tz - cam.z) * k2;
+    };
+    var w2s = function (x, y) { return [(x - cam.x) * cam.z + W / 2, (y - cam.y) * cam.z + H / 2]; };
+    var s2w = function (x, y) { return [(x - W / 2) / cam.z + cam.x, (y - H / 2) / cam.z + cam.y]; };
+    var overall = function () { return all.length ? all.reduce(function (a, m) { return a + m.p; }, 0) / all.length : 0; };
+    var drawOrb = function () {
+      var r = 58 * (1 + (RMo ? 0 : 0.025 * Math.sin(T * 1.2))), g = ctx.createRadialGradient(0, 0, r * 0.9, 0, 0, r * 3.4);
+      g.addColorStop(0, 'rgba(255,214,150,.6)'); g.addColorStop(0.25, 'rgba(255,170,90,.2)'); g.addColorStop(1, 'rgba(255,150,80,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r * 3.4, 0, 6.283); ctx.fill();
+      dust.forEach(function (d) { var a = d.a + T * d.v * MS, rr = r * d.d; ctx.fillStyle = 'rgba(255,226,180,' + (0.25 + 0.2 * Math.sin(T + d.a)) + ')'; ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr * 0.82, d.s / Math.sqrt(cam.z) * 0.8, 0, 6.283); ctx.fill(); });
+      ctx.fillStyle = '#030307'; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.283); ctx.fill();
+      var rim = ctx.createLinearGradient(r * 0.8, -r * 0.8, -r * 0.8, r * 0.8);
+      rim.addColorStop(0, 'rgba(255,240,215,1)'); rim.addColorStop(0.45, 'rgba(255,190,120,.35)'); rim.addColorStop(1, 'rgba(255,190,120,0)');
+      ctx.strokeStyle = rim; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, r, 0, 6.283); ctx.stroke();
+      ctx.textAlign = 'center'; ctx.font = '600 10px ' + FF; ctx.fillStyle = 'rgba(255,236,210,.85)'; ctx.fillText('E C L I P S E', 0, -4);
+      ctx.font = '500 15px ' + MONO; ctx.fillStyle = '#fff'; ctx.fillText(all.length ? Math.round(overall()) + '%' : '–', 0, 16);
+    };
+    var drawPlanet = function (f) {
+      var s = f.s, sc = sdep(f), r = f.r * sc, x = s.x, y = s.dy, c = f.c, on = sel === f.id, has = f.ms.length > 0;
+      var g = ctx.createRadialGradient(x, y, r * 0.8, x, y, r * 2.6); g.addColorStop(0, rgba(c, on ? 0.45 : 0.28)); g.addColorStop(1, rgba(c, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 2.6, 0, 6.283); ctx.fill();
+      var sp = ctx.createRadialGradient(x - r * 0.4, y - r * 0.45, r * 0.1, x, y, r); sp.addColorStop(0, rgba(mixc(c, 0.55, 255), 1)); sp.addColorStop(0.5, rgba(c, 1)); sp.addColorStop(1, rgba(mixc(c, 0.75, 0), 1));
+      ctx.globalAlpha = has ? 1 : 0.55; ctx.fillStyle = sp; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill(); ctx.globalAlpha = 1;
+      var rr = r + 9; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.beginPath(); ctx.arc(x, y, rr, 0, 6.283); ctx.stroke();
+      if (has && f.p > 0) { ctx.strokeStyle = rgba(mixc(c, 0.25, 255), 1); ctx.beginPath(); ctx.arc(x, y, rr, -1.5708, -1.5708 + 6.283 * Math.min(1, f.p / 100)); ctx.stroke(); }
+      if (on) { ctx.setLineDash([3, 5]); ctx.lineWidth = 1; ctx.strokeStyle = rgba(c, 0.8); ctx.beginPath(); ctx.arc(x, y, rr + 9, 0, 6.283); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(8,8,16,.88)'; ctx.font = '500 ' + Math.round(r * 0.46) + 'px ' + MONO; ctx.fillText(has ? Math.round(f.p) + '%' : '–', x, y + r * 0.16);
+      ctx.fillStyle = '#eceaf4'; ctx.font = '600 13px ' + FF; ctx.fillText(f.name, x, y + rr + 24);
+      ctx.fillStyle = '#8b8aa0'; ctx.font = '400 10.5px ' + MONO; ctx.fillText(has ? f.ms.length + (f.ms.length > 1 ? ' missions' : ' mission') : 'no missions yet', x, y + rr + 38);
+    };
+    var drawMoon = function (m) {
+      var f = m.f, c = f.c, sc = 1 + m.z * 0.15, r = 6 * sc * (hover === m ? 1.5 : 1), x = m.x, y = m.y, p = m.p / 100;
+      ctx.strokeStyle = rgba(c, 0.12); ctx.lineWidth = 1 / cam.z; ctx.beginPath(); ctx.moveTo(f.s.x, f.s.dy); ctx.lineTo(x, y); ctx.stroke();
+      ctx.fillStyle = m.over ? 'rgba(229,83,75,.55)' : rgba(c, 0.2 + 0.8 * Math.min(1, p)); ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+      ctx.strokeStyle = m.over ? '#E5534B' : rgba(mixc(c, 0.3, 255), 1); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.stroke();
+      if (m.p >= 100) { ctx.strokeStyle = '#06070d'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x - 2.4, y); ctx.lineTo(x - 0.6, y + 2); ctx.lineTo(x + 2.6, y - 2); ctx.stroke(); }
+      if (sel === f.id || hover === m) { ctx.textAlign = m.ox >= 0 ? 'left' : 'right'; ctx.fillStyle = '#eceaf4'; ctx.font = '500 11px ' + FF; ctx.fillText(m.n, x + (m.ox >= 0 ? r + 7 : -r - 7), y + 4); }
+    };
+    var draw = function () {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#06070d'; ctx.fillRect(0, 0, W, H);
+      var nx = -cam.x * 0.05 * cam.z, ny = -cam.y * 0.05 * cam.z, g = ctx.createRadialGradient(W * 0.25 + nx, H * 0.3 + ny, 0, W * 0.25 + nx, H * 0.3 + ny, Math.max(W, H) * 0.6);
+      g.addColorStop(0, 'rgba(90,60,170,.22)'); g.addColorStop(1, 'rgba(90,60,170,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      g = ctx.createRadialGradient(W * 0.8 + nx, H * 0.75 + ny, 0, W * 0.8 + nx, H * 0.75 + ny, Math.max(W, H) * 0.55); g.addColorStop(0, 'rgba(40,150,140,.16)'); g.addColorStop(1, 'rgba(40,150,140,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      var par = [0.04, 0.1, 0.2];
+      stars.forEach(function (s) {
+        var px = ((s.x * W * 1.4 - cam.x * par[s.l] * cam.z) % (W * 1.4) + W * 1.4) % (W * 1.4) - W * 0.2, py = ((s.y * H * 1.4 - cam.y * par[s.l] * cam.z) % (H * 1.4) + H * 1.4) % (H * 1.4) - H * 0.2;
+        var a = 0.35 + (RMo ? 0 : 0.45 * Math.sin(T * s.k + s.t)) + (RMo ? 0.3 : 0);
+        ctx.fillStyle = 'rgba(235,235,255,' + Math.max(0.08, a * (0.5 + s.l * 0.25)) + ')'; ctx.beginPath(); ctx.arc(px, py, s.s * (1 + s.l * 0.35), 0, 6.283); ctx.fill();
+      });
+      ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(cam.z, cam.z); ctx.translate(-cam.x, -cam.y);
+      list.forEach(function (f) {
+        var s = f.s, on = sel === f.id;
+        ctx.beginPath(); ctx.ellipse(0, 0, s.R, s.R * TILT, 0, 0, 6.283); ctx.strokeStyle = rgba(f.c, on ? 0.35 : 0.1); ctx.lineWidth = (on ? 1.6 : 1) / cam.z; ctx.setLineDash([4 / cam.z, 8 / cam.z]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(s.x * 0.5 - s.y * 0.12, s.dy * 0.5 + s.x * 0.06, s.x, s.dy); ctx.strokeStyle = rgba(f.c, on ? 0.3 : 0.1); ctx.lineWidth = 1.2 / cam.z; ctx.stroke();
+      });
+      drawOrb();
+      list.slice().sort(function (a, b) { return a.s.dy - b.s.dy; }).forEach(function (f) { f.ms.forEach(function (m) { if (m.z < 0) drawMoon(m); }); drawPlanet(f); f.ms.forEach(function (m) { if (m.z >= 0) drawMoon(m); }); });
+      ctx.restore();
+    };
+    var planetAt = function (wx, wy) { var b = null; list.forEach(function (f) { if (Math.hypot(wx - f.s.x, wy - f.s.dy) <= f.r * sdep(f) + 14) b = f; }); return b; };
+    var moonAt = function (wx, wy) { var b = null; all.forEach(function (m) { if (Math.hypot(wx - m.x, wy - m.y) <= 12) b = m; }); return b; };
+    var pos = function (e) { var r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+    var select = function (f) { sel = f.id; cam.follow = f.id; cam.tz = Math.max(cam.tz, fit * 1.6); api.onSelect(f.id); };
+    var deselect = function () { sel = null; cam.follow = null; cam.tx = 0; cam.ty = 0; cam.tz = fit; api.onSelect(null); };
+    var zoomAt = function (sx, sy, fac) {
+      var nz = Math.min(fit * 4, Math.max(fit * 0.45, cam.tz * fac));
+      if (cam.follow) { cam.tz = nz; return; }
+      var wx = (sx - W / 2) / cam.tz + cam.tx, wy = (sy - H / 2) / cam.tz + cam.ty; cam.tz = nz; cam.tx = wx - (sx - W / 2) / nz; cam.ty = wy - (sy - H / 2) / nz;
+    };
+    var onDown = function (e) {
+      try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+      var p = pos(e), w = s2w(p[0], p[1]), f = planetAt(w[0], w[1]);
+      drag = { f: f, sx: p[0], sy: p[1], lx: p[0], ly: p[1], moved: false, gx: f ? f.s.x - w[0] : 0, gy: f ? f.s.y - w[1] : 0, tx: f ? f.s.x : 0, ty: f ? f.s.y : 0 };
+      cv.classList.add('grabbing'); api.tip(null);
+    };
+    var onMove = function (e) {
+      var p = pos(e), w = s2w(p[0], p[1]);
+      if (drag) {
+        if (Math.hypot(p[0] - drag.sx, p[1] - drag.sy) > 4) drag.moved = true;
+        if (drag.f) { drag.tx = w[0] + drag.gx; drag.ty = w[1] + drag.gy; }
+        else if (drag.moved) { var dx = (p[0] - drag.lx) / cam.z, dy = (p[1] - drag.ly) / cam.z; cam.x -= dx; cam.y -= dy; cam.tx = cam.x; cam.ty = cam.y; cam.follow = null; }
+        drag.lx = p[0]; drag.ly = p[1]; return;
+      }
+      hover = moonAt(w[0], w[1]); var pl = planetAt(w[0], w[1]);
+      cv.classList.toggle('hit', !!(hover || pl || Math.hypot(w[0], w[1]) < 58));
+      api.tip(hover ? { x: Math.min(p[0] + 14, W - 230), y: p[1] + 14, n: hover.n, p: hover.p, due: hover.due } : null);
+    };
+    var onUp = function (e) {
+      if (!drag) return; var d = drag; drag = null; cv.classList.remove('grabbing');
+      if (d.f) {
+        var f = d.f;
+        if (!d.moved) select(f);
+        else { var yy = f.s.y / TILT, R = Math.min(760, Math.max(150, Math.hypot(f.s.x, yy))); f.s.a = Math.atan2(yy, f.s.x); f.s.R = R; var h = Object.assign({}, SR.uiprefs.hub || {}); h[f.id] = { R: Math.round(R), a: +f.s.a.toFixed(3) }; SR.uiprefs.hub = h; }
+      } else if (!d.moved) { var p = pos(e), w = s2w(p[0], p[1]); if (Math.hypot(w[0], w[1]) < 64 || sel) deselect(); }
+    };
+    var onWheel = function (e) { e.preventDefault(); var p = pos(e); zoomAt(p[0], p[1], Math.exp(-e.deltaY * 0.0015)); };
+    var onKey = function (e) { if (e.key === 'Escape' && sel) deselect(); };
+    var onLeave = function () { hover = null; api.tip(null); };
+    cv.addEventListener('pointerdown', onDown); cv.addEventListener('pointermove', onMove); cv.addEventListener('pointerup', onUp); cv.addEventListener('pointercancel', onUp); cv.addEventListener('pointerleave', onLeave);
+    cv.addEventListener('wheel', onWheel, { passive: false }); window.addEventListener('keydown', onKey);
+    var ro = null; try { ro = new ResizeObserver(resize); ro.observe(box); } catch (e) { window.addEventListener('resize', resize); }
+    sync(); layout(); resize(); cam.z = cam.tz = fit;
+    var last = performance.now(), raf = 0;
+    var frame = function (now) { if (!alive) return; var dt = Math.min(0.05, (now - last) / 1000); last = now; update(dt); draw(); raf = requestAnimationFrame(frame); };
+    raf = requestAnimationFrame(frame);
+    return {
+      select: function (id) { var f = byId(id); if (f) select(f); }, deselect: deselect, zoom: function (fac) { zoomAt(W / 2, H / 2, fac); },
+      destroy: function () { alive = false; cancelAnimationFrame(raf); cv.removeEventListener('pointerdown', onDown); cv.removeEventListener('pointermove', onMove); cv.removeEventListener('pointerup', onUp); cv.removeEventListener('pointercancel', onUp); cv.removeEventListener('pointerleave', onLeave); cv.removeEventListener('wheel', onWheel); window.removeEventListener('keydown', onKey); if (ro) ro.disconnect(); else window.removeEventListener('resize', resize); }
+    };
+  };
+
+  SR.Hub = function (p) {
+    var rs = useState(0), re = function () { rs[1](rs[0] + 1); rs[0]++; };
+    var selS = useState(null), selId = selS[0], setSel = selS[1], tipS = useState(null), tip = tipS[0], setTip = tipS[1];
+    var cvR = React.useRef(null), boxR = React.useRef(null), engR = React.useRef(null), dataR = React.useRef([]);
+    var G = SR.uiprefs.goals || { missions: [] }, ms = G.missions || [], kinds = [];
+    ms.forEach(function (m) { (m.targets || []).forEach(function (t) { if (SYNC[t.kind]) kinds.push(t.kind); }); });
+    var kRef = React.useRef([]); kRef.current = kinds;
+    var sd = SR.salesData(re, kinds);
+    var fronts = SR.fronts([]);
+    var data = fronts.map(function (F) {
+      var mine = ms.filter(function (m) { return m.front === F.id; }), items = mine.map(function (m) {
+        var d = m.due ? Math.round((new Date(m.due + 'T12:00:00') - new Date(SR.TODAY + 'T12:00:00')) / 864e5) : null, pc = SR.missionProg(m, F, { sd: sd, clients: p.clients, tasks: p.tasks });
+        return { id: m.id, n: m.name, p: pc, due: m.due ? 'due ' + short(m.due) : 'no date', over: d != null && d < 0 && pc < 100 };
+      });
+      return { id: F.id, name: F.name, c: hexRgb(F.color), ms: items, p: items.length ? items.reduce(function (a, x) { return a + x.p; }, 0) / items.length : 0, open: (p.tasks || []).filter(function (t) { return t.clientId === F.id && !t.done; }).length, color: F.color };
+    });
+    dataR.current = data;
+    React.useEffect(function () {
+      var eng = SR.hubEngine(cvR.current, boxR.current, { data: function () { return dataR.current; }, onSelect: function (id) { setSel(id); }, tip: function (t) { setTip(t); } });
+      engR.current = eng; var iv = setInterval(function () { SR.salesData(re, kRef.current); }, 20000);
+      return function () { clearInterval(iv); eng.destroy(); engR.current = null; };
+    }, []);
+    var F = selId ? data.filter(function (f) { return f.id === selId; })[0] : null, col = F ? 'rgb(' + F.c.join(',') + ')' : '#fff';
+    var total = data.reduce(function (a, f) { return a + f.ms.length; }, 0);
+    return html`<div class="hb" ref=${boxR}>
+      <canvas class="hb-cv" ref=${cvR} aria-label="Map of all battlefronts"></canvas>
+      <div class="hb-top"><h1>Overview</h1><p>${data.length} battlefronts · ${total} missions</p></div>
+      <div class="hb-tools"><button type="button" aria-label="Zoom in" onClick=${function () { engR.current && engR.current.zoom(1.3); }}>+</button><button type="button" aria-label="Zoom out" onClick=${function () { engR.current && engR.current.zoom(1 / 1.3); }}>−</button><button type="button" aria-label="Reset view" onClick=${function () { engR.current && engR.current.deselect(); }}>⌖</button></div>
+      ${selId ? null : html`<div class="hb-hint">Drag a planet to move it · drag space to pan · scroll to zoom · click a planet to focus</div>`}
+      ${tip ? html`<div class="hb-tip" style=${'left:' + tip.x + 'px;top:' + tip.y + 'px'}><b>${tip.n}</b><span>${Math.round(tip.p)}% · ${tip.due}</span></div>` : null}
+      <aside class=${'hb-panel' + (F ? ' on' : '')} aria-live="polite">${F ? html`<div class="hb-ph"><span class="hb-dot" style=${'background:' + col}></span><h2>${F.name}</h2><button type="button" class="hb-close" aria-label="Close" onClick=${function () { engR.current && engR.current.deselect(); }}>×</button></div>
+        <div class="hb-big"><strong>${F.ms.length ? Math.round(F.p) + '%' : '–'}</strong><span>${F.ms.length ? 'average across ' + F.ms.length + (F.ms.length > 1 ? ' missions' : ' mission') : 'no missions yet'}</span></div>
+        <ul class="hb-ms">${F.ms.map(function (m) { return html`<li key=${m.id}><button type="button" onClick=${function () { SR._pickM = m.id; p.openFront(F.id); }}><div class="hb-mr"><b>${m.n}</b><i>${Math.round(m.p)}%</i></div><div class="hb-bar"><div style=${'width:' + Math.min(100, m.p) + '%;background:' + (m.over ? '#E5534B' : col)}></div></div><div class="hb-due">${m.over ? 'Overdue · ' : ''}${m.due}${m.p >= 100 ? ' · done' : ''}</div></button></li>`; })}</ul>
+        <div class="hb-due" style="margin-top:14px">${F.open} open task${F.open === 1 ? '' : 's'}</div>
+        <button type="button" class="hb-open" onClick=${function () { p.openFront(F.id); }}>Open ${F.name}</button>` : null}</aside>
+    </div>`;
   };
 
 })(window.SR);
