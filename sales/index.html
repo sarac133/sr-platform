@@ -216,7 +216,7 @@
       @keyframes srfade{from{opacity:0}to{opacity:1}}
     </style>
     <a class="sr-appsw" href="../index.html" title="Switch to the Clients dashboard" aria-label="Switch to the Clients dashboard"><span class="th"></span><span class="on">Sales</span><span class="off">Clients</span></a>
-    <sc-if value="{{ saveError }}" hint-placeholder-val="{{ false }}"><span title="Couldn't reach the database. Retrying every 8 seconds." style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--s-red); border: 1px solid rgba(245,118,109,0.5); border-radius: 8px; white-space: nowrap;">⚠ Not saved · retrying</span></sc-if>
+    <span id="sr-savestat" style="font-size: 11px; color: var(--s-faint); margin-right: 8px;"></span><sc-if value="{{ saveError }}" hint-placeholder-val="{{ false }}"><span title="Couldn't reach the database. Retrying every 8 seconds." style="padding: 6px 10px; font-size: 12px; font-weight: 700; color: var(--s-red); border: 1px solid rgba(245,118,109,0.5); border-radius: 8px; white-space: nowrap;">⚠ Not saved · retrying</span></sc-if>
     <button onClick="{{ toggleSfx }}" title="{{ sfxTitle }}" style="padding: 6px 12px; background: var(--s-card2); color: {{ sfxColor }}; border: 1px solid var(--s-border); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="color: var(--s-text);">{{ sfxLabel }}</button>
     <button onClick="{{ openBackups }}" style="padding: 6px 14px; background: var(--s-card2); color: var(--s-muted); border: 1px solid var(--s-border); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="color: var(--s-text); border-color: #BDA262;">🕘 Backups</button>
     <button onClick="{{ exportCSV }}" style="padding: 6px 14px; background: #2C6396; color: #ffffff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap;" style-hover="background: linear-gradient(135deg, #7FB0E0, #5A93C9);">⬇ Export CSV</button>
@@ -2506,7 +2506,16 @@ class Component extends DCLogic {
       this._fbRef.once('value').then((snap) => {
         const data = snap.val();
         this._fbLoaded = true;
+        this._lastParts = data ? this._partsOf(data) : null;
+        this._saveStat('Connected', false);
         if (data) {
+          // Unsaved edits from last time (save never finished): keep them, put them on top of the server copy
+          try {
+            if (localStorage.getItem('sr_pending') === '1') {
+              const loc = JSON.parse(localStorage.getItem('sr_dashboard_v2') || 'null');
+              if (loc && typeof loc === 'object') { delete loc.crmLeadDetail; delete loc.crmNewNote; Object.assign(data, loc); }
+            }
+          } catch (e) {}
           this._migrateOldFormat(data);
           this._ignoreRemote = true;
           this.setState(prev => ({ ...prev, ...data }), () => {
@@ -4988,11 +4997,11 @@ class Component extends DCLogic {
     try { payload = JSON.parse(prevJSON); } catch (e) { return; }
     const hist = window.__fbDb.ref('dashboard/history');
     hist.child(String(now)).set({ at: now, data: prevJSON }).then(() => {
-      hist.once('value').then(snap => {
-        const all = snap.val() || {};
-        const keys = Object.keys(all).sort();
+      // Only list the backup names (a few KB), never download the backups themselves.
+      fetch(String(hist.toString()).replace(/\/$/, '') + '.json?shallow=true').then(r => r.json()).then(all => {
+        const keys = Object.keys(all || {}).sort();
         keys.slice(0, Math.max(0, keys.length - 40)).forEach(k => hist.child(k).remove());
-      });
+      }).catch(() => {});
     }).catch(() => {});
   }
 
@@ -5184,13 +5193,36 @@ class Component extends DCLogic {
     document.addEventListener('keydown', this._onKeyDown);
   }
 
+  _stable(v) {
+    if (v === null || typeof v !== 'object') return JSON.stringify(v === undefined ? null : v);
+    if (Array.isArray(v)) return '[' + v.map(x => this._stable(x)).join(',') + ']';
+    return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined && v[k] !== null).map(k => JSON.stringify(k) + ':' + this._stable(v[k])).join(',') + '}';
+  }
+  _partsOf(obj) { const o = {}; Object.keys(obj || {}).forEach(k => { o[k] = this._stable(obj[k]); }); return o; }
+  _saveStat(txt, bad) {
+    try { const el = document.getElementById('sr-savestat'); if (el) { el.textContent = txt; el.style.color = bad ? 'var(--s-red)' : 'var(--s-faint)'; } } catch (e) {}
+  }
   _writeNow(clean, jsonStr, prev) {
     this._lastWriteTime = Date.now();
     this._saving = true;
     try {
-      this._fbRef.set(clean).then(() => {
+      // Send only what changed (a few KB) instead of the whole 1.5 MB document every time.
+      const np = this._partsOf(clean), base = this._lastParts;
+      let job;
+      if (!base) job = this._fbRef.set(clean);
+      else {
+        const upd = {};
+        Object.keys(np).forEach(k => { if (base[k] !== np[k]) upd[k] = clean[k]; });
+        Object.keys(base).forEach(k => { if (!(k in np)) upd[k] = null; });
+        job = Object.keys(upd).length ? this._fbRef.update(upd) : Promise.resolve();
+      }
+      this._saveStat('Saving...', false);
+      clearTimeout(this._slowT); this._slowT = setTimeout(() => { if (this._saving) this._saveStat('NOT SAVED YET: waiting for connection', true); }, 10000);
+      job.then(() => {
+        this._lastParts = np;
+        this._saveStat('Saved ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), false);
         this._saving = false; this._lastWrittenJSON = jsonStr; this._saveFails = 0;
-        if (this._dirtyJSON === jsonStr) { this._dirtyJSON = null; this._dirtyData = null; }
+        if (this._dirtyJSON === jsonStr) { this._dirtyJSON = null; this._dirtyData = null; try { localStorage.removeItem('sr_pending'); } catch (e) {} }
         if (this.state.saveError) this.setState({ saveError: false });
       }).catch((e) => { this._saving = false; this._saveFailed(e); });
       this._maybeSnapshot(prev);
@@ -5199,6 +5231,7 @@ class Component extends DCLogic {
 
   _saveFailed(e) {
     console.warn('Save failed, retrying', e);
+    this._saveStat('NOT SAVED: ' + String((e && (e.code || e.message)) || e).slice(0, 60), true);
     this._saveFails = (this._saveFails || 0) + 1;
     this._lastWrittenJSON = null;
     if (!this.state.saveError) this.setState({ saveError: true });
@@ -5232,6 +5265,7 @@ class Component extends DCLogic {
       const incoming = JSON.stringify(data);
       if (incoming === this._lastWrittenJSON) return;
       this._migrateOldFormat(data);
+      this._lastParts = this._partsOf(data);
       this._ignoreRemote = true;
       this.setState(prev => ({ ...prev, ...data }), () => { this._ignoreRemote = false; });
     });
@@ -5494,6 +5528,7 @@ class Component extends DCLogic {
       }, 250);
       // localStorage is only a cache of what we've confirmed against Firebase
       if (this._fbLoaded) localStorage.setItem('sr_dashboard_v2', jsonStr);
+      try { if (this._fbLoaded && jsonStr !== this._lastWrittenJSON) localStorage.setItem('sr_pending', '1'); } catch (e) {}
     }
   }
 
