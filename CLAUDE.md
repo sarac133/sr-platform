@@ -66,6 +66,7 @@ If saving fails again, ask Matt for the chip text and the browser console error 
 - 1105b: Overview constellation hub (live).
 - 1105c: Sales save fix and stay-on-page after refresh. Committed locally as f0b69a2. Matt pushes it.
 - 1105d: Sales moved from Firebase to Supabase (`sales_rows`), saved row by row with live merge between devices. Needs the "Sales page data (build 1105d)" SQL from supabase/schema.sql run in Supabase BEFORE the push. The first device to open Sales after the push copies the Firebase data once.
+- 1105e: hide the second "Powered by Netlify" badge inside the Sales iframe (CSS on `#nl-badge-frame`, `#nl-hud-frame` in sales/index.html). Netlify injects the badge on every HTML page on the free plan.
 - Folders `sales-dashboard` and `seo-platform` were removed and merged here. `seo-platform` can be restored with `git clone https://github.com/sarac133/seo-platform.git`. The old standalone sales-dashboard was never in git; this repo's `sales/` is the newer version.
 
 ## Testing notes

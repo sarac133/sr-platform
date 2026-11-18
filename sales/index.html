@@ -16,6 +16,8 @@
 .embed .sr-bk{display:inline-flex;align-items:center;gap:6px;margin:6px 0 6px auto;padding:6px 14px;border-radius:9px;border:1px solid var(--s-border);background:var(--s-card2);color:var(--s-text2);font:600 12px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap}
 .embed .sr-bk:hover{border-color:var(--s-gold);color:var(--s-gold)}
 .embed .sr-tabs{padding-left:18px!important;padding-right:14px!important}
+/* 1105e: Netlify adds its badge to every page. Eclipse already shows one, so hide the second one inside Sales. */
+#nl-badge-frame,#nl-hud-frame{display:none!important}
 </style>
 <script>
 (function(){function t(){var v=null;try{v=localStorage.getItem('sr_theme')}catch(e){}if(v!=='dark'&&v!=='light')v=(window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches)?'light':'dark';document.documentElement.setAttribute('data-theme',v)}t();window.addEventListener('storage',t);if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',t)})();
