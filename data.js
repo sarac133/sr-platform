@@ -462,6 +462,220 @@ window.SR = window.SR || {};
     return S;
   })();
 
+  /* ---------- Sales data store (1105d) ----------
+     The Sales page (sales/index.html, in an iframe) keeps its data here, in Supabase table
+     sales_rows, behind the Eclipse login. The data is cut into small rows: one per lead,
+     per Apollo contact, per call week, per goal month and so on. Each device only sends
+     the rows it changed, and live updates from other devices land row by row, so two
+     people editing different things never overwrite each other.
+     Row keys are paths ("crmData/dubai/<lead id>"). A key ending in "/~" marks a container,
+     so empty lists and objects survive. View settings (filters, sort order, open panels)
+     are not shared: they stay on each device. */
+  SR.salesStore = (function () {
+    var FIREBASE = 'https://sales-dashboard-90e7f-default-rtdb.europe-west1.firebasedatabase.app/dashboard/data.json';
+    /* How each top-level key is cut into rows. Anything not listed is one row. */
+    var LEAF = null, OBJ = function (c) { return { o: c === undefined ? LEAF : c }; }, ARR = function (id) { return { a: id }; };
+    var SPEC = {
+      crmData: OBJ('crm'),
+      apolloContactsData: OBJ(), callingByCampaign: OBJ(OBJ()), emailsByCampaign: OBJ(), followUpLog: OBJ(),
+      goalsByMonth: OBJ(), actualsByMonth: OBJ(), kpiPlan: OBJ(), apolloDaily: OBJ(), apolloMonthly: OBJ(),
+      apolloHidden: OBJ(), apolloSeqSig: OBJ(), movedProspects: OBJ(), monthlyRevenue: OBJ(),
+      cbDone: ARR('key'), apolloSequences: ARR('id'), closes: ARR('id'), emailBookings: ARR('id')
+    };
+    /* Per-device view settings: never shared, never saved to the database. */
+    var VIEW = ['activeCallingCampaign', 'activeEmailCampaign', 'activeGoalsMonth', 'apolloActiveOnly', 'apolloStatusFilter',
+      'calcActiveMonth', 'cbChannel', 'cbFilter', 'clFilterCampaign', 'clSortBy', 'clSortDir', 'crmActiveRegion', 'crmColWidths',
+      'crmDueOnly', 'crmFilterApolloStatus', 'crmFilterOverdue', 'crmRecycleSortDir', 'eiTab', 'emRange', 'goalsPanelOpen',
+      'kpiMonthOffset', 'kpiRangeEnd', 'kpiRangeMode', 'kpiRangeStart', 'nsWeek', 'ovView', 'ovWeekOffset', 'poOpen',
+      'sqFrom', 'sqPeriod', 'sqShowHidden', 'sqStatus', 'sqTo', 'nsAskDate', 'nsAskTime'];
+    var isView = {}; VIEW.forEach(function (k) { isView[k] = 1; });
+    var enc = function (s) { return encodeURIComponent(String(s)).replace(/~/g, '%7E'); };
+    var dec = function (s) { try { return decodeURIComponent(s); } catch (e) { return s; } };
+    var isObj = function (v) { return !!v && typeof v === 'object' && !Array.isArray(v); };
+    var stable = function (v) {
+      if (v === null || typeof v !== 'object') return JSON.stringify(v === undefined ? null : v);
+      if (Array.isArray(v)) return '[' + v.map(function (x) { return x === undefined ? 'null' : stable(x); }).join(',') + ']';
+      return '{' + Object.keys(v).sort().filter(function (k) { return v[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}';
+    };
+    /* list items keyed by f: null when an item has no key or keys repeat (then the list is kept as one row) */
+    var keyed = function (arr, f) {
+      var seen = {}, ok = arr.every(function (x) { if (!isObj(x) || x[f] == null || x[f] === '') return false; var k = String(x[f]); if (seen[k]) return false; seen[k] = 1; return true; });
+      return ok;
+    };
+    /* Positions in a list. An item keeps the position it had (prev rows) while the order allows it,
+       so moving or removing one lead rewrites only that lead's row, not every lead after it. */
+    var positions = function (paths, groupOf, prev) {
+      var old = paths.map(function (p, n) {
+        var r = prev && prev[p]; if (!r) return null;
+        try { r = typeof r === 'string' ? JSON.parse(r) : r; } catch (e) { return null; }
+        return r && typeof r.i === 'number' && (groupOf == null || r.g === groupOf[n]) ? r.i : null;
+      });
+      var out = [], last = -Infinity;
+      for (var n = 0; n < paths.length; n++) {
+        if (old[n] != null && old[n] > last) { last = old[n]; out.push(last); continue; }
+        var nx = null; for (var m = n + 1; m < paths.length; m++) if (old[m] != null && old[m] > last) { nx = old[m]; break; }
+        last = last === -Infinity ? (nx != null ? nx - 1 : 0) : nx != null ? (last + nx) / 2 : last + 1;
+        out.push(last);
+      }
+      return out;
+    };
+    var emit = function (path, val, spec, out, prev) {
+      if (val === undefined) return;
+      if (spec === 'crm' && isObj(val)) {
+        var groups = [], extra = {}, ids = {}, ok = true;
+        Object.keys(val).forEach(function (g) {
+          if (!Array.isArray(val[g])) { extra[g] = val[g]; return; }
+          groups.push(g);
+          val[g].forEach(function (l) { if (!isObj(l) || l.id == null || l.id === '' || ids[String(l.id)]) ok = false; else ids[String(l.id)] = 1; });
+        });
+        if (!ok) { out[path] = stable({ v: val }); return; }
+        out[path + '/~'] = stable({ t: 'c', g: groups, x: extra });
+        groups.forEach(function (g) {
+          var ps = val[g].map(function (l) { return path + '/' + enc(l.id); }), pos = positions(ps, ps.map(function () { return g; }), prev);
+          val[g].forEach(function (l, n) { out[ps[n]] = stable({ g: g, i: pos[n], v: l }); });
+        });
+        return;
+      }
+      if (spec && spec.o !== undefined && isObj(val)) {
+        out[path + '/~'] = stable({ t: 'o' });
+        Object.keys(val).forEach(function (k) { emit(path + '/' + enc(k), val[k], spec.o, out, prev); });
+        return;
+      }
+      if (spec && spec.a && Array.isArray(val) && keyed(val, spec.a)) {
+        out[path + '/~'] = stable({ t: 'a' });
+        var ps = val.map(function (x) { return path + '/' + enc(x[spec.a]); }), pos = positions(ps, null, prev);
+        val.forEach(function (x, n) { out[ps[n]] = stable({ i: pos[n], v: x }); });
+        return;
+      }
+      out[path] = stable({ v: val });
+    };
+    /* state object -> { rowKey: stable JSON } (view settings and _meta left out).
+       prev: the rows this data had before, so list positions stay put. */
+    var rowsOf = function (state, prev) {
+      var out = {};
+      Object.keys(state || {}).forEach(function (k) { if (isView[k] || k === '_meta') return; emit(enc(k), state[k], SPEC[k], out, prev); });
+      return out;
+    };
+    /* rows -> state object. rows: { rowKey: JSON string or parsed value } */
+    var stateOf = function (rows, only) {
+      var val = {}, kids = {};
+      Object.keys(rows).forEach(function (key) {
+        var v = rows[key]; if (v == null) return;
+        val[key] = typeof v === 'string' ? JSON.parse(v) : v;
+        var parts = key.split('/');
+        for (var i = 1; i < parts.length; i++) { var p = parts.slice(0, i).join('/'); (kids[p] = kids[p] || {})[parts[i]] = 1; }
+      });
+      var build = function (path, spec) {
+        var m = val[path + '/~'], ch = Object.keys(kids[path] || {}).filter(function (c) { return c !== '~'; });
+        if (!m) return val[path] ? val[path].v : undefined;
+        if (m.t === 'c') {
+          var o = {}; Object.keys(m.x || {}).forEach(function (k) { o[k] = m.x[k]; });
+          (m.g || []).forEach(function (g) { o[g] = []; });
+          var items = ch.map(function (c) { return val[path + '/' + c]; }).filter(function (x) { return x && x.g != null; });
+          items.sort(function (a, b) { return (a.i - b.i) || String(a.v && a.v.id).localeCompare(String(b.v && b.v.id)); });
+          items.forEach(function (x) { (o[x.g] = o[x.g] || []).push(x.v); });
+          return o;
+        }
+        if (m.t === 'a') {
+          var it = ch.map(function (c) { return { k: c, r: val[path + '/' + c] }; }).filter(function (x) { return x.r && 'v' in x.r; });
+          it.sort(function (a, b) { return (a.r.i - b.r.i) || a.k.localeCompare(b.k); });
+          return it.map(function (x) { return x.r.v; });
+        }
+        var obj = {};
+        ch.forEach(function (c) { var x = build(path + '/' + c, spec && spec.o !== undefined ? spec.o : LEAF); if (x !== undefined) obj[dec(c)] = x; });
+        return obj;
+      };
+      var out = {};
+      Object.keys(kids).concat(Object.keys(val)).forEach(function (key) {
+        var top = key.split('/')[0]; if (top in out || top === '_meta') return;
+        var name = dec(top); if (only && only.indexOf(name) < 0) return;
+        var x = build(top, SPEC[name]); if (x !== undefined) out[name] = x;
+      });
+      return out;
+    };
+    var topOf = function (rowKey) { return dec(rowKey.split('/')[0]); };
+
+    /* ---- database ---- */
+    var client = function () { return window.__SR_SALES_SB || (SR.store && SR.store.sb) || null; };
+    var S = { rowsOf: rowsOf, stateOf: stateOf, topOf: topOf, stable: stable, isView: function (k) { return !!isView[k]; }, VIEW: VIEW };
+    S.available = function () { return !!client(); };
+    /* every live row: { rows: { key: stable JSON }, meta: { name: value } }. Pages of 1000 (the Supabase limit per request). */
+    S.load = function (prefix) {
+      var sb = client(); if (!sb) return Promise.reject(new Error('not signed in'));
+      var all = {}, meta = {}, page = function (from) {
+        var q = sb.from('sales_rows').select('key,value,deleted').order('key');
+        if (prefix) q = q.like('key', prefix + '%');
+        return q.range(from, from + 999).then(function (r) {
+          if (r.error) throw r.error;
+          (r.data || []).forEach(function (row) { if (row.deleted) return; if (row.key.indexOf('_meta/') === 0) meta[row.key.slice(6)] = row.value; else all[row.key] = stable(row.value); });
+          return (r.data || []).length === 1000 ? page(from + 1000) : { rows: all, meta: meta };
+        });
+      };
+      return page(0);
+    };
+    /* changes: { key: stable JSON, or null to delete }. Soft delete, like the rest of Eclipse. */
+    S.save = function (changes) {
+      var sb = client(); if (!sb) return Promise.reject(new Error('not signed in'));
+      var rows = Object.keys(changes).map(function (k) { return changes[k] == null ? { key: k, value: {}, deleted: true } : { key: k, value: JSON.parse(changes[k]), deleted: false }; });
+      var chunks = []; for (var i = 0; i < rows.length; i += 400) chunks.push(rows.slice(i, i + 400));
+      return chunks.reduce(function (p, c) { return p.then(function () { return sb.from('sales_rows').upsert(c, { onConflict: 'key' }).then(function (r) { if (r.error) throw r.error; }); }); }, Promise.resolve());
+    };
+    /* live updates: cb(key, stable JSON or null when deleted). Returns a stop function. */
+    S.subscribe = function (cb, onState) {
+      var sb = client(); if (!sb) return function () {};
+      var ch = sb.channel('sr-sales-' + Math.random().toString(36).slice(2));
+      ch.on('postgres_changes', { event: '*', schema: 'public', table: 'sales_rows' }, function (p) {
+        var r = p.new && p.new.key ? p.new : null;
+        if (r) cb(r.key, r.deleted ? null : stable(r.value));
+        else if (p.old && p.old.key) cb(p.old.key, null);
+      });
+      ch.subscribe(function (status) { if (onState) onState(status); });
+      return function () { try { sb.removeChannel(ch); } catch (e) {} };
+    };
+    /* ---- backups: whole Sales data, newest 40 kept ---- */
+    S.snapshot = function (data, summary) {
+      var sb = client(); if (!sb) return Promise.resolve();
+      var id = Date.now();
+      return sb.from('sales_snapshots').insert({ id: id, summary: summary || '', data: data }).then(function (r) {
+        if (r.error) throw r.error;
+        return sb.from('sales_snapshots').select('id').order('id', { ascending: false }).range(40, 400).then(function (o) {
+          var old = (o.data || []).map(function (x) { return x.id; });
+          if (old.length) return sb.from('sales_snapshots').delete().in('id', old);
+        });
+      });
+    };
+    S.snapshots = function () {
+      var sb = client(); if (!sb) return Promise.resolve([]);
+      return sb.from('sales_snapshots').select('id,summary').order('id', { ascending: false }).limit(40).then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    };
+    S.snapshotData = function (id) {
+      var sb = client();
+      return sb.from('sales_snapshots').select('data').eq('id', id).limit(1).then(function (r) { if (r.error) throw r.error; return r.data && r.data[0] ? r.data[0].data : null; });
+    };
+    /* ---- one-time move from the old Firebase document ----
+       Runs until a "_meta/migrated" row exists. A "_meta/migrating" row works as a lock so two
+       devices never copy at the same time. Firebase itself is only read, never changed. */
+    S.migrate = function (src) {
+      var sb = client(); if (!sb) return Promise.reject(new Error('not signed in'));
+      return sb.from('sales_rows').insert({ key: '_meta/migrating', value: { at: new Date().toISOString() } }).then(function (lock) {
+        if (lock.error) return { busy: true };
+        var rows, n;
+        return fetch(src || window.__SR_SALES_FIREBASE || FIREBASE).then(function (r) { if (!r.ok) throw new Error('Firebase ' + r.status); return r.json(); }).then(function (data) {
+          data = data || {};
+          rows = rowsOf(data); n = Object.keys(rows).length;
+          return S.save(rows).then(function () {
+            var counts = {}; Object.keys(data.crmData || {}).forEach(function (r) { var c = data.crmData[r] || {}; counts[r] = 0; Object.keys(c).forEach(function (g) { if (Array.isArray(c[g])) counts[r] += c[g].length; }); });
+            return sb.from('sales_rows').upsert({ key: '_meta/migrated', value: { at: new Date().toISOString(), from: 'firebase', rows: n, leads: counts } }, { onConflict: 'key' }).then(function (r) { if (r.error) throw r.error; });
+          });
+        }).then(function () { return { rows: rows, migrated: n }; }, function (e) {
+          /* release the lock so the next load tries again (rows already copied are simply copied again) */
+          return sb.from('sales_rows').delete().eq('key', '_meta/migrating').then(function () { throw e; }, function () { throw e; });
+        });
+      });
+    };
+    return S;
+  })();
+
   /* ---------- planning helpers: storage, scheduling, calendar links, Slack ---------- */
   SR.jget = function (k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
   SR.jset = function (k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
@@ -473,7 +687,8 @@ window.SR = window.SR || {};
   /* MRR comes live from the Sales dashboard (Revenue tab, latest logged month). Read every 30 seconds and when the tab gets focus. */
   SR.mrr = { v: (function () { try { var x = localStorage.getItem('sr_mrr'); return x == null ? null : +x; } catch (e) { return null; } })(), at: 0, subs: [] };
   SR.mrrPull = function () {
-    return fetch('https://sales-dashboard-90e7f-default-rtdb.europe-west1.firebasedatabase.app/dashboard/data/revPlan/snaps.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (s) {
+    if (!SR.salesStore.available()) return Promise.resolve();
+    return SR.salesStore.load('revPlan').then(function (r) { var rp = SR.salesStore.stateOf(r.rows, ['revPlan']).revPlan; return rp && rp.snaps; }).then(function (s) {
       if (!s) return; var a = (Array.isArray(s) ? s : Object.keys(s).map(function (k) { return s[k]; })).filter(function (x) { return x && x.m; }).sort(function (x, y) { return String(x.m).localeCompare(String(y.m)); });
       if (!a.length) return; var v = +a[a.length - 1].ret || 0; SR.mrr.at = Date.now();
       if (v !== SR.mrr.v) { SR.mrr.v = v; try { localStorage.setItem('sr_mrr', String(v)); } catch (e) {} }

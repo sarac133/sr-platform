@@ -123,3 +123,32 @@ update google_accounts a set is_primary = true
     and not exists (select 1 from google_accounts b where b.user_id = a.user_id and b.is_primary);
 alter table gcal_links    add column if not exists account text not null default '';
 alter table gcal_channels add column if not exists account text not null default '';
+
+-- ===== Sales page data (build 1105d, safe to run again) =====
+-- The Sales page used to keep everything in one open Firebase document. It now lives here,
+-- behind the same login as the rest of Eclipse. One row per lead, per Apollo contact,
+-- per call week and so on, so two people editing different things never overwrite each other.
+create table if not exists sales_rows (
+  key text primary key,
+  value jsonb not null,
+  deleted boolean not null default false,
+  updated_at timestamptz not null default now(),
+  updated_by uuid default auth.uid());
+-- Backups of the whole Sales data, newest 40 kept by the app.
+create table if not exists sales_snapshots (
+  id bigint primary key,
+  summary text not null default '',
+  data jsonb not null,
+  created_at timestamptz not null default now(),
+  created_by uuid default auth.uid());
+drop trigger if exists touch on sales_rows;
+create trigger touch before insert or update on sales_rows for each row execute function touch_updated();
+alter table sales_rows enable row level security;
+alter table sales_snapshots enable row level security;
+drop policy if exists team_all on sales_rows;
+create policy team_all on sales_rows for all to authenticated using (is_allowed()) with check (is_allowed());
+drop policy if exists team_all on sales_snapshots;
+create policy team_all on sales_snapshots for all to authenticated using (is_allowed()) with check (is_allowed());
+do $$ begin
+  begin execute 'alter publication supabase_realtime add table sales_rows'; exception when duplicate_object then null; end;
+end $$;

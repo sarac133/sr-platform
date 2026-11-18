@@ -30,29 +30,7 @@
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%20200%20200%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22srg1%22%20x1=%220%22%20y1=%220%22%20x2=%221%22%20y2=%221%22%3E%3Cstop%20stop-color=%22%232a2f55%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%230d0e1c%22/%3E%3C/linearGradient%3E%3ClinearGradient%20id=%22srg2%22%20x1=%220%22%20y1=%220%22%20x2=%220%22%20y2=%221%22%3E%3Cstop%20stop-color=%22%23fff%22%20stop-opacity=%22.9%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%23a9b4ff%22%20stop-opacity=%22.35%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20x=%228%22%20y=%228%22%20width=%22184%22%20height=%22184%22%20rx=%2248%22%20fill=%22url%28%23srg1%29%22%20stroke=%22%234a5090%22%20stroke-width=%222%22/%3E%3Ccircle%20cx=%22100%22%20cy=%22102%22%20r=%2250%22%20fill=%22url%28%23srg2%29%22/%3E%3Ccircle%20cx=%22118%22%20cy=%2291%22%20r=%2248%22%20fill=%22%230d0e1c%22/%3E%3Cpath%20d=%22M30%2062%20Q100%208%20170%2062%22%20stroke=%22%23fff%22%20stroke-opacity=%22.25%22%20fill=%22none%22%20stroke-width=%224%22%20stroke-linecap=%22round%22/%3E%3C/svg%3E">
   <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#1B4165"></rect><text x="50" y="60" text-anchor="middle" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#BDA262">SR</text></svg></template>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Playfair+Display:wght@700&amp;display=swap" rel="stylesheet">
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-  <script>
-    (function initFb(tries) {
-      // In a bundled/offline build the compat scripts can register late, so wait for them.
-      if (!window.firebase || typeof firebase.initializeApp !== 'function' || typeof firebase.database !== 'function') {
-        if ((tries || 0) < 100) return setTimeout(function () { initFb((tries || 0) + 1); }, 50);
-        console.warn('Firebase unavailable — running with local data only.');
-        return;
-      }
-      if (window.__fbDb) return;
-      window.__fbApp = window.__fbApp || firebase.initializeApp({
-        apiKey: "AIzaSyAnk4draq2dyK5rYXD0jKS9hrYznBEwFZA",
-        authDomain: "sales-dashboard-90e7f.firebaseapp.com",
-        databaseURL: "https://sales-dashboard-90e7f-default-rtdb.europe-west1.firebasedatabase.app",
-        projectId: "sales-dashboard-90e7f",
-        storageBucket: "sales-dashboard-90e7f.firebasestorage.app",
-        messagingSenderId: "197556899976",
-        appId: "1:197556899976:web:e6d2b71a3b0f3adda2cf3d"
-      });
-      window.__fbDb = firebase.database();
-    })(0);
-  </script>
+  <!-- 1105d: Sales data lives in Supabase (table sales_rows) through the Eclipse app: window.parent.SR.salesStore. Firebase is no longer used. -->
   <style>
     body { margin: 0; background: var(--s-bg); color: var(--s-text); font-family: 'DM Sans', sans-serif; }
     a { color: var(--s-blue); } a:hover { color: #7FB0E0; }
@@ -2490,61 +2468,89 @@ class Component extends DCLogic {
     },
   };
 
-  _initFirebase() {
-    this._fbRef = window.__fbDb?.ref('dashboard/data');
-    if (!this._fbRef) {
-      // Firebase not ready yet — retry
-      if (this._fbRetries < 40) {
-        this._fbRetries++;
-        setTimeout(() => this._initFirebase(), 150);
-      } else {
-        this._fbLoaded = true; // offline: localStorage only
-      }
+  // ---- Storage (1105d) -------------------------------------------------
+  // Data lives in Supabase (sales_rows) through the Eclipse app: window.parent.SR.salesStore.
+  // It is cut into small rows (one per lead, per Apollo contact, per call week ...).
+  //   this._base      rows as the database has them, as far as we know
+  //   this._localRows rows as this screen has them (after the last save check)
+  //   this._pend      rows we changed that the database hasn't confirmed yet. Kept in
+  //                   localStorage sr_pending_rows, so a reload or crash never loses them.
+  // Only changed rows are sent, and changes from other devices are merged in row by row.
+  _store() {
+    try {
+      const p = window.parent && window.parent !== window ? window.parent : null;
+      return (p && p.SR && p.SR.salesStore) || (window.SR && window.SR.salesStore) || null;
+    } catch (e) { return null; }
+  }
+
+  _initStore() {
+    const st = this._store();
+    if (!st || !st.available()) {
+      if ((this._storeTries = (this._storeTries || 0) + 1) < 40) { setTimeout(() => this._initStore(), 250); return; }
+      this._saveStat('NOT SAVED: open Sales inside Eclipse and sign in', true);
+      this.setState({ syncBlocked: true });
       return;
     }
-    if (this._fbRef) {
-      this._fbRef.once('value').then((snap) => {
-        const data = snap.val();
-        this._fbLoaded = true;
-        this._lastParts = data ? this._partsOf(data) : null;
-        this._saveStat('Connected', false);
-        if (data) {
-          // Unsaved edits from last time (save never finished): keep them, put them on top of the server copy
-          try {
-            if (localStorage.getItem('sr_pending') === '1') {
-              const loc = JSON.parse(localStorage.getItem('sr_dashboard_v2') || 'null');
-              if (loc && typeof loc === 'object') { delete loc.crmLeadDetail; delete loc.crmNewNote; Object.assign(data, loc); }
-            }
-          } catch (e) {}
-          this._migrateOldFormat(data);
-          this._ignoreRemote = true;
-          this.setState(prev => ({ ...prev, ...data }), () => {
-            this._ignoreRemote = false;
-            this._startRealtimeListener();
-            this._ensureCurrentMonth();
-          });
-        } else {
-          const saved = localStorage.getItem('sr_dashboard_v2');
-          if (saved) {
-            try {
-              const parsed = JSON.parse(saved);
-              this._migrateOldFormat(parsed);
-              this._ignoreRemote = true;
-              this.setState(prev => ({ ...prev, ...parsed }), () => {
-                this._ignoreRemote = false;
-                this._startRealtimeListener();
-                this._ensureCurrentMonth();
-              });
-            } catch(e) { this._startRealtimeListener(); this._ensureCurrentMonth(); }
-          } else { this._startRealtimeListener(); this._ensureCurrentMonth(); }
-        }
-      }).catch(() => {
-        // Read failed. Do NOT unlock writes — otherwise the default/blank state
-        // would be written straight over the live data on the next edit.
-        this.setState({ syncBlocked: true });
-        this._startRealtimeListener();
+    this._st = st;
+    this._saveStat('Connecting...', false);
+    st.load().then((r) => {
+      if (r.meta.migrated) return r;
+      // First time on the new database: copy the old Firebase data once (Firebase is only read).
+      this._saveStat('Moving Sales data to the new database...', false);
+      return st.migrate().then((m) => {
+        if (!m.busy) return st.load();
+        return new Promise(res => setTimeout(res, 5000)).then(() => st.load()).then((r2) => {
+          if (!r2.meta.migrated) throw new Error('the move is running on another device, reload in a minute');
+          return r2;
+        });
       });
-    }
+    }).then(({ rows }) => {
+      this._base = rows;
+      this._pend = {};
+      try { const p = JSON.parse(localStorage.getItem('sr_pending_rows') || 'null'); if (p && typeof p === 'object') this._pend = p; } catch (e) {}
+      // Firebase-era marker meant "my whole copy wins". Dropped; that copy is kept aside for recovery.
+      try {
+        if (localStorage.getItem('sr_pending') === '1') localStorage.setItem('sr_dashboard_v2_pre1105d', localStorage.getItem('sr_dashboard_v2') || '');
+        localStorage.removeItem('sr_pending');
+      } catch (e) {}
+      this._localRows = { ...this._base, ...this._pend };
+      Object.keys(this._localRows).forEach(k => { if (this._localRows[k] === null) delete this._localRows[k]; });
+      const data = st.stateOf(this._localRows);
+      this._migrateOldFormat(data);
+      const view = this._loadView();
+      this._fbLoaded = true;
+      this._ignoreRemote = true;
+      this.setState(prev => ({ ...prev, ...data, ...view }), () => {
+        this._ignoreRemote = false;
+        this._saveStat(Object.keys(this._pend).length ? 'Saving...' : 'Connected', false);
+        this._startRealtimeListener();
+        this._ensureCurrentMonth();
+        this._flushPend();
+      });
+    }).catch((e) => {
+      // Load failed: writes stay locked, so a blank screen can never overwrite live data.
+      console.warn('Sales load failed', e);
+      const msg = String((e && (e.message || e.code)) || e);
+      this._saveStat('NOT SAVED: ' + (/sales_rows|relation|schema cache|does not exist/i.test(msg) ? 'Sales table missing in Supabase (run the 1105d SQL)' : msg.slice(0, 70)), true);
+      this.setState({ syncBlocked: true });
+    });
+  }
+
+  // View settings (filters, sort order, open panels) stay on this device.
+  _loadView() {
+    try { const v = JSON.parse(localStorage.getItem('sr_sales_view') || 'null'); return v && typeof v === 'object' ? v : {}; } catch (e) { return {}; }
+  }
+  _saveView(clean) {
+    if (!this._st) return;
+    const v = {}; this._st.VIEW.forEach(k => { if (clean[k] !== undefined) v[k] = clean[k]; });
+    const js = JSON.stringify(v);
+    if (js !== this._viewJSON) { this._viewJSON = js; try { localStorage.setItem('sr_sales_view', js); } catch (e) {} }
+  }
+  _persistPend() {
+    try {
+      if (Object.keys(this._pend || {}).length) localStorage.setItem('sr_pending_rows', JSON.stringify(this._pend));
+      else localStorage.removeItem('sr_pending_rows');
+    } catch (e) {}
   }
 
   _isoAdd(iso, n) { const d = new Date(iso + 'T00:00'); d.setDate(d.getDate() + n); return this._cbIso(d); }
@@ -4967,11 +4973,11 @@ class Component extends DCLogic {
     this._bindMenuDismiss();
     this._lastWriteTime = 0;
     this._ignoreRemote = false;
-    // Writes stay blocked until the first Firebase read lands, so a stale
+    // Writes stay blocked until the first database read lands, so a stale
     // localStorage copy can never overwrite what's live.
     this._fbLoaded = false;
     this._writeTimer = null;
-    this._fbRetries = 0;
+    this._remoteGen = 0;
     // Load localStorage immediately for instant paint
     const saved = localStorage.getItem('sr_dashboard_v2');
     if (saved) {
@@ -4981,28 +4987,22 @@ class Component extends DCLogic {
         this.setState(prev => ({ ...prev, ...parsed }));
       } catch(e) {}
     }
-    // Then connect to Firebase (retries until ready)
-    this._initFirebase();
+    // Then connect to the Eclipse database (retries until the app is ready)
+    this._initStore();
   }
 
   // ---- Backups -------------------------------------------------------
-  // Before overwriting live data we keep the previous good copy under
-  // dashboard/history/<timestamp>, at most one every 5 minutes, last 40 kept.
-  _maybeSnapshot(prevJSON) {
-    if (!prevJSON || !window.__fbDb) return;
+  // A copy of everything the database holds goes to sales_snapshots at most once
+  // every 5 minutes while saving, and before any blocked or restored change. Newest 40 kept.
+  _maybeSnapshot(force) {
+    if (!this._st || !this._base) return;
     const now = Date.now();
-    if (this._lastSnapTime && now - this._lastSnapTime < 5 * 60 * 1000) return;
+    if (!force && this._lastSnapTime && now - this._lastSnapTime < 5 * 60 * 1000) return;
     this._lastSnapTime = now;
-    let payload;
-    try { payload = JSON.parse(prevJSON); } catch (e) { return; }
-    const hist = window.__fbDb.ref('dashboard/history');
-    hist.child(String(now)).set({ at: now, data: prevJSON }).then(() => {
-      // Only list the backup names (a few KB), never download the backups themselves.
-      fetch(String(hist.toString()).replace(/\/$/, '') + '.json?shallow=true').then(r => r.json()).then(all => {
-        const keys = Object.keys(all || {}).sort();
-        keys.slice(0, Math.max(0, keys.length - 40)).forEach(k => hist.child(k).remove());
-      }).catch(() => {});
-    }).catch(() => {});
+    try {
+      const data = this._st.stateOf(this._base);
+      this._st.snapshot(data, this._summarise(data)).catch((e) => console.warn('Backup failed', e));
+    } catch (e) { console.warn('Backup failed', e); }
   }
 
   _summarise(obj) {
@@ -5023,30 +5023,30 @@ class Component extends DCLogic {
 
   openBackups() {
     this.setState({ backupsOpen: true, backupsLoading: true, backupsList: [] });
-    const hist = window.__fbDb?.ref('dashboard/history');
-    if (!hist) { this.setState({ backupsLoading: false }); return; }
-    hist.once('value').then(snap => {
-      const all = snap.val() || {};
-      const list = Object.keys(all).sort((a, b) => b - a).map(k => {
-        let parsed = null;
-        try { parsed = JSON.parse(all[k].data); } catch (e) {}
-        return {
-          key: k,
-          at: new Date(Number(k)).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
-          summary: parsed ? this._summarise(parsed) : 'unreadable',
-          raw: all[k].data,
-        };
-      });
+    if (!this._st) { this.setState({ backupsLoading: false }); return; }
+    this._st.snapshots().then(rows => {
+      const list = rows.map(b => ({
+        key: String(b.id),
+        at: new Date(Number(b.id)).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }),
+        summary: b.summary || '',
+        id: b.id,
+      }));
       this.setState({ backupsList: list, backupsLoading: false });
     }).catch(() => this.setState({ backupsLoading: false }));
   }
 
+  // raw: a backup file's text, or { id } of a database backup
   restoreBackup(raw) {
+    if (raw && typeof raw === 'object' && raw.id != null) {
+      if (!this._st) return;
+      this._st.snapshotData(raw.id).then(d => { if (!d) { alert('That backup could not be read.'); return; } this.restoreBackup(JSON.stringify(d)); })
+        .catch(() => alert('That backup could not be loaded.'));
+      return;
+    }
     let parsed;
     try { parsed = JSON.parse(raw); } catch (e) { alert('That backup could not be read.'); return; }
     if (!confirm('Restore this snapshot? Current data is snapshotted first, so this is reversible.')) return;
-    this._lastSnapTime = 0;
-    this._maybeSnapshot(this._lastWrittenJSON);
+    this._maybeSnapshot(true);
     this._allowShrink = true;
     this._migrateOldFormat(parsed);
     this._ignoreRemote = true;
@@ -5202,38 +5202,63 @@ class Component extends DCLogic {
   _saveStat(txt, bad) {
     try { const el = document.getElementById('sr-savestat'); if (el) { el.textContent = txt; el.style.color = bad ? 'var(--s-red)' : 'var(--s-faint)'; } } catch (e) {}
   }
-  _writeNow(clean, jsonStr, prev) {
-    this._lastWriteTime = Date.now();
-    this._saving = true;
-    try {
-      // Send only what changed (a few KB) instead of the whole 1.5 MB document every time.
-      const np = this._partsOf(clean), base = this._lastParts;
-      let job;
-      if (!base) job = this._fbRef.set(clean);
-      else {
-        const upd = {};
-        Object.keys(np).forEach(k => { if (base[k] !== np[k]) upd[k] = clean[k]; });
-        Object.keys(base).forEach(k => { if (!(k in np)) upd[k] = null; });
-        job = Object.keys(upd).length ? this._fbRef.update(upd) : Promise.resolve();
+  // Compare the screen's data with what this screen last had, and queue the rows that changed.
+  _queueSave(clean, jsonStr) {
+    if (!this._st || !this._fbLoaded || this.state.syncBlocked) return;
+    this._saveView(clean);
+    this._lastWrittenJSON = jsonStr;
+    const old = this._localRows || {}, rows = this._st.rowsOf(clean, old), changed = {};
+    Object.keys(rows).forEach(k => { if (rows[k] !== old[k]) changed[k] = rows[k]; });
+    Object.keys(old).forEach(k => { if (!(k in rows)) changed[k] = null; });
+    const keys = Object.keys(changed);
+    if (!keys.length) return;
+    // Refuse changes that would wipe most of the data (stale tab, test session, bad load)
+    if (!this._allowShrink) {
+      const isLead = k => /^crmData\/[^/]+\/[^~]/.test(k) && !/"g":"prospects"/.test(old[k] || '');
+      const leads = Object.keys(old).filter(isLead).length, goneLeads = keys.filter(k => changed[k] === null && isLead(k)).length;
+      const all = Object.keys(old).length, gone = keys.filter(k => changed[k] === null).length;
+      if ((leads >= 10 && goneLeads > leads * 0.4) || (all >= 50 && gone > all * 0.5)) {
+        this._maybeSnapshot(true);
+        this.setState({ syncBlocked: true });
+        console.warn('Save blocked: this change would remove most of the dashboard data.', { goneLeads, leads, gone, all });
+        return;
       }
-      this._saveStat('Saving...', false);
-      clearTimeout(this._slowT); this._slowT = setTimeout(() => { if (this._saving) this._saveStat('NOT SAVED YET: waiting for connection', true); }, 10000);
-      job.then(() => {
-        this._lastParts = np;
-        this._saveStat('Saved ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), false);
-        this._saving = false; this._lastWrittenJSON = jsonStr; this._saveFails = 0;
-        if (this._dirtyJSON === jsonStr) { this._dirtyJSON = null; this._dirtyData = null; try { localStorage.removeItem('sr_pending'); } catch (e) {} }
-        if (this.state.saveError) this.setState({ saveError: false });
-      }).catch((e) => { this._saving = false; this._saveFailed(e); });
-      this._maybeSnapshot(prev);
-    } catch (e) { this._saving = false; this._saveFailed(e); }
+    }
+    this._allowShrink = false;
+    this._localRows = rows;
+    keys.forEach(k => { this._pend[k] = changed[k]; });
+    this._persistPend();
+    this._flushPend();
+  }
+
+  // Send the queued rows. One request at a time; whatever changed meanwhile goes next.
+  _flushPend() {
+    if (!this._st || !this._fbLoaded || this._saving || this.state.syncBlocked) return;
+    const keys = Object.keys(this._pend || {});
+    if (!keys.length) return;
+    const batch = {}; keys.forEach(k => { batch[k] = this._pend[k]; });
+    this._saving = true;
+    this._lastWriteTime = Date.now();
+    this._saveStat('Saving...', false);
+    clearTimeout(this._slowT); this._slowT = setTimeout(() => { if (this._saving) this._saveStat('NOT SAVED YET: waiting for connection', true); }, 10000);
+    this._st.save(batch).then(() => {
+      this._saving = false; this._saveFails = 0;
+      keys.forEach(k => {
+        if (batch[k] === null) delete this._base[k]; else this._base[k] = batch[k];
+        if (this._pend[k] === batch[k]) delete this._pend[k];
+      });
+      this._persistPend();
+      this._saveStat('Saved ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), false);
+      if (this.state.saveError) this.setState({ saveError: false });
+      this._maybeSnapshot();
+      if (Object.keys(this._pend).length) this._flushPend();
+    }).catch((e) => { this._saving = false; this._saveFailed(e); });
   }
 
   _saveFailed(e) {
     console.warn('Save failed, retrying', e);
     this._saveStat('NOT SAVED: ' + String((e && (e.code || e.message)) || e).slice(0, 60), true);
     this._saveFails = (this._saveFails || 0) + 1;
-    this._lastWrittenJSON = null;
     if (!this.state.saveError) this.setState({ saveError: true });
   }
 
@@ -5241,38 +5266,92 @@ class Component extends DCLogic {
   // push any change that hasn't been confirmed as saved yet.
   _startAutosave() {
     if (this._autosaveTimer) return;
-    const flush = () => {
-      if (!this._fbRef || !this._fbLoaded || this.state.syncBlocked) return;
-      if (this._dirtyJSON && this._dirtyJSON !== this._lastWrittenJSON && !this._saving) this._writeNow(this._dirtyData, this._dirtyJSON, this._lastWrittenJSON);
-    };
+    const flush = () => { if (this._writeTimer) { clearTimeout(this._writeTimer); this._writeTimer = null; if (this._pendingSave) this._pendingSave(); } this._flushPend(); };
     this._flush = flush;
     this._autosaveTimer = setInterval(flush, 8000);
     window.addEventListener('beforeunload', flush);
-    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
-  }
-
-  _startRealtimeListener() {
-    if (!this._fbRef) return;
-    this._startAutosave();
-    this._fbRef.on('value', (snap) => {
-      const data = snap.val();
-      if (!data) return;
-      // Never let a remote copy replace a change we haven't finished saving
-      if (this._dirtyJSON || this._saving || this._writeTimer && Date.now() - this._lastWriteTime < 3000) return;
-      // Skip if we wrote within last 2 seconds (our own echo)
-      if (this._lastWriteTime && Date.now() - this._lastWriteTime < 2000) return;
-      // Compare — skip if data is identical to avoid loops
-      const incoming = JSON.stringify(data);
-      if (incoming === this._lastWrittenJSON) return;
-      this._migrateOldFormat(data);
-      this._lastParts = this._partsOf(data);
-      this._ignoreRemote = true;
-      this.setState(prev => ({ ...prev, ...data }), () => { this._ignoreRemote = false; });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') { this._hiddenAt = Date.now(); flush(); }
+      // Back after a while: fetch anything a missed live update might have carried
+      else if (this._hiddenAt && Date.now() - this._hiddenAt > 120000) this._resync();
     });
   }
 
+  // Live updates from other devices, merged row by row.
+  _startRealtimeListener() {
+    if (!this._st) return;
+    this._startAutosave();
+    if (this._unsub) return;
+    // Safety net: every 10 minutes while the tab is open, pick up anything a live update missed
+    if (!this._resyncTimer) this._resyncTimer = setInterval(() => { if (document.visibilityState === 'visible') this._resync(); }, 600000);
+    this._unsub = this._st.subscribe((k, v) => this._onRemoteRow(k, v), (status) => {
+      if (status === 'SUBSCRIBED') { if (this._liveDown) { this._liveDown = false; this._resync(); } }
+      else this._liveDown = true;
+    });
+  }
+
+  _onRemoteRow(k, v) {
+    if (!this._base || k.indexOf('_meta/') === 0) return;
+    // Big bursts (an Apollo sync on another device) can go past Supabase's live-update rate limit,
+    // so after a burst goes quiet, check the database once for anything that didn't arrive.
+    if (!this._resyncing) {
+      this._burst = (this._burst || 0) + 1;
+      clearTimeout(this._burstT);
+      this._burstT = setTimeout(() => { if (this._burst >= 80) this._resync(); this._burst = 0; }, 4000);
+    }
+    if (v === null) delete this._base[k]; else this._base[k] = v;
+    if (this._pend && k in this._pend) {
+      // We changed this row too and haven't been confirmed yet: ours goes out next and wins.
+      if (this._pend[k] === v) { delete this._pend[k]; this._persistPend(); }
+      return;
+    }
+    if ((this._localRows[k] ?? null) === v) return;
+    this._inboxPrev = this._inboxPrev || {};
+    if (!(k in this._inboxPrev)) this._inboxPrev[k] = this._localRows[k] ?? null;
+    if (v === null) delete this._localRows[k]; else this._localRows[k] = v;
+    this._remoteGen++;
+    (this._inbox = this._inbox || {})[k] = v;
+    if (!this._inboxT) this._inboxT = setTimeout(() => this._applyInbox(), 40);
+  }
+
+  _applyInbox() {
+    const box = this._inbox || {}, was = this._inboxPrev || {}, st = this._st, byTop = {}, prev = { ...this._localRows, ...was };
+    this._inbox = {}; this._inboxPrev = {}; this._inboxT = null;
+    Object.keys(box).forEach(k => { const t = st.topOf(k); (byTop[t] = byTop[t] || []).push(k); });
+    this._ignoreRemote = true;
+    this.setState(s => {
+      const out = {};
+      Object.keys(byTop).forEach(top => {
+        // Start from what this screen shows (keeps edits not checked yet), lay the new rows on top.
+        // A row edited here in the last moment (differs from what we had) keeps the local edit; it goes out next.
+        const cur = st.rowsOf({ [top]: s[top] }, prev);
+        byTop[top].forEach(k => {
+          if ((cur[k] ?? null) !== (was[k] ?? null)) return;
+          if (box[k] === null) delete cur[k]; else cur[k] = box[k];
+        });
+        const v = st.stateOf(cur)[top];
+        if (v && typeof v === 'object') this._migrateOldFormat({ [top]: v });
+        out[top] = v;
+      });
+      return out;
+    }, () => { this._ignoreRemote = false; });
+  }
+
+  // Reload every row and merge what changed (after being offline or hidden for a while).
+  _resync() {
+    if (!this._st || !this._base || this._resyncing) return;
+    this._resyncing = true;
+    this._st.load().then(({ rows }) => {
+      this._resyncing = false;
+      const base = this._base;
+      Object.keys(rows).forEach(k => { if (rows[k] !== base[k]) this._onRemoteRow(k, rows[k]); });
+      Object.keys(base).forEach(k => { if (!(k in rows)) this._onRemoteRow(k, null); });
+    }).catch(() => { this._resyncing = false; });
+  }
+
   componentWillUnmount() {
-    if (this._fbRef) this._fbRef.off();
+    if (this._unsub) this._unsub();
+    if (this._resyncTimer) clearInterval(this._resyncTimer);
     if (this._writeTimer) clearTimeout(this._writeTimer);
   }
 
@@ -5424,7 +5503,7 @@ class Component extends DCLogic {
     } catch (e) {}
     try { this._sfxDiff(prevState, this.state); } catch (e) {}
     const onlyLive = prevState.revLive !== this.state.revLive && Object.keys(this.state).every(kk => kk === 'revLive' || prevState[kk] === this.state[kk]);
-    if (prevState !== this.state && !this._ignoreRemote && !onlyLive) {
+    if (prevState !== this.state && !onlyLive) {
       const toSave = this._cleanKeys({ ...this.state });
       delete toSave.activeTab;
       delete toSave.activePerson;
@@ -5498,37 +5577,20 @@ class Component extends DCLogic {
       delete toSave.reverseBookRate;
       delete toSave.reverseOwnerRate;
       delete toSave.reversePickUpRate;
-      // Debounced write to Firebase. JSON round-trip strips undefined values,
-      // which Firebase rejects (that silently dropped saves before).
+      // Debounced save. JSON round-trip strips undefined values the database can't hold.
       if (this._writeTimer) clearTimeout(this._writeTimer);
       const jsonStr = JSON.stringify(toSave);
       const clean = JSON.parse(jsonStr);
-      if (jsonStr !== this._lastWrittenJSON) { this._dirtyJSON = jsonStr; this._dirtyData = clean; }
-      else { this._dirtyJSON = null; this._dirtyData = null; }
-      this._writeTimer = setTimeout(() => {
-        this._writeTimer = null;
-        if (this._fbRef && this._fbLoaded && jsonStr !== this._lastWrittenJSON) {
-          const prev = this._lastWrittenJSON;
-          // Refuse writes that would wipe most of the data (stale tab, test session, bad load)
-          if (prev && !this._allowShrink) {
-            const size = (o) => { let c = 0; Object.values((o && o.crmData) || {}).forEach(r => ['pipeline', 'leads', 'recycle', 'prospects'].forEach(g => c += ((r || {})[g] || []).length)); return { c, calls: JSON.stringify((o && o.callingByCampaign) || {}).length }; };
-            let a = null; try { a = size(JSON.parse(prev)); } catch (e) {}
-            const b = size(toSave);
-            if (a && ((a.c >= 10 && b.c < a.c * 0.6) || (a.calls >= 1000 && b.calls < a.calls * 0.5))) {
-              this._lastSnapTime = 0; this._maybeSnapshot(prev);
-              this._dirtyJSON = null; this._dirtyData = null;
-              this.setState({ syncBlocked: true });
-              console.warn('Save blocked: this change would remove most of the dashboard data.');
-              return;
-            }
-          }
-          this._allowShrink = false;
-          this._writeNow(clean, jsonStr, prev);
-        }
-      }, 250);
-      // localStorage is only a cache of what we've confirmed against Firebase
-      if (this._fbLoaded) localStorage.setItem('sr_dashboard_v2', jsonStr);
-      try { if (this._fbLoaded && jsonStr !== this._lastWrittenJSON) localStorage.setItem('sr_pending', '1'); } catch (e) {}
+      const gen = this._remoteGen;
+      this._pendingSave = () => {
+        this._pendingSave = null;
+        // A live update landed after this copy was taken: a fresh copy is on its way, skip this one
+        if (gen !== this._remoteGen || this._inboxT) return;
+        this._queueSave(clean, jsonStr);
+      };
+      this._writeTimer = setTimeout(() => { this._writeTimer = null; if (this._pendingSave) this._pendingSave(); }, 250);
+      // localStorage is only a cache for instant paint; unsaved rows live in sr_pending_rows
+      if (this._fbLoaded) { try { localStorage.setItem('sr_dashboard_v2', jsonStr); } catch (e) {} }
     }
   }
 
@@ -6098,7 +6160,7 @@ class Component extends DCLogic {
       uploadBackup: (e) => this.uploadBackup(e),
       backupRows: (s.backupsList || []).map(b => ({
         ...b,
-        restore: () => this.restoreBackup(b.raw),
+        restore: () => this.restoreBackup({ id: b.id }),
       })),
       setPersonJosh: () => this.setState({ activePerson: 'josh' }),
       setPersonMatt: () => this.setState({ activePerson: 'matt' }),

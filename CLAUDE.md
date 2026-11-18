@@ -31,7 +31,7 @@ Repo: github.com/sarac133/sr-platform (private). Netlify site: saracramsay-os. S
 | app.js | App shell, navigation, routing, command palette, shortcuts |
 | styles.css | All styles |
 | drive.js, grid.js | Drive screen and grid helpers |
-| sales/index.html | Sales dashboard, a separate page shown in an iframe. About 8,000 lines. Uses Firebase. |
+| sales/index.html | Sales dashboard, a separate page shown in an iframe. About 9,500 lines. Saves through `SR.salesStore` (Supabase) in the parent app. |
 | supabase/ | Supabase config |
 | gads-task-list.md | Google Ads task list reference |
 
@@ -43,11 +43,14 @@ Interactive canvas "constellation": each battlefront is a planet in a tilted ell
 
 ## Storage (important)
 - `SR.uiprefs` is synced (Supabase when signed in, else localStorage).
-- Sales page uses Firebase Realtime Database: `https://sales-dashboard-90e7f-default-rtdb.europe-west1.firebasedatabase.app`
-  - `dashboard/data` is the live document (about 1.4MB: apolloContactsData, crmData, cbDone, callingByCampaign, etc.).
-  - `dashboard/history/<timestamp>` holds snapshots (kept to the newest 40, each a JSON string).
-  - Rules allow unauthenticated read and write. Do not test against `dashboard/`. Use a temp node such as `dashboard_t/` and delete it afterwards.
-  - localStorage cache key `sr_dashboard_v2`. Pending-save marker key `sr_pending`.
+- Sales page data (since 1105d) lives in Supabase table `sales_rows`, behind the Eclipse login. Code: `SR.salesStore` in data.js; the Sales iframe uses it through `window.parent.SR.salesStore`.
+  - Data is cut into rows by path: one per lead (`crmData/<region>/<lead id>`, value `{g: group, i: position, v: lead}`), per Apollo contact, per call week (`callingByCampaign/<campaign>/<person_week>`), per cbDone entry and so on. `SPEC` in data.js says how each key is cut; other keys are one row. Keys ending `/~` mark containers. `_meta/migrated` marks the one-time copy from Firebase.
+  - Each device sends only rows it changed; live updates from other devices are merged row by row. A lead keeps its position value unless it moves, so a move changes 1 row.
+  - View settings (filters, sort order, open panels: `VIEW` in data.js) are per device in localStorage `sr_sales_view`, never shared.
+  - Backups: table `sales_snapshots`, newest 40.
+  - localStorage: cache `sr_dashboard_v2` (instant paint only), unsaved rows `sr_pending_rows`.
+  - Old Firebase (`sales-dashboard-90e7f`, `dashboard/data` + 40 snapshots in `dashboard/history`) is no longer read or written by the app, only once by the migration. Keep it as a backup. Its rules allow unauthenticated read and write: never test against it.
+  - Testing: 2-device test with a fake Supabase (Playwright, `window.__SR_SALES_SB` and `window.__SR_SALES_FIREBASE` test hooks), never against the real database.
 
 ## Sales save logic (fixed in 1105c)
 Problem: dials and pipeline did not stay saved on the live site after refresh. Causes found and fixed:
@@ -62,6 +65,7 @@ If saving fails again, ask Matt for the chip text and the browser console error 
 - 1105a: mission right-click menu.
 - 1105b: Overview constellation hub (live).
 - 1105c: Sales save fix and stay-on-page after refresh. Committed locally as f0b69a2. Matt pushes it.
+- 1105d: Sales moved from Firebase to Supabase (`sales_rows`), saved row by row with live merge between devices. Needs the "Sales page data (build 1105d)" SQL from supabase/schema.sql run in Supabase BEFORE the push. The first device to open Sales after the push copies the Firebase data once.
 - Folders `sales-dashboard` and `seo-platform` were removed and merged here. `seo-platform` can be restored with `git clone https://github.com/sarac133/seo-platform.git`. The old standalone sales-dashboard was never in git; this repo's `sales/` is the newer version.
 
 ## Testing notes
@@ -72,3 +76,14 @@ If saving fails again, ask Matt for the chip text and the browser console error 
 ## Ideas not built yet
 - Recreated standalone sales folder (low value).
 - Further Overview hub polish.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- When graphify-out/graph.json exists, run `graphify query "<question>"` before your first grep, search or source-file read for a codebase question, and put this rule in every subagent prompt that explores code. Read raw files only for lines the graph or an earlier read already located. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. When the answer is under a Markdown heading, `graphify section "<heading>"` prints that section's text, so the .md need not be opened. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost). Then run `$(cat graphify-out/.graphify_python) .claude/graphify_sr.py && graphify cluster-only . --no-label`: graphify cannot see functions inside the `(function (SR) {...})` wrappers in the root .js files, so this add-on adds them. The local git hooks run both after each commit. `.graphifyignore` keeps `.claude/` out of the graph.
+- A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.

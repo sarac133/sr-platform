@@ -2022,8 +2022,7 @@ window.SR = window.SR || {};
   var who = function (h) { return h.mode === 'owned' && h.owner ? [h.owner] : SR.TEAM.slice(); };
   SR.streak = function (n, h) { var d = SR.TODAY, c = 0, guard = 0; while (guard++ < 400) { if (sched(h, d)) { if (ticked(n, h.id, d)) c++; else if (d !== SR.TODAY) break; } d = addD(d, -1); } return c; };
   SR.teamStreak = function (h) { var P = who(h), d = SR.TODAY, c = 0, guard = 0; while (guard++ < 400) { if (sched(h, d)) { var all = P.length && P.every(function (n) { return ticked(n, h.id, d); }); if (all) c++; else if (d !== SR.TODAY) break; } d = addD(d, -1); } return c; };
-  /* ---- numbers from other parts of the platform. Sales data is read live from the same database the Sales page uses (cached copy as fallback). ---- */
-  SR.SALES_DB = 'https://sales-dashboard-90e7f-default-rtdb.europe-west1.firebasedatabase.app/dashboard/data/';
+  /* ---- numbers from other parts of the platform. Sales data is read live from the same database the Sales page uses (SR.salesStore, cached copy as fallback). ---- */
   var arr = function (x) { return Array.isArray(x) ? x : Object.keys(x || {}).map(function (k) { return x[k]; }); };
   /* what each kind needs from the Sales database */
   var NEED = { dials: ['callingByCampaign'], pickups: ['callingByCampaign'], owners: ['callingByCampaign'], booked: ['callingByCampaign'], won: ['crmData'], wonval: ['crmData'], held: ['crmData'], showrate: ['crmData'], replies: ['apolloSequences', 'apolloDaily', 'apolloHidden', 'apolloSearchFilter', 'crmData'], pos: ['apolloContactsData', 'crmData'], proposals: ['callLog'] };
@@ -2032,9 +2031,9 @@ window.SR = window.SR || {};
     if (!d.data) { d.data = {}; try { d.data = JSON.parse(localStorage.getItem('sr_dashboard_v2') || '{}') || {}; d.src = 'cache'; } catch (e) { d.data = {}; } }
     var need = {}; (kinds || ['dials']).forEach(function (k) { (NEED[k] || []).forEach(function (x) { need[x] = 1; }); });
     Object.keys(need).forEach(function (key) {
-      if (Date.now() - (d.t[key] || 0) < 45000 || d.loading[key] || !window.fetch) return;
+      if (Date.now() - (d.t[key] || 0) < 45000 || d.loading[key] || !SR.salesStore.available()) return;
       d.loading[key] = true;
-      fetch(SR.SALES_DB + key + '.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      SR.salesStore.load(encodeURIComponent(key)).then(function (r) { return SR.salesStore.stateOf(r.rows, [key])[key]; })
         .then(function (v) { d.data[key] = v == null ? (key === 'callLog' || key === 'apolloSequences' ? [] : {}) : v; d.src = 'live'; d.t[key] = Date.now(); d.loading[key] = false; if (cb) cb(); })
         .catch(function () { d.t[key] = Date.now(); d.loading[key] = false; });
     });
